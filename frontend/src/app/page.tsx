@@ -11,7 +11,7 @@ const page = () => {
   return (
     <div className="min-h-screen">
       <Header />
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto">
         <HeroSection />
         <PopularDestinations />
         <ServicesSection />

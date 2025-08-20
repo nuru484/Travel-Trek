@@ -13,6 +13,7 @@ import {
 } from "@/validation/auth-validation";
 import { useRegisterUserMutation } from "@/redux/auth/authApi";
 import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
+import Header from "@/components/index/Header";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -46,35 +47,46 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col justify-center items-center p-4">
-      {/* Background decoration */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5"></div>
+    <div className="min-h-screen bg-background">
+      {/* Header at the top */}
+      <Header />
 
-      {/* Main form container */}
-      <div className="relative w-full max-w-lg">
-        {/* Card wrapper */}
-        <div className="bg-card border border-border rounded-xl shadow-lg p-8">
-          {/* Header section */}
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-card-foreground mb-2">
-              Create Account
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              Join our platform to get started
+      {/* Main content area */}
+      <div className="flex flex-col justify-center items-center p-4 min-h-[calc(100vh-theme(spacing.16))] relative">
+        {/* Background decoration */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5"></div>
+
+        {/* Main form container */}
+        <div className="relative w-full max-w-lg z-10">
+          {/* Card wrapper */}
+          <div className="bg-card border border-border rounded-xl shadow-lg p-8">
+            {/* Header section */}
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-bold text-card-foreground mb-2">
+                Create Account
+              </h1>
+              <p className="text-muted-foreground text-sm">
+                Join our platform to get started
+              </p>
+            </div>
+
+            {/* Form section */}
+            <div className="space-y-6">
+              <SignupForm
+                form={form}
+                onSubmit={onSubmit}
+                isLoading={isLoading}
+              />
+            </div>
+          </div>
+
+          {/* Footer decoration */}
+          <div className="mt-6 text-center">
+            <p className="text-xs text-muted-foreground">
+              By signing up, you agree to our Terms of Service and Privacy
+              Policy
             </p>
           </div>
-
-          {/* Form section */}
-          <div className="space-y-6">
-            <SignupForm form={form} onSubmit={onSubmit} isLoading={isLoading} />
-          </div>
-        </div>
-
-        {/* Footer decoration */}
-        <div className="mt-6 text-center">
-          <p className="text-xs text-muted-foreground">
-            By signing up, you agree to our Terms of Service and Privacy Policy
-          </p>
         </div>
       </div>
     </div>
