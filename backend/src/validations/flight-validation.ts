@@ -129,26 +129,6 @@ export const createFlightValidation: ValidationChain[] = [
     'Arrival time must be at least 30 minutes after departure',
     { required: false },
   ),
-
-  // Custom validation for reasonable flight duration
-  validator.custom(
-    'duration',
-    (value, req) => {
-      if (!value || !req.body.departure || !req.body.arrival) return true;
-
-      const departureTime = new Date(req.body.departure);
-      const arrivalTime = new Date(req.body.arrival);
-      const actualDuration =
-        (arrivalTime.getTime() - departureTime.getTime()) / (1000 * 60);
-      const providedDuration = parseInt(value);
-
-      // Allow some tolerance (±60 minutes) for time zone differences
-      const tolerance = 60;
-      return Math.abs(actualDuration - providedDuration) <= tolerance;
-    },
-    'Duration should approximately match the time difference between departure and arrival',
-    { required: false },
-  ),
 ];
 
 // Validation for updating an existing flight

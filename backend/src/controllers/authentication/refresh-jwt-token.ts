@@ -88,7 +88,7 @@ const refreshToken: (
     // Send tokens in response
     res.status(200).json({
       message: 'Token refreshed successfully',
-      user: userWithoutPassword,
+      data: userWithoutPassword,
     });
   },
 );

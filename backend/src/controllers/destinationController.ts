@@ -416,11 +416,11 @@ const handleDeleteAllDestinations = asyncHandler(
 
 // Middleware arrays with validations
 export const createDestination: RequestHandler[] = [
+  multerUpload.single('destinationPhoto'),
   ...validationMiddleware.create([
     ...createDestinationValidation,
     ...destinationPhotoValidation,
   ]),
-  multerUpload.single('destinationPhoto'),
   conditionalCloudinaryUpload(CLOUDINARY_UPLOAD_OPTIONS, 'destinationPhoto'),
   handleCreateDestination,
 ];
@@ -434,6 +434,7 @@ export const getDestination: RequestHandler[] = [
 ];
 
 export const updateDestination: RequestHandler[] = [
+  multerUpload.single('destinationPhoto'),
   param('id')
     .isInt({ min: 1 })
     .withMessage('Destination ID must be a positive integer'),
@@ -441,7 +442,6 @@ export const updateDestination: RequestHandler[] = [
     ...updateDestinationValidation,
     ...destinationPhotoValidation,
   ]),
-  multerUpload.single('destinationPhoto'),
   conditionalCloudinaryUpload(CLOUDINARY_UPLOAD_OPTIONS, 'destinationPhoto'),
   handleUpdateDestination,
 ];

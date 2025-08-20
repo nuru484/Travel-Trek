@@ -55,8 +55,8 @@ const handleCreateFlight = asyncHandler(
 
     // Check if origin and destination exist
     const [origin, destination] = await Promise.all([
-      prisma.destination.findUnique({ where: { id: originId } }),
-      prisma.destination.findUnique({ where: { id: destinationId } }),
+      prisma.destination.findUnique({ where: { id: Number(originId) } }),
+      prisma.destination.findUnique({ where: { id: Number(destinationId) } }),
     ]);
 
     if (!origin || !destination) {
@@ -72,14 +72,14 @@ const handleCreateFlight = asyncHandler(
         airline,
         departure: new Date(departure),
         arrival: new Date(arrival),
-        origin: { connect: { id: originId } },
-        destination: { connect: { id: destinationId } },
-        price,
+        origin: { connect: { id: Number(originId) } },
+        destination: { connect: { id: Number(destinationId) } },
+        price: +price,
         flightClass,
-        duration,
-        stops: stops ?? 0,
+        duration: Number(duration),
+        stops: stops ? Number(stops) : 0,
         photo: typeof photoUrl === 'string' ? photoUrl : null,
-        seatsAvailable,
+        seatsAvailable: Number(seatsAvailable),
       },
     });
 
@@ -689,11 +689,11 @@ const getFlightStats = asyncHandler(
 
 // Middleware arrays with validations
 export const createFlight: RequestHandler[] = [
+  multerUpload.single('flightPhoto'),
   ...validationMiddleware.create([
     ...createFlightValidation,
     ...flightPhotoValidation,
   ]),
-  multerUpload.single('flightPhoto'),
   conditionalCloudinaryUpload(CLOUDINARY_UPLOAD_OPTIONS, 'flightPhoto'),
   handleCreateFlight,
 ];
@@ -707,6 +707,7 @@ export const getFlight: RequestHandler[] = [
 ];
 
 export const updateFlight: RequestHandler[] = [
+  multerUpload.single('flightPhoto'),
   param('id')
     .isInt({ min: 1 })
     .withMessage('Flight ID must be a positive integer'),
@@ -714,7 +715,6 @@ export const updateFlight: RequestHandler[] = [
     ...updateFlightValidation,
     ...flightPhotoValidation,
   ]),
-  multerUpload.single('flightPhoto'),
   conditionalCloudinaryUpload(CLOUDINARY_UPLOAD_OPTIONS, 'flightPhoto'),
   handleUpdateFlight,
 ];

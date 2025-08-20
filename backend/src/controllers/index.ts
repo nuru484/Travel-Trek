@@ -42,6 +42,7 @@ import {
 
 import {
   createPayment,
+  handleCallback,
   handleWebhook,
   getPayment,
   getAllPayments,
@@ -134,6 +135,7 @@ export {
 
   // Payment controllers
   createPayment,
+  handleCallback,
   handleWebhook,
   getPayment,
   getAllPayments,

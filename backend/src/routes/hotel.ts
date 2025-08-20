@@ -1,3 +1,4 @@
+// src/routes/hotel.ts
 import { Router } from 'express';
 import {
   createHotel,

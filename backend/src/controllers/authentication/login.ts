@@ -49,7 +49,7 @@ const login = asyncHandler(
       const accessToken = jwt.sign(
         { id: user.id.toString(), role: user.role } as ITokenPayload,
         assertEnv(ENV.ACCESS_TOKEN_SECRET, 'ACCESS_TOKEN_SECRET'),
-        { expiresIn: '15m' },
+        { expiresIn: '30m' },
       );
 
       const refreshToken = jwt.sign(
@@ -66,7 +66,7 @@ const login = asyncHandler(
 
       const { password: userPassWord, ...userWithoutPassword } = user;
 
-      res.json({ message: 'Login successful', user: userWithoutPassword });
+      res.json({ message: 'Login successful', data: userWithoutPassword });
     } catch (error) {
       next(error);
     }

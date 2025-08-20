@@ -20,6 +20,8 @@ interface IENV {
   REFRESH_TOKEN_SECRET?: string;
   REFRESH_TOKEN_EXPIRY?: string;
   COOKIE_DOMAIN?: string;
+  PAYSTACK_SECRET_KEY: string;
+  PAYSTACK_CALLBACK_URL?: string;
 }
 
 const ENV: IENV = {
@@ -44,6 +46,11 @@ const ENV: IENV = {
   ACCESS_TOKEN_EXPIRY: process.env.ACCESS_TOKEN_EXPIRY || '30m',
   REFRESH_TOKEN_SECRET: process.env.REFRESH_TOKEN_SECRET,
   REFRESH_TOKEN_EXPIRY: process.env.REFRESH_TOKEN_EXPIRY || '7d',
+  PAYSTACK_SECRET_KEY: assertEnv(
+    process.env.PAYSTACK_SECRET_KEY,
+    'PAYSTACK_SECRET_KEY',
+  ),
+  PAYSTACK_CALLBACK_URL: process.env.PAYSTACK_CALLBACK_URL,
 };
 
 export default ENV;

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   createPayment,
+  handleCallback,
   handleWebhook,
   getPayment,
   getAllPayments,
@@ -10,6 +11,8 @@ const paymentRoutes = Router();
 
 // Create a new payment
 paymentRoutes.post('/payments', createPayment);
+
+paymentRoutes.get('/payments/callback', handleCallback);
 
 // Handle Paystack webhook
 paymentRoutes.post('/payments/webhook', handleWebhook);

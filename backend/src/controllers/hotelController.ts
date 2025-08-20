@@ -1,4 +1,4 @@
-// src/controllers/hotel/hotel-controller.ts
+// src/controllers/hotelController.ts
 import { Request, Response, NextFunction, RequestHandler } from 'express';
 import { param } from 'express-validator';
 import prisma from '../config/prismaClient';
@@ -19,7 +19,6 @@ import {
   updateHotelValidation,
   getHotelsValidation,
   hotelPhotoValidation,
-  hotelsByDestinationValidation,
   hotelAvailabilityValidation,
 } from '../validations/hotel-validation';
 
@@ -55,7 +54,7 @@ const handleCreateHotel = asyncHandler(
 
     // Check if destination exists
     const destination = await prisma.destination.findUnique({
-      where: { id: destinationId },
+      where: { id: Number(destinationId) },
     });
 
     if (!destination) {
@@ -65,6 +64,18 @@ const handleCreateHotel = asyncHandler(
     // Get photo URL from middleware processing
     const photoUrl = req.body.hotelPhoto;
 
+    // Convert starRating to number and provide default
+    const parsedStarRating = starRating ? Number(starRating) : 3;
+
+    // Validate the star rating is within valid range (1-5)
+    if (
+      parsedStarRating < 1 ||
+      parsedStarRating > 5 ||
+      isNaN(parsedStarRating)
+    ) {
+      throw new Error('Star rating must be a number between 1 and 5');
+    }
+
     const hotel = await prisma.hotel.create({
       data: {
         name,
@@ -73,10 +84,10 @@ const handleCreateHotel = asyncHandler(
         city,
         country,
         phone,
-        starRating: starRating || 3, // Default to 3 stars if not provided
+        starRating: parsedStarRating,
         amenities: amenities || [],
         photo: typeof photoUrl === 'string' ? photoUrl : null,
-        destination: { connect: { id: destinationId } },
+        destination: { connect: { id: Number(destinationId) } },
       },
       include: {
         destination: {
@@ -112,7 +123,6 @@ const handleCreateHotel = asyncHandler(
     });
   },
 );
-
 /**
  * Get a single hotel by ID
  */
@@ -212,7 +222,7 @@ const handleUpdateHotel = asyncHandler(
     try {
       // First, get the current hotel to check for existing photo
       const existingHotel = await prisma.hotel.findUnique({
-        where: { id: parseInt(id) },
+        where: { id: Number(id) },
         select: { photo: true },
       });
 
@@ -225,7 +235,7 @@ const handleUpdateHotel = asyncHandler(
       // Check if destination exists if provided
       if (destinationId) {
         const destination = await prisma.destination.findUnique({
-          where: { id: destinationId },
+          where: { id: Number(destinationId) },
         });
         if (!destination) {
           throw new NotFoundError('Destination not found');
@@ -242,9 +252,55 @@ const handleUpdateHotel = asyncHandler(
       if (city !== undefined) updateData.city = city;
       if (country !== undefined) updateData.country = country;
       if (phone !== undefined) updateData.phone = phone;
-      if (starRating !== undefined) updateData.starRating = starRating;
-      if (amenities !== undefined) updateData.amenities = amenities;
-      if (destinationId !== undefined) updateData.destinationId = destinationId;
+
+      // Handle starRating conversion - convert string to number
+      if (starRating !== undefined) {
+        const parsedStarRating = Number(starRating);
+
+        // Validate the star rating is within valid range (1-5)
+        if (
+          parsedStarRating < 1 ||
+          parsedStarRating > 5 ||
+          isNaN(parsedStarRating)
+        ) {
+          throw new Error('Star rating must be a number between 1 and 5');
+        }
+
+        updateData.starRating = parsedStarRating;
+      }
+
+      // Handle amenities - convert object to array if needed
+      if (amenities !== undefined) {
+        let processedAmenities: string[];
+
+        if (Array.isArray(amenities)) {
+          // Already an array
+          processedAmenities = amenities;
+        } else if (typeof amenities === 'object' && amenities !== null) {
+          // Convert object like {"0": "item1", "1": "item2"} to array
+          processedAmenities = Object.values(amenities).filter(
+            (item): item is string => typeof item === 'string',
+          );
+        } else if (typeof amenities === 'string') {
+          // Single string, convert to array
+          processedAmenities = [amenities];
+        } else {
+          processedAmenities = [];
+        }
+
+        updateData.amenities = processedAmenities;
+      }
+
+      // Handle destinationId - convert string to number
+      if (destinationId !== undefined) {
+        const parsedDestinationId = Number(destinationId);
+
+        if (isNaN(parsedDestinationId)) {
+          throw new Error('Destination ID must be a valid number');
+        }
+
+        updateData.destinationId = parsedDestinationId;
+      }
 
       // Handle photo - it should be a string URL after middleware processing
       if (req.body.hotelPhoto && typeof req.body.hotelPhoto === 'string') {
@@ -254,7 +310,7 @@ const handleUpdateHotel = asyncHandler(
 
       // Update hotel in database
       const updatedHotel = await prisma.hotel.update({
-        where: { id: parseInt(id) },
+        where: { id: Number(id) },
         data: updateData,
       });
 
@@ -680,11 +736,11 @@ const handleDeleteAllHotels = asyncHandler(
 
 // Middleware arrays with validations
 export const createHotel: RequestHandler[] = [
+  multerUpload.single('hotelPhoto'),
   ...validationMiddleware.create([
     ...createHotelValidation,
     ...hotelPhotoValidation,
   ]),
-  multerUpload.single('hotelPhoto'),
   conditionalCloudinaryUpload(CLOUDINARY_UPLOAD_OPTIONS, 'hotelPhoto'),
   handleCreateHotel,
 ];
@@ -698,6 +754,7 @@ export const getHotel: RequestHandler[] = [
 ];
 
 export const updateHotel: RequestHandler[] = [
+  multerUpload.single('hotelPhoto'),
   param('id')
     .isInt({ min: 1 })
     .withMessage('Hotel ID must be a positive integer'),
@@ -705,7 +762,6 @@ export const updateHotel: RequestHandler[] = [
     ...updateHotelValidation,
     ...hotelPhotoValidation,
   ]),
-  multerUpload.single('hotelPhoto'),
   conditionalCloudinaryUpload(CLOUDINARY_UPLOAD_OPTIONS, 'hotelPhoto'),
   handleUpdateHotel,
 ];
@@ -727,7 +783,6 @@ export const getHotelsByDestination: RequestHandler[] = [
   param('destinationId')
     .isInt({ min: 1 })
     .withMessage('Destination ID must be a positive integer'),
-  ...validationMiddleware.create(hotelsByDestinationValidation),
   handleGetHotelsByDestination,
 ];
 

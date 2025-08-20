@@ -100,7 +100,7 @@ export const createHotelValidation: ValidationChain[] = [
       if (!value) return true;
 
       const destination = await prisma.destination.findUnique({
-        where: { id: value },
+        where: { id: Number(value) },
       });
 
       return !!destination;
@@ -232,85 +232,12 @@ export const updateHotelValidation: ValidationChain[] = [
       if (!value) return true;
 
       const destination = await prisma.destination.findUnique({
-        where: { id: value },
+        where: { id: Number(value) },
       });
 
       return !!destination;
     },
     'Destination does not exist',
-    { required: false },
-  ),
-
-  // Custom validation to ensure updated hotel name is unique within destination (excluding current hotel)
-  validator.custom(
-    'name',
-    async (value: string, req) => {
-      if (!value) return true;
-
-      const hotelId = req.params?.id;
-      if (!hotelId) return true;
-
-      const { destinationId } = req.body;
-
-      // Get current hotel data for comparison
-      const currentHotel = await prisma.hotel.findUnique({
-        where: { id: parseInt(hotelId) },
-        select: { destinationId: true },
-      });
-
-      if (!currentHotel) return true;
-
-      // Use provided destinationId or fall back to current value
-      const targetDestinationId = destinationId || currentHotel.destinationId;
-
-      const existingHotel = await prisma.hotel.findFirst({
-        where: {
-          id: { not: parseInt(hotelId) },
-          name: {
-            equals: value,
-            mode: 'insensitive',
-          },
-          destinationId: targetDestinationId,
-        },
-      });
-
-      return !existingHotel;
-    },
-    'A hotel with this name already exists in the selected destination',
-    { required: false },
-  ),
-
-  // Custom validation to ensure at least one field is being updated
-  validator.custom(
-    'updateFields',
-    (value, req) => {
-      const {
-        name,
-        description,
-        address,
-        city,
-        country,
-        phone,
-        starRating,
-        amenities,
-        destinationId,
-      } = req.body;
-      const hasFile = req.file || req.body.hotelPhoto;
-
-      return !!(
-        name ||
-        description ||
-        address ||
-        city ||
-        country ||
-        phone ||
-        starRating !== undefined ||
-        amenities ||
-        destinationId ||
-        hasFile
-      );
-    },
-    'At least one field must be provided for update',
     { required: false },
   ),
 ];
@@ -490,32 +417,6 @@ export const hotelPhotoValidation: ValidationChain[] = [
     'Photo size must not exceed 5MB',
     { required: false },
   ),
-];
-
-// Validation for hotels by destination
-export const hotelsByDestinationValidation: ValidationChain[] = [
-  validator.integer('destinationId', {
-    required: true,
-    min: 1,
-  }),
-
-  // Custom validation to ensure destination exists
-  validator.custom(
-    'destinationId',
-    async (value: number) => {
-      if (!value) return true;
-
-      const destination = await prisma.destination.findUnique({
-        where: { id: value },
-      });
-
-      return !!destination;
-    },
-    'Destination does not exist',
-    { required: false },
-  ),
-
-  ...paginationQueryValidation,
 ];
 
 // Validation for hotel availability check
