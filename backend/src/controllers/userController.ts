@@ -1,3 +1,4 @@
+// src/controllers/userController.ts
 import { Request, Response, NextFunction, RequestHandler } from 'express';
 import bcrypt from 'bcrypt';
 import prisma from '../config/prismaClient';
@@ -297,7 +298,6 @@ const changeUserRole = asyncHandler(
 const deleteUser = asyncHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { userId } = req.params;
-    const currentUserId = req.user?.id;
 
     // Validate input
     if (!userId || isNaN(parseInt(userId))) {

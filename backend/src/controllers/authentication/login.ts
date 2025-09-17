@@ -30,6 +30,18 @@ const login = asyncHandler(
         where: {
           email,
         },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          phone: true,
+          address: true,
+          profilePicture: true,
+          createdAt: true,
+          updatedAt: true,
+          password: true,
+        },
       });
 
       if (!user) {

@@ -70,7 +70,7 @@ model User {
   updatedAt      DateTime @updatedAt
 
   bookings     Booking[]
-  payments     Payment[] // Add this line
+  payments     Payment[]
   reviews      Review[]
   inquiries    Inquiry[]
   Wishlist     Wishlist[]

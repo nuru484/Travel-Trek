@@ -91,6 +91,7 @@ import {
   deleteUser,
   deleteAllUsers,
 } from './userController';
+import { getDashboardStats } from './dashboardController';
 
 export {
   // Tour controllers
@@ -178,4 +179,7 @@ export {
   changeUserRole,
   deleteUser,
   deleteAllUsers,
+
+  // Dashboard controller
+  getDashboardStats,
 };

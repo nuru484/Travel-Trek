@@ -9,7 +9,6 @@ import {
 import { HTTP_STATUS_CODES } from '../config/constants';
 import { IPaymentInput, IPaymentResponse } from 'types/payment.types';
 import crypto from 'crypto';
-
 import ENV from '../config/env';
 
 // Paystack configuration
@@ -41,8 +40,6 @@ const createPayment = asyncHandler(
   ): Promise<void> => {
     const { bookingId, paymentMethod } = req.body;
     const user = req.user;
-
-    console.log('Request body:', req.body);
 
     if (!user) {
       throw new UnauthorizedError('Unauthorized, no user provided');
@@ -101,7 +98,6 @@ const createPayment = asyncHandler(
 
     const { authorization_url, reference } = paystackResponse.data.data;
 
-    // Create payment record in PENDING state
     // Check if payment already exists for this booking
     const existingPayment = await prisma.payment.findFirst({
       where: { bookingId: bookingId },

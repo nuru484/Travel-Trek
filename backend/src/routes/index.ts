@@ -10,6 +10,8 @@ import paymentRoutes from './payment';
 import roomRoutes from './room';
 import itineraryRoutes from './itinerary';
 import tourInclusionRoutes from './tourInclusion';
+import userRoutes from './user';
+import dashboardRoutes from './dashboard';
 
 const routes = express.Router();
 
@@ -33,5 +35,10 @@ routes.use(authenticateJWT, roomRoutes);
 routes.use(authenticateJWT, itineraryRoutes);
 // Tour Inclusion routes
 routes.use(authenticateJWT, tourInclusionRoutes);
+// User routes
+routes.use(authenticateJWT, userRoutes);
+
+// Dashboard routes
+routes.use(authenticateJWT, dashboardRoutes);
 
 export default routes;
