@@ -6,6 +6,7 @@ import {
   IUsersQueryParams,
   IDeleteUsersResponse,
   UserRole,
+  IUserUpdateInput,
 } from "../types/user.types";
 
 export const userApi = apiSlice.injectEndpoints({
@@ -35,6 +36,22 @@ export const userApi = apiSlice.injectEndpoints({
               "Users",
             ]
           : ["Users"],
+    }),
+
+    // Update user role
+    updateUserProfile: builder.mutation<
+      IUserResponse,
+      { userId: string; data: IUserUpdateInput }
+    >({
+      query: ({ userId, data }) => ({
+        url: `/users/${userId}`,
+        method: "PUT",
+        body: { data },
+      }),
+      invalidatesTags: (result, error, { userId }) => [
+        { type: "User", id: userId },
+        "Users",
+      ],
     }),
 
     // Update user role

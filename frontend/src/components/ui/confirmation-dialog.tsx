@@ -75,6 +75,7 @@ export function ConfirmationDialog({
 
         <DialogFooter>
           <Button
+            className="hover:cursor-pointer"
             variant="outline"
             onClick={() => {
               onOpenChange(false);
@@ -84,6 +85,7 @@ export function ConfirmationDialog({
             {cancelText}
           </Button>
           <Button
+            className="hover:cursor-pointer"
             variant={isDestructive ? "destructive" : "default"}
             onClick={handleConfirm}
             disabled={isConfirmDisabled}

@@ -31,8 +31,21 @@ export default function LoginPage() {
       router.push("/dashboard");
     } catch (err) {
       console.error("Login error:", err);
-      const apiError = extractApiErrorMessage(err);
-      toast.error(apiError || "Login Failed. Please try again.");
+
+      const { message, fieldErrors, hasFieldErrors } =
+        extractApiErrorMessage(err);
+
+      if (hasFieldErrors && fieldErrors) {
+        // Apply field errors to the form
+        Object.entries(fieldErrors).forEach(([field, errorMessage]) => {
+          form.setError(field as keyof ILoginFormSchema, {
+            message: errorMessage,
+          });
+        });
+      }
+
+      // Always show toast with the main message
+      toast.error(message);
     }
   }
 

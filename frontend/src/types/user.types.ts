@@ -35,6 +35,17 @@ export interface IUsersPaginatedResponse {
   };
 }
 
+
+export interface IUserUpdateInput {
+  name?: string;
+  email?: string;
+  password?: string;
+  phone?: string;
+  address?: string;
+  profilePicture?: string;
+}
+
+
 export interface IChangeRoleInput {
   role: UserRole;
 }
