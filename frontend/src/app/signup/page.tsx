@@ -41,8 +41,21 @@ export default function SignupPage() {
       router.push("/dashboard");
     } catch (err) {
       console.error("Signup error:", err);
-      const apiError = extractApiErrorMessage(err);
-      toast.error(apiError || "Signup Failed. Please try again.");
+
+      const { message, fieldErrors, hasFieldErrors } =
+        extractApiErrorMessage(err);
+
+      if (hasFieldErrors && fieldErrors) {
+        // Attach field errors to react-hook-form
+        Object.entries(fieldErrors).forEach(([field, errorMessage]) => {
+          form.setError(field as keyof ISignupFormSchema, {
+            message: errorMessage,
+          });
+        });
+      }
+
+      // Always show toast for main message
+      toast.error(message || "Signup failed. Please try again.");
     }
   }
 
@@ -56,13 +69,13 @@ export default function SignupPage() {
         {/* Background decoration */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5"></div>
 
-        {/* Main form container */}
-        <div className="relative w-full max-w-lg z-10">
+        {/* Main form container with better responsive width constraints */}
+        <div className="relative w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-lg xl:max-w-md z-10">
           {/* Card wrapper */}
-          <div className="bg-card border border-border rounded-xl shadow-lg p-8">
+          <div className="bg-card border border-border rounded-xl shadow-lg p-6 sm:p-8">
             {/* Header section */}
-            <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold text-card-foreground mb-2">
+            <div className="text-center mb-6 sm:mb-8">
+              <h1 className="text-2xl sm:text-3xl font-bold text-card-foreground mb-2">
                 Create Account
               </h1>
               <p className="text-muted-foreground text-sm">

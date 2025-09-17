@@ -16,7 +16,7 @@ export default function LogoutButton() {
       router.push("/");
       toast.success("Logout successful");
     } catch (error) {
-      toast.error(extractApiErrorMessage(error));
+      toast.error(extractApiErrorMessage(error).message);
     }
   };
 
@@ -25,7 +25,7 @@ export default function LogoutButton() {
       onClick={handleLogout}
       variant="outline"
       disabled={isLoading}
-      className="flex items-center gap-2 px-4 py-2 transition-all duration-200 hover:bg-muted"
+      className="hover:cursor-pointer flex items-center gap-2 px-4 py-2 transition-all duration-200 hover:bg-muted"
     >
       <LogOut className="h-4 w-4 text-muted-foreground" />
       <span>{isLoading ? "Logging out..." : "Logout"}</span>
