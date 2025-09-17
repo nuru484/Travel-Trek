@@ -148,6 +148,72 @@ const updateUserProfile: RequestHandler[] = [
   handleUpdateUserProfile,
 ];
 
+
+/**
+ * Get single user by ID
+ */
+export const getUserById = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const { userId } = req.params;
+    const currentUserId = req.user?.id;
+    const currentUserRole = req.user?.role;
+
+    // Validate input
+    if (!userId || isNaN(parseInt(userId))) {
+      throw new ValidationError('Valid user ID is required');
+    }
+
+    const targetUserId = parseInt(userId);
+
+    // Authorization check - users can view their own profile, admins can view any profile
+    if (
+      targetUserId !== parseInt(currentUserId?.toString() || '0') &&
+      currentUserRole !== UserRole.ADMIN
+    ) {
+      res.status(HTTP_STATUS_CODES.FORBIDDEN);
+      throw new Error('You are not authorized to view this user profile');
+    }
+
+    // Get user from database
+    const user = await prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        phone: true,
+        address: true,
+        profilePicture: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!user) {
+      res.status(HTTP_STATUS_CODES.NOT_FOUND);
+      throw new Error('User not found');
+    }
+
+    const response: IUserResponseData = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role as UserRole,
+      phone: user.phone ?? undefined,
+      address: user.address ?? undefined,
+      profilePicture: user.profilePicture ?? undefined,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+
+    res.status(HTTP_STATUS_CODES.OK).json({
+      message: 'User retrieved successfully',
+      data: response,
+    });
+  },
+);
+
 /**
  * Get all users with pagination
  */

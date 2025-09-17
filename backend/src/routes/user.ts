@@ -3,6 +3,7 @@ import { Router } from 'express';
 import {
   updateUserProfile,
   getAllUsers,
+  getUserById,
   changeUserRole,
   deleteUser,
   deleteAllUsers,
@@ -21,6 +22,12 @@ userRoutes.put(
 
 // Get all users with pagination
 userRoutes.get('/users', authorizeRole([UserRole.ADMIN]), getAllUsers);
+
+userRoutes.get(
+  '/users/:userId',
+  authorizeRole([UserRole.ADMIN, UserRole.AGENT, UserRole.CUSTOMER]),
+  getUserById,
+);
 
 // Change user role
 userRoutes.patch(

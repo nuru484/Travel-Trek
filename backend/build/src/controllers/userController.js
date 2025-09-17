@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteAllUsers = exports.deleteUser = exports.changeUserRole = exports.getAllUsers = exports.updateUserProfile = void 0;
+exports.deleteAllUsers = exports.deleteUser = exports.changeUserRole = exports.getAllUsers = exports.updateUserProfile = exports.getUserById = void 0;
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const prismaClient_1 = __importDefault(require("../config/prismaClient"));
 const validation_1 = __importDefault(require("../middlewares/validation"));
@@ -121,6 +121,59 @@ const updateUserProfile = [
     handleUpdateUserProfile,
 ];
 exports.updateUserProfile = updateUserProfile;
+/**
+ * Get single user by ID
+ */
+exports.getUserById = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
+    const { userId } = req.params;
+    const currentUserId = req.user?.id;
+    const currentUserRole = req.user?.role;
+    // Validate input
+    if (!userId || isNaN(parseInt(userId))) {
+        throw new error_handler_1.ValidationError('Valid user ID is required');
+    }
+    const targetUserId = parseInt(userId);
+    // Authorization check - users can view their own profile, admins can view any profile
+    if (targetUserId !== parseInt(currentUserId?.toString() || '0') &&
+        currentUserRole !== user_profile_types_1.UserRole.ADMIN) {
+        res.status(constants_1.HTTP_STATUS_CODES.FORBIDDEN);
+        throw new Error('You are not authorized to view this user profile');
+    }
+    // Get user from database
+    const user = await prismaClient_1.default.user.findUnique({
+        where: { id: targetUserId },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            phone: true,
+            address: true,
+            profilePicture: true,
+            createdAt: true,
+            updatedAt: true,
+        },
+    });
+    if (!user) {
+        res.status(constants_1.HTTP_STATUS_CODES.NOT_FOUND);
+        throw new Error('User not found');
+    }
+    const response = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        phone: user.phone ?? undefined,
+        address: user.address ?? undefined,
+        profilePicture: user.profilePicture ?? undefined,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+    };
+    res.status(constants_1.HTTP_STATUS_CODES.OK).json({
+        message: 'User retrieved successfully',
+        data: response,
+    });
+});
 /**
  * Get all users with pagination
  */

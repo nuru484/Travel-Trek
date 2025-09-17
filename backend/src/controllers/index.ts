@@ -87,6 +87,7 @@ import {
 import {
   updateUserProfile,
   getAllUsers,
+  getUserById,
   changeUserRole,
   deleteUser,
   deleteAllUsers,
@@ -176,6 +177,7 @@ export {
   // User controllers
   updateUserProfile,
   getAllUsers,
+  getUserById,
   changeUserRole,
   deleteUser,
   deleteAllUsers,
