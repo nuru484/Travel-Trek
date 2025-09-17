@@ -37,6 +37,15 @@ export const userApi = apiSlice.injectEndpoints({
             ]
           : ["Users"],
     }),
+    getUser: builder.query<IUserResponse, { userId: number }>({
+      query: ({ userId }) => ({
+        url: `/users/${userId}`,
+        method: "GET",
+      }),
+      providesTags: (result, error, { userId }) => [
+        { type: "User", id: userId },
+      ],
+    }),
 
     // Update user role
     updateUserProfile: builder.mutation<
@@ -121,6 +130,7 @@ export const userApi = apiSlice.injectEndpoints({
 
 export const {
   useGetAllUsersQuery,
+  useGetUserQuery,
   useUpdateUserRoleMutation,
   useDeleteUserMutation,
   useDeleteAllUsersMutation,

@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/sidebar";
 import ProtectRoutes from "@/components/authentication/ProtectRoutes";
 import ModeToggleButton from "@/components/ModeToggleButton";
-import LogoutButton from "@/components/authentication/LogoutButton";
+import { UserProfileDropdown } from "@/components/users/UserProfileDropDown";
 
 interface AgriLayoutProps {
   children: React.ReactNode;
@@ -25,7 +25,7 @@ export default function DashboardLayout({ children }: AgriLayoutProps) {
 
             <div className="flex gap-2">
               <ModeToggleButton />
-              <LogoutButton />
+              <UserProfileDropdown />
             </div>
           </header>
           <main className="flex-1 p-6">{children}</main>

@@ -1,5 +1,4 @@
 "use client";
-
 import React from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -7,19 +6,23 @@ import { User, Mail, Phone, MapPin, Calendar, Shield } from "lucide-react";
 import { IUser } from "@/types/user.types";
 
 type UserProfileHeaderProps = {
-  user: IUser;
+  user?: IUser | null;
 };
 
 export function UserProfileHeader({ user }: UserProfileHeaderProps) {
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    return isNaN(date.getTime())
+      ? "N/A"
+      : date.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
   };
 
-  const getRoleColor = (role: string) => {
+  const getRoleColor = (role?: string) => {
     switch (role) {
       case "ADMIN":
         return "bg-destructive/10 text-destructive border-destructive/20";
@@ -32,7 +35,8 @@ export function UserProfileHeader({ user }: UserProfileHeaderProps) {
     }
   };
 
-  const getUserInitials = (name: string) => {
+  const getUserInitials = (name?: string) => {
+    if (!name) return "NA";
     return name
       .split(" ")
       .map((n) => n[0])
@@ -40,6 +44,14 @@ export function UserProfileHeader({ user }: UserProfileHeaderProps) {
       .slice(0, 2)
       .toUpperCase();
   };
+
+  if (!user) {
+    return (
+      <div className="container mx-auto bg-card rounded-2xl p-6 shadow-sm border border-border text-center text-muted-foreground">
+        No user data available
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto bg-card rounded-2xl p-4 lg:p-8 shadow-sm border border-border hover:shadow-md transition-shadow duration-200">
@@ -50,7 +62,7 @@ export function UserProfileHeader({ user }: UserProfileHeaderProps) {
             <Avatar className="h-36 w-36 rounded-full shadow-lg ring-4 ring-background">
               <AvatarImage
                 src={user.profilePicture || undefined}
-                alt={`${user.name} profile picture`}
+                alt={`${user.name ?? "User"} profile picture`}
                 className="object-cover rounded-full"
               />
               <AvatarFallback className="rounded-full bg-gradient-to-br from-primary to-chart-1 text-primary-foreground text-2xl font-bold flex items-center justify-center">
@@ -68,14 +80,14 @@ export function UserProfileHeader({ user }: UserProfileHeaderProps) {
             {/* Name and Role Badge */}
             <div className="flex flex-col lg:flex-row lg:items-center lg:gap-4 mb-3">
               <h1 className="text-2xl font-bold text-foreground mb-2 lg:mb-0">
-                {user.name}
+                {user.name ?? "Unknown User"}
               </h1>
               <Badge
                 variant="outline"
                 className={`w-fit mx-auto lg:mx-0 ${getRoleColor(user.role)}`}
               >
                 <Shield className="w-3 h-3 mr-1.5" />
-                {user.role}
+                {user.role ?? "N/A"}
               </Badge>
             </div>
 
