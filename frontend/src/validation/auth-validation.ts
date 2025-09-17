@@ -1,6 +1,6 @@
 // src/validation/auth-validation.ts
 import { z } from "zod";
-import { UserRole } from "@/types/user";
+import { UserRole } from "@/types/user.types";
 
 export const loginFormSchema = z.object({
   email: z

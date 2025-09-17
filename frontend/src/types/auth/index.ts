@@ -1,4 +1,4 @@
-import { UserRole } from "../user";
+import { UserRole } from "../user.types";
 
 export interface IUserRegistrationInput {
   email: string;

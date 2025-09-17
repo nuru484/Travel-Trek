@@ -1,9 +1,12 @@
-"use client";
+// src/app/dashboard/page.tsx
+import { DashboardOverview } from "@/components/dashboard/dashboard-overview";
 
-export default function UserDashboardPage() {
+const DashboardPage = () => {
   return (
-    <div className="container mx-auto px-4 py-8">
-      Hello User! Welcome to your dashboard.
+    <div className="container mx-auto py-6">
+      <DashboardOverview />
     </div>
   );
-}
+};
+
+export default DashboardPage;

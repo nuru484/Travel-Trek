@@ -26,8 +26,6 @@ export default function PaymentCallbackPage() {
     skip: !reference,
   });
 
-  console.log(result);
-
   useEffect(() => {
     if (!reference) {
       setStatus("error");

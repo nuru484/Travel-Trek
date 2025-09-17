@@ -15,7 +15,7 @@ export default function AdminToursPage() {
   const router = useRouter();
   const user = useSelector((state: RootState) => state.auth.user);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const isAdmin = user?.role === "ADMIN";
+  const isAdmin = user?.role === "ADMIN" || user?.role === "AGENT";
   const [deleteAllTours, { isLoading: isDeletingAll }] =
     useDeleteAllToursMutation();
 

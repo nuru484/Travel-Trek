@@ -1,15 +1,17 @@
 // src/components/ui/confirmation-dialog.tsx
-'use client';
+"use client";
+import { useState } from "react";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from './alert-dialog';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface ConfirmationDialogProps {
   open: boolean;
@@ -20,6 +22,7 @@ interface ConfirmationDialogProps {
   confirmText?: string;
   cancelText?: string;
   isDestructive?: boolean;
+  requireExactMatch?: string;
 }
 
 export function ConfirmationDialog({
@@ -28,36 +31,67 @@ export function ConfirmationDialog({
   title,
   description,
   onConfirm,
-  confirmText = 'Confirm',
-  cancelText = 'Cancel',
+  confirmText = "Confirm",
+  cancelText = "Cancel",
   isDestructive = false,
+  requireExactMatch,
 }: ConfirmationDialogProps) {
+  const [inputValue, setInputValue] = useState("");
+
   const handleConfirm = () => {
     onConfirm();
-    onOpenChange(false);
+    setInputValue("");
   };
 
+  const isConfirmDisabled =
+    requireExactMatch && inputValue !== requireExactMatch;
+
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>{cancelText}</AlertDialogCancel>
-          <AlertDialogAction
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription className="text-left">
+            {description}
+          </DialogDescription>
+        </DialogHeader>
+
+        {requireExactMatch && (
+          <div className="space-y-2">
+            <Label htmlFor="confirm-input">
+              Type{" "}
+              <span className="font-mono font-bold">{requireExactMatch}</span>{" "}
+              to confirm:
+            </Label>
+            <Input
+              id="confirm-input"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder={requireExactMatch}
+              className="font-mono"
+            />
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => {
+              onOpenChange(false);
+              setInputValue("");
+            }}
+          >
+            {cancelText}
+          </Button>
+          <Button
+            variant={isDestructive ? "destructive" : "default"}
             onClick={handleConfirm}
-            className={
-              isDestructive
-                ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
-                : ''
-            }
+            disabled={isConfirmDisabled}
           >
             {confirmText}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

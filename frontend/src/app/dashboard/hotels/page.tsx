@@ -11,15 +11,16 @@ import { useDeleteAllHotelsMutation } from "@/redux/hotelApi";
 import toast from "react-hot-toast";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 
-export default function AdminHotelsPage() {
+export default function HotelsPage() {
   const router = useRouter();
   const user = useSelector((state: RootState) => state.auth.user);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const isAdmin = user?.role === "ADMIN" || user?.role === "AGENT";
+
   const [deleteAllHotels, { isLoading: isDeletingAll }] =
     useDeleteAllHotelsMutation();
 
-  const handleCreateHotel = () => {
+  const handleCreateHotels = () => {
     router.push("/dashboard/hotels/create");
   };
 
@@ -39,7 +40,7 @@ export default function AdminHotelsPage() {
         <CardTitle>Hotels</CardTitle>
         {isAdmin && (
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleCreateHotel}>
+            <Button variant="outline" size="sm" onClick={handleCreateHotels}>
               <Plus className="mr-2 h-4 w-4" />
               Create Hotel
             </Button>

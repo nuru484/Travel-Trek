@@ -82,7 +82,7 @@ export function HotelListItem({ hotel }: IHotelListItemProps) {
       await createBooking({
         userId: parseInt(user.id),
         hotelId: hotel.id,
-        totalPrice: 0, // Placeholder price, adjust based on actual pricing logic
+        totalPrice: 0,
       }).unwrap();
       toast.success("Hotel booked successfully");
       setShowBookDialog(false);

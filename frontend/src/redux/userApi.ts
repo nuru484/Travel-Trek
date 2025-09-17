@@ -1,0 +1,114 @@
+// src/redux/userApi.ts
+import { apiSlice } from "./apiSlice";
+import {
+  IUserResponse,
+  IUsersPaginatedResponse,
+  IUsersQueryParams,
+  IDeleteUsersResponse,
+  UserRole,
+} from "../types/user.types";
+
+export const userApi = apiSlice.injectEndpoints({
+  endpoints: (builder) => ({
+    // Get all users
+    getAllUsers: builder.query<IUsersPaginatedResponse, IUsersQueryParams>({
+      query: (params = {}) => {
+        const searchParams = new URLSearchParams();
+
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined && value !== null && value !== "") {
+            searchParams.append(key, String(value));
+          }
+        });
+
+        return {
+          url: `/users${
+            searchParams.toString() ? `?${searchParams.toString()}` : ""
+          }`,
+          method: "GET",
+        };
+      },
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.data.map(({ id }) => ({ type: "User" as const, id })),
+              "Users",
+            ]
+          : ["Users"],
+    }),
+
+    // Update user role
+    updateUserRole: builder.mutation<
+      IUserResponse,
+      { userId: string; role: UserRole }
+    >({
+      query: ({ userId, role }) => ({
+        url: `/users/${userId}/role`,
+        method: "PATCH",
+        body: { role },
+      }),
+      invalidatesTags: (result, error, { userId }) => [
+        { type: "User", id: userId },
+        "Users",
+      ],
+    }),
+
+    // Delete a single user
+    deleteUser: builder.mutation<{ message: string }, string>({
+      query: (userId) => ({
+        url: `/users/${userId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (result, error, userId) => [
+        { type: "User", id: userId },
+        "Users",
+      ],
+    }),
+
+    // Delete all users (Admin only)
+    deleteAllUsers: builder.mutation<
+      IDeleteUsersResponse,
+      { confirmDelete: string }
+    >({
+      query: (body) => ({
+        url: "/users",
+        method: "DELETE",
+        body,
+      }),
+      invalidatesTags: ["Users"],
+    }),
+
+    // Search users
+    searchUsers: builder.query<
+      IUsersPaginatedResponse,
+      { search: string } & Omit<IUsersQueryParams, "search">
+    >({
+      query: ({ search, ...params }) => {
+        const searchParams = new URLSearchParams({ search });
+
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            searchParams.append(key, String(value));
+          }
+        });
+
+        return {
+          url: `/users?${searchParams.toString()}`,
+          method: "GET",
+        };
+      },
+      providesTags: ["Users"],
+    }),
+  }),
+});
+
+export const {
+  useGetAllUsersQuery,
+  useUpdateUserRoleMutation,
+  useDeleteUserMutation,
+  useDeleteAllUsersMutation,
+  useSearchUsersQuery,
+
+  useLazyGetAllUsersQuery,
+  useLazySearchUsersQuery,
+} = userApi;

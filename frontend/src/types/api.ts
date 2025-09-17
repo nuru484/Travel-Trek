@@ -7,6 +7,9 @@ export const apiSliceTags = [
   "Tour",
   "Booking",
   "Payment",
+  "User",
+  "Users",
+  "Dashboard",
 ] as const;
 
 export interface IApiResponse<T> {

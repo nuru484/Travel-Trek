@@ -95,7 +95,6 @@ export function TourForm({ tour, mode }: ITourFormProps) {
 
   const onSubmit = async (values: TourFormValues) => {
     try {
-      // Prepare the JSON payload
       const tourData: ITourPayload = {
         name: values.name,
         description: values.description || null,
