@@ -90,7 +90,7 @@ const refreshToken = (0, error_handler_1.asyncHandler)(async (req, res, next) =>
     // Send tokens in response
     res.status(200).json({
         message: 'Token refreshed successfully',
-        user: userWithoutPassword,
+        data: userWithoutPassword,
     });
 });
 exports.default = refreshToken;

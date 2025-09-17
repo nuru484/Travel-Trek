@@ -3,13 +3,15 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAllPayments = exports.getPayment = exports.handleWebhook = exports.createPayment = void 0;
+exports.getAllPayments = exports.getPayment = exports.handleWebhook = exports.handleCallback = exports.createPayment = void 0;
 const axios_1 = __importDefault(require("axios"));
 const prismaClient_1 = __importDefault(require("../config/prismaClient"));
 const error_handler_1 = require("../middlewares/error-handler");
 const constants_1 = require("../config/constants");
+const crypto_1 = __importDefault(require("crypto"));
+const env_1 = __importDefault(require("../config/env"));
 // Paystack configuration
-const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || 'sk_test_your_secret_key';
+const PAYSTACK_SECRET_KEY = env_1.default.PAYSTACK_SECRET_KEY;
 const PAYSTACK_API_BASE_URL = 'https://api.paystack.co';
 const getPaystackChannel = (paymentMethod) => {
     switch (paymentMethod) {
@@ -56,12 +58,12 @@ const createPayment = (0, error_handler_1.asyncHandler)(async (req, res, next) =
     // Initialize Paystack transaction
     const paystackResponse = await axios_1.default.post(`${PAYSTACK_API_BASE_URL}/transaction/initialize`, {
         email: booking.user.email,
-        amount: booking.totalPrice * 100, // Paystack expects amount in kobo (GHS * 100)
+        amount: booking.totalPrice * 100,
         currency: 'GHS',
         reference: `booking_${bookingId}_${Date.now()}`,
         channels: [getPaystackChannel(paymentMethod)],
         callback_url: process.env.PAYSTACK_CALLBACK_URL ||
-            'http://localhost:3000/api/payments/callback',
+            'http://localhost:3000/dashboard/payments/callback',
         metadata: { bookingId },
     }, {
         headers: {
@@ -70,11 +72,30 @@ const createPayment = (0, error_handler_1.asyncHandler)(async (req, res, next) =
         },
     });
     const { authorization_url, reference } = paystackResponse.data.data;
+    // Check if payment already exists for this booking
+    const existingPayment = await prismaClient_1.default.payment.findFirst({
+        where: { bookingId: bookingId },
+    });
+    if (existingPayment && existingPayment.status === 'PENDING') {
+        // Return the existing pending payment
+        res.status(constants_1.HTTP_STATUS_CODES.OK).json({
+            message: 'Payment already initialized',
+            data: {
+                authorization_url,
+                paymentId: existingPayment.id,
+                transactionReference: existingPayment.transactionReference,
+            },
+        });
+        return;
+    }
+    else if (existingPayment) {
+        throw new Error('A payment already exists for this booking');
+    }
     // Create payment record in PENDING state
     const payment = await prismaClient_1.default.payment.create({
         data: {
-            booking: { connect: { id: bookingId } },
-            user: { connect: { id: booking.userId } },
+            bookingId: bookingId,
+            userId: booking.userId,
             amount: booking.totalPrice,
             currency: 'GHS',
             paymentMethod,
@@ -92,14 +113,113 @@ const createPayment = (0, error_handler_1.asyncHandler)(async (req, res, next) =
     });
 });
 exports.createPayment = createPayment;
+const handleCallback = (0, error_handler_1.asyncHandler)(async (req, res) => {
+    const { reference } = req.query;
+    if (!reference) {
+        res.status(constants_1.HTTP_STATUS_CODES.BAD_REQUEST).json({
+            success: false,
+            message: 'No reference provided',
+        });
+        return;
+    }
+    // Verify transaction
+    const verificationResponse = await axios_1.default.get(`${PAYSTACK_API_BASE_URL}/transaction/verify/${reference}`, {
+        headers: {
+            Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+        },
+    });
+    const verifiedData = verificationResponse.data.data;
+    const metadata = verifiedData.metadata;
+    const bookingId = metadata?.bookingId;
+    if (!bookingId) {
+        res.status(constants_1.HTTP_STATUS_CODES.BAD_REQUEST).json({
+            success: false,
+            message: 'No bookingId found in payment metadata',
+        });
+        return;
+    }
+    const booking = await prismaClient_1.default.booking.findUnique({
+        where: { id: parseInt(bookingId, 10) },
+    });
+    if (!booking) {
+        res.status(constants_1.HTTP_STATUS_CODES.NOT_FOUND).json({
+            success: false,
+            message: 'Booking not found',
+        });
+        return;
+    }
+    // If payment failed
+    if (verifiedData.status !== 'success') {
+        await prismaClient_1.default.payment.updateMany({
+            where: { transactionReference: reference },
+            data: { status: 'FAILED' },
+        });
+        res.status(constants_1.HTTP_STATUS_CODES.OK).json({
+            success: false,
+            message: 'Payment verification failed',
+            data: {
+                reference,
+                bookingId,
+                paymentStatus: 'FAILED',
+            },
+        });
+        return;
+    }
+    // If amount mismatch
+    if (verifiedData.amount / 100 !== booking.totalPrice) {
+        await prismaClient_1.default.payment.updateMany({
+            where: { transactionReference: reference },
+            data: { status: 'FAILED' },
+        });
+        res.status(constants_1.HTTP_STATUS_CODES.OK).json({
+            success: false,
+            message: 'Payment amount does not match booking total price',
+            data: {
+                reference,
+                bookingId,
+                paymentStatus: 'FAILED',
+            },
+        });
+        return;
+    }
+    // Update statuses
+    await prismaClient_1.default.payment.updateMany({
+        where: { transactionReference: reference },
+        data: {
+            status: 'COMPLETED',
+            paymentDate: new Date(),
+        },
+    });
+    await prismaClient_1.default.booking.update({
+        where: { id: parseInt(bookingId) },
+        data: { status: 'CONFIRMED' },
+    });
+    res.status(constants_1.HTTP_STATUS_CODES.OK).json({
+        success: true,
+        message: 'Payment verified successfully',
+        data: {
+            bookingId,
+            reference,
+            amount: verifiedData.amount / 100,
+            paymentStatus: 'COMPLETED',
+        },
+    });
+});
+exports.handleCallback = handleCallback;
 /**
  * Handle Paystack webhook for payment verification
  */
 const handleWebhook = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const event = req.body;
-    // Verify Paystack signature (implement as per Paystack's webhook security guidelines)
+    const hash = crypto_1.default
+        .createHmac('sha512', PAYSTACK_SECRET_KEY)
+        .update(JSON.stringify(req.body))
+        .digest('hex');
     const signature = req.headers['x-paystack-signature'];
-    // Add signature verification logic here (e.g., HMAC SHA512 with secret key)
+    if (hash !== signature) {
+        res.status(constants_1.HTTP_STATUS_CODES.BAD_REQUEST).send('Invalid signature');
+        return;
+    }
     if (event.event === 'charge.success') {
         const { reference, amount, metadata } = event.data;
         const bookingId = metadata.bookingId;

@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+// src/routes/hotel.ts
 const express_1 = require("express");
 const index_1 = require("../controllers/index");
 const authorize_roles_1 = require("../middlewares/authorize-roles");

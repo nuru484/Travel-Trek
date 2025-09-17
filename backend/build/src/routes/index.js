@@ -15,6 +15,8 @@ const payment_1 = __importDefault(require("./payment"));
 const room_1 = __importDefault(require("./room"));
 const itinerary_1 = __importDefault(require("./itinerary"));
 const tourInclusion_1 = __importDefault(require("./tourInclusion"));
+const user_1 = __importDefault(require("./user"));
+const dashboard_1 = __importDefault(require("./dashboard"));
 const routes = express_1.default.Router();
 // Authentication routes
 routes.use('/', authentication_1.authenticationRouter);
@@ -36,4 +38,8 @@ routes.use(authenticate_jwt_1.default, room_1.default);
 routes.use(authenticate_jwt_1.default, itinerary_1.default);
 // Tour Inclusion routes
 routes.use(authenticate_jwt_1.default, tourInclusion_1.default);
+// User routes
+routes.use(authenticate_jwt_1.default, user_1.default);
+// Dashboard routes
+routes.use(authenticate_jwt_1.default, dashboard_1.default);
 exports.default = routes;

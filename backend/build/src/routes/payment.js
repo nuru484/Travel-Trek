@@ -5,6 +5,7 @@ const index_1 = require("../controllers/index");
 const paymentRoutes = (0, express_1.Router)();
 // Create a new payment
 paymentRoutes.post('/payments', index_1.createPayment);
+paymentRoutes.get('/payments/callback', index_1.handleCallback);
 // Handle Paystack webhook
 paymentRoutes.post('/payments/webhook', index_1.handleWebhook);
 // Get a single payment by ID

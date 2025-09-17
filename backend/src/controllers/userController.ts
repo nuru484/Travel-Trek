@@ -22,17 +22,26 @@ import { CLOUDINARY_UPLOAD_OPTIONS } from '../config/constants';
  * Controller function for updating user profile
  */
 const handleUpdateUserProfile = asyncHandler(
-  async (
-    req: Request<{}, {}, IUserUpdateInput>,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    const userId = req.user?.id;
-    const userDetails = req.body;
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const { userId } = req.params;
+    const currentUserId = req.user?.id;
+    const currentUserRole = req.user?.role;
+    const userDetails: IUserUpdateInput = req.body;
 
-    if (!userId) {
+    if (!userId || isNaN(parseInt(userId))) {
       res.status(HTTP_STATUS_CODES.BAD_REQUEST);
-      throw new Error('User ID is required');
+      throw new Error('Valid user ID is required');
+    }
+
+    const targetUserId = parseInt(userId);
+
+    // Authorization check
+    if (
+      targetUserId !== parseInt(currentUserId?.toString() || '0') &&
+      currentUserRole !== UserRole.ADMIN
+    ) {
+      res.status(HTTP_STATUS_CODES.FORBIDDEN);
+      throw new Error('You are not authorized to update this user');
     }
 
     // Track the uploaded image URL for cleanup if needed
@@ -42,7 +51,7 @@ const handleUpdateUserProfile = asyncHandler(
     try {
       // First, get the current user to check for existing profile picture
       const existingUser = await prisma.user.findUnique({
-        where: { id: parseInt(userId.toString()) },
+        where: { id: targetUserId },
         select: { profilePicture: true },
       });
 
@@ -89,7 +98,7 @@ const handleUpdateUserProfile = asyncHandler(
 
       // Update user in database
       const updatedUser = await prisma.user.update({
-        where: { id: parseInt(userId.toString()) },
+        where: { id: targetUserId },
         data: updateData,
       });
 
@@ -298,19 +307,39 @@ const changeUserRole = asyncHandler(
 const deleteUser = asyncHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { userId } = req.params;
+    const currentUserId = req.user?.id;
+    const currentUserRole = req.user?.role;
 
     // Validate input
     if (!userId || isNaN(parseInt(userId))) {
       throw new ValidationError('Valid user ID is required');
     }
 
+    const targetUserId = parseInt(userId);
+
+    // Authorization checks
+    if (targetUserId === parseInt(currentUserId?.toString() || '0')) {
+      // User is trying to delete themselves
+      if (currentUserRole === UserRole.ADMIN) {
+        res.status(HTTP_STATUS_CODES.FORBIDDEN);
+        throw new Error('Admins cannot delete themselves');
+      }
+    } else {
+      // User is trying to delete someone else
+      if (currentUserRole !== UserRole.ADMIN) {
+        res.status(HTTP_STATUS_CODES.FORBIDDEN);
+        throw new Error('You are not authorized to delete other users');
+      }
+    }
+
     // Check if user exists and get profile picture for cleanup
     const existingUser = await prisma.user.findUnique({
-      where: { id: parseInt(userId) },
+      where: { id: targetUserId },
       select: {
         id: true,
         name: true,
         email: true,
+        role: true,
         profilePicture: true,
         _count: {
           select: {
@@ -345,7 +374,7 @@ const deleteUser = asyncHandler(
 
     // Delete user (related wishlist and notifications will be cascade deleted)
     await prisma.user.delete({
-      where: { id: parseInt(userId) },
+      where: { id: targetUserId },
     });
 
     // Clean up profile picture from Cloudinary if exists

@@ -17,6 +17,18 @@ const login = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
             where: {
                 email,
             },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+                phone: true,
+                address: true,
+                profilePicture: true,
+                createdAt: true,
+                updatedAt: true,
+                password: true,
+            },
         });
         if (!user) {
             throw new error_handler_1.NotFoundError('Invalid credentials');
@@ -28,7 +40,7 @@ const login = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
         if (!isPasswordValid) {
             throw new error_handler_1.UnauthorizedError('Invalid credentials');
         }
-        const accessToken = jsonwebtoken_1.default.sign({ id: user.id.toString(), role: user.role }, (0, env_2.assertEnv)(env_1.default.ACCESS_TOKEN_SECRET, 'ACCESS_TOKEN_SECRET'), { expiresIn: '15m' });
+        const accessToken = jsonwebtoken_1.default.sign({ id: user.id.toString(), role: user.role }, (0, env_2.assertEnv)(env_1.default.ACCESS_TOKEN_SECRET, 'ACCESS_TOKEN_SECRET'), { expiresIn: '30m' });
         const refreshToken = jsonwebtoken_1.default.sign({ id: user.id.toString(), role: user.role }, (0, env_2.assertEnv)(env_1.default.REFRESH_TOKEN_SECRET, 'REFRESH_TOKEN_SECRET'), {
             expiresIn: '7d',
         });
@@ -36,7 +48,7 @@ const login = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
         CookieManager_1.CookieManager.setAccessToken(res, accessToken);
         CookieManager_1.CookieManager.setRefreshToken(res, refreshToken);
         const { password: userPassWord, ...userWithoutPassword } = user;
-        res.json({ message: 'Login successful', user: userWithoutPassword });
+        res.json({ message: 'Login successful', data: userWithoutPassword });
     }
     catch (error) {
         next(error);

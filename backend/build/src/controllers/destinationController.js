@@ -4,13 +4,16 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteAllDestinations = exports.getAllDestinations = exports.deleteDestination = exports.updateDestination = exports.getDestination = exports.createDestination = void 0;
+const express_validator_1 = require("express-validator");
 const prismaClient_1 = __importDefault(require("../config/prismaClient"));
+const validation_1 = __importDefault(require("../middlewares/validation"));
 const error_handler_1 = require("../middlewares/error-handler");
 const constants_1 = require("../config/constants");
 const multer_1 = __importDefault(require("../config/multer"));
 const conditional_cloudinary_upload_1 = __importDefault(require("../middlewares/conditional-cloudinary-upload"));
 const constants_2 = require("../config/constants");
 const claudinary_1 = require("../config/claudinary");
+const destination_validation_1 = require("../validations/destination-validation");
 /**
  * Create a new destination
  */
@@ -50,18 +53,9 @@ const handleCreateDestination = (0, error_handler_1.asyncHandler)(async (req, re
     });
 });
 /**
- * Middleware array for destination creation
- */
-const createDestination = [
-    multer_1.default.single('destinationPhoto'),
-    (0, conditional_cloudinary_upload_1.default)(constants_2.CLOUDINARY_UPLOAD_OPTIONS, 'destinationPhoto'),
-    handleCreateDestination,
-];
-exports.createDestination = createDestination;
-/**
  * Get a single destination by ID
  */
-const getDestination = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
+const handleGetDestination = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const { id } = req.params;
     const destination = await prismaClient_1.default.destination.findUnique({
         where: { id: parseInt(id) },
@@ -84,7 +78,6 @@ const getDestination = (0, error_handler_1.asyncHandler)(async (req, res, next) 
         data: response,
     });
 });
-exports.getDestination = getDestination;
 /**
  * Update a destination with photo handling
  */
@@ -179,18 +172,9 @@ const handleUpdateDestination = (0, error_handler_1.asyncHandler)(async (req, re
     }
 });
 /**
- * Middleware array for destination update
- */
-const updateDestination = [
-    multer_1.default.single('destinationPhoto'),
-    (0, conditional_cloudinary_upload_1.default)(constants_2.CLOUDINARY_UPLOAD_OPTIONS, 'destinationPhoto'),
-    handleUpdateDestination,
-];
-exports.updateDestination = updateDestination;
-/**
  * Delete a destination with photo cleanup
  */
-const deleteDestination = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
+const handleDeleteDestination = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const { id } = req.params;
     const user = req.user;
     if (!user) {
@@ -226,21 +210,46 @@ const deleteDestination = (0, error_handler_1.asyncHandler)(async (req, res, nex
         message: 'Destination deleted successfully',
     });
 });
-exports.deleteDestination = deleteDestination;
 /**
- * Get all destinations with pagination
+ * Get all destinations with pagination and filtering
  */
-const getAllDestinations = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
+const handleGetAllDestinations = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
+    // Extract search and filter parameters
+    const search = req.query.search;
+    const country = req.query.country;
+    const city = req.query.city;
+    const sortBy = req.query.sortBy || 'createdAt';
+    const sortOrder = req.query.sortOrder || 'desc';
+    // Build where clause for filtering
+    const where = {};
+    if (search) {
+        where.OR = [
+            { name: { contains: search, mode: 'insensitive' } },
+            { description: { contains: search, mode: 'insensitive' } },
+            { country: { contains: search, mode: 'insensitive' } },
+            { city: { contains: search, mode: 'insensitive' } },
+        ];
+    }
+    if (country) {
+        where.country = { contains: country, mode: 'insensitive' };
+    }
+    if (city) {
+        where.city = { contains: city, mode: 'insensitive' };
+    }
+    // Build orderBy clause
+    const orderBy = {};
+    orderBy[sortBy] = sortOrder;
     const [destinations, total] = await Promise.all([
         prismaClient_1.default.destination.findMany({
+            where,
             skip,
             take: limit,
-            orderBy: { createdAt: 'desc' },
+            orderBy,
         }),
-        prismaClient_1.default.destination.count(),
+        prismaClient_1.default.destination.count({ where }),
     ]);
     const response = destinations.map((destination) => ({
         id: destination.id,
@@ -260,14 +269,20 @@ const getAllDestinations = (0, error_handler_1.asyncHandler)(async (req, res, ne
             page,
             limit,
             totalPages: Math.ceil(total / limit),
+            filters: {
+                search,
+                country,
+                city,
+                sortBy,
+                sortOrder,
+            },
         },
     });
 });
-exports.getAllDestinations = getAllDestinations;
 /**
  * Delete all destinations with photo cleanup
  */
-const deleteAllDestinations = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
+const handleDeleteAllDestinations = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const user = req.user;
     if (!user) {
         throw new error_handler_1.UnauthorizedError('Unauthorized, no user provided');
@@ -299,4 +314,46 @@ const deleteAllDestinations = (0, error_handler_1.asyncHandler)(async (req, res,
         message: 'All destinations deleted successfully',
     });
 });
-exports.deleteAllDestinations = deleteAllDestinations;
+// Middleware arrays with validations
+exports.createDestination = [
+    multer_1.default.single('destinationPhoto'),
+    ...validation_1.default.create([
+        ...destination_validation_1.createDestinationValidation,
+        ...destination_validation_1.destinationPhotoValidation,
+    ]),
+    (0, conditional_cloudinary_upload_1.default)(constants_2.CLOUDINARY_UPLOAD_OPTIONS, 'destinationPhoto'),
+    handleCreateDestination,
+];
+exports.getDestination = [
+    (0, express_validator_1.param)('id')
+        .isInt({ min: 1 })
+        .withMessage('Destination ID must be a positive integer'),
+    ...validation_1.default.create([]),
+    handleGetDestination,
+];
+exports.updateDestination = [
+    multer_1.default.single('destinationPhoto'),
+    (0, express_validator_1.param)('id')
+        .isInt({ min: 1 })
+        .withMessage('Destination ID must be a positive integer'),
+    ...validation_1.default.create([
+        ...destination_validation_1.updateDestinationValidation,
+        ...destination_validation_1.destinationPhotoValidation,
+    ]),
+    (0, conditional_cloudinary_upload_1.default)(constants_2.CLOUDINARY_UPLOAD_OPTIONS, 'destinationPhoto'),
+    handleUpdateDestination,
+];
+exports.deleteDestination = [
+    (0, express_validator_1.param)('id')
+        .isInt({ min: 1 })
+        .withMessage('Destination ID must be a positive integer'),
+    ...validation_1.default.create([]),
+    handleDeleteDestination,
+];
+exports.getAllDestinations = [
+    ...validation_1.default.create(destination_validation_1.getDestinationsValidation),
+    handleGetAllDestinations,
+];
+exports.deleteAllDestinations = [
+    handleDeleteAllDestinations,
+];

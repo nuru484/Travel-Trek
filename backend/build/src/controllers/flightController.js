@@ -3,14 +3,17 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteAllFlights = exports.getAllFlights = exports.deleteFlight = exports.updateFlight = exports.getFlight = exports.createFlight = void 0;
+exports.getFlightStatistics = exports.deleteAllFlights = exports.getAllFlights = exports.deleteFlight = exports.updateFlight = exports.getFlight = exports.createFlight = void 0;
+const express_validator_1 = require("express-validator");
 const prismaClient_1 = __importDefault(require("../config/prismaClient"));
+const validation_1 = __importDefault(require("../middlewares/validation"));
 const error_handler_1 = require("../middlewares/error-handler");
 const constants_1 = require("../config/constants");
 const multer_1 = __importDefault(require("../config/multer"));
 const conditional_cloudinary_upload_1 = __importDefault(require("../middlewares/conditional-cloudinary-upload"));
 const constants_2 = require("../config/constants");
 const claudinary_1 = require("../config/claudinary");
+const flight_validation_1 = require("../validations/flight-validation");
 /**
  * Create a new flight
  */
@@ -25,8 +28,8 @@ const handleCreateFlight = (0, error_handler_1.asyncHandler)(async (req, res, ne
     }
     // Check if origin and destination exist
     const [origin, destination] = await Promise.all([
-        prismaClient_1.default.destination.findUnique({ where: { id: originId } }),
-        prismaClient_1.default.destination.findUnique({ where: { id: destinationId } }),
+        prismaClient_1.default.destination.findUnique({ where: { id: Number(originId) } }),
+        prismaClient_1.default.destination.findUnique({ where: { id: Number(destinationId) } }),
     ]);
     if (!origin || !destination) {
         throw new error_handler_1.NotFoundError('Origin or destination not found');
@@ -39,14 +42,14 @@ const handleCreateFlight = (0, error_handler_1.asyncHandler)(async (req, res, ne
             airline,
             departure: new Date(departure),
             arrival: new Date(arrival),
-            origin: { connect: { id: originId } },
-            destination: { connect: { id: destinationId } },
-            price,
+            origin: { connect: { id: Number(originId) } },
+            destination: { connect: { id: Number(destinationId) } },
+            price: +price,
             flightClass,
-            duration,
-            stops: stops ?? 0,
+            duration: Number(duration),
+            stops: stops ? Number(stops) : 0,
             photo: typeof photoUrl === 'string' ? photoUrl : null,
-            seatsAvailable,
+            seatsAvailable: Number(seatsAvailable),
         },
     });
     const response = {
@@ -72,21 +75,30 @@ const handleCreateFlight = (0, error_handler_1.asyncHandler)(async (req, res, ne
     });
 });
 /**
- * Middleware array for flight creation
- */
-const createFlight = [
-    multer_1.default.single('flightPhoto'),
-    (0, conditional_cloudinary_upload_1.default)(constants_2.CLOUDINARY_UPLOAD_OPTIONS, 'flightPhoto'),
-    handleCreateFlight,
-];
-exports.createFlight = createFlight;
-/**
  * Get a single flight by ID
  */
-const getFlight = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
+const handleGetFlight = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const { id } = req.params;
     const flight = await prismaClient_1.default.flight.findUnique({
         where: { id: parseInt(id) },
+        include: {
+            origin: {
+                select: {
+                    id: true,
+                    name: true,
+                    country: true,
+                    city: true,
+                },
+            },
+            destination: {
+                select: {
+                    id: true,
+                    name: true,
+                    country: true,
+                    city: true,
+                },
+            },
+        },
     });
     if (!flight) {
         throw new error_handler_1.NotFoundError('Flight not found');
@@ -99,6 +111,8 @@ const getFlight = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
         arrival: flight.arrival,
         originId: flight.originId,
         destinationId: flight.destinationId,
+        origin: flight.origin,
+        destination: flight.destination,
         price: flight.price,
         flightClass: flight.flightClass,
         duration: flight.duration,
@@ -113,7 +127,6 @@ const getFlight = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
         data: response,
     });
 });
-exports.getFlight = getFlight;
 /**
  * Update a flight with photo handling
  */
@@ -248,18 +261,9 @@ const handleUpdateFlight = (0, error_handler_1.asyncHandler)(async (req, res, ne
     }
 });
 /**
- * Middleware array for flight update
- */
-const updateFlight = [
-    multer_1.default.single('flightPhoto'),
-    (0, conditional_cloudinary_upload_1.default)(constants_2.CLOUDINARY_UPLOAD_OPTIONS, 'flightPhoto'),
-    handleUpdateFlight,
-];
-exports.updateFlight = updateFlight;
-/**
  * Delete a flight with photo cleanup
  */
-const deleteFlight = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
+const handleDeleteFlight = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const { id } = req.params;
     const user = req.user;
     if (!user) {
@@ -294,21 +298,91 @@ const deleteFlight = (0, error_handler_1.asyncHandler)(async (req, res, next) =>
         message: 'Flight deleted successfully',
     });
 });
-exports.deleteFlight = deleteFlight;
 /**
- * Get all flights with pagination
+ * Get all flights with advanced filtering and search
  */
-const getAllFlights = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
+const handleGetAllFlights = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
+    // Extract search and filter parameters
+    const { search, airline, originId, destinationId, flightClass, departureFrom, departureTo, minPrice, maxPrice, maxDuration, maxStops, minSeats, sortBy = 'departure', sortOrder = 'asc', } = req.query;
+    // Build where clause for filtering
+    const where = {};
+    if (search) {
+        where.OR = [
+            { flightNumber: { contains: search, mode: 'insensitive' } },
+            { airline: { contains: search, mode: 'insensitive' } },
+        ];
+    }
+    if (airline) {
+        where.airline = { contains: airline, mode: 'insensitive' };
+    }
+    if (originId) {
+        where.originId = parseInt(originId);
+    }
+    if (destinationId) {
+        where.destinationId = parseInt(destinationId);
+    }
+    if (flightClass) {
+        where.flightClass = flightClass;
+    }
+    if (departureFrom || departureTo) {
+        where.departure = {};
+        if (departureFrom) {
+            where.departure.gte = new Date(departureFrom);
+        }
+        if (departureTo) {
+            where.departure.lte = new Date(departureTo);
+        }
+    }
+    if (minPrice || maxPrice) {
+        where.price = {};
+        if (minPrice) {
+            where.price.gte = parseFloat(minPrice);
+        }
+        if (maxPrice) {
+            where.price.lte = parseFloat(maxPrice);
+        }
+    }
+    if (maxDuration) {
+        where.duration = { lte: parseInt(maxDuration) };
+    }
+    if (maxStops !== undefined) {
+        where.stops = { lte: parseInt(maxStops) };
+    }
+    if (minSeats) {
+        where.seatsAvailable = { gte: parseInt(minSeats) };
+    }
+    // Build orderBy clause
+    const orderBy = {};
+    orderBy[sortBy] = sortOrder;
     const [flights, total] = await Promise.all([
         prismaClient_1.default.flight.findMany({
+            where,
             skip,
             take: limit,
-            orderBy: { createdAt: 'desc' },
+            orderBy,
+            include: {
+                origin: {
+                    select: {
+                        id: true,
+                        name: true,
+                        country: true,
+                        city: true,
+                    },
+                },
+                destination: {
+                    select: {
+                        id: true,
+                        name: true,
+                        country: true,
+                        city: true,
+                    },
+                },
+            },
         }),
-        prismaClient_1.default.flight.count(),
+        prismaClient_1.default.flight.count({ where }),
     ]);
     const response = flights.map((flight) => ({
         id: flight.id,
@@ -318,6 +392,8 @@ const getAllFlights = (0, error_handler_1.asyncHandler)(async (req, res, next) =
         arrival: flight.arrival,
         originId: flight.originId,
         destinationId: flight.destinationId,
+        origin: flight.origin,
+        destination: flight.destination,
         price: flight.price,
         flightClass: flight.flightClass,
         duration: flight.duration,
@@ -335,14 +411,33 @@ const getAllFlights = (0, error_handler_1.asyncHandler)(async (req, res, next) =
             page,
             limit,
             totalPages: Math.ceil(total / limit),
+            filters: {
+                search,
+                airline,
+                originId: originId ? parseInt(originId) : undefined,
+                destinationId: destinationId
+                    ? parseInt(destinationId)
+                    : undefined,
+                flightClass,
+                departureFrom,
+                departureTo,
+                minPrice: minPrice ? parseFloat(minPrice) : undefined,
+                maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
+                maxDuration: maxDuration
+                    ? parseInt(maxDuration)
+                    : undefined,
+                maxStops: maxStops !== undefined ? parseInt(maxStops) : undefined,
+                minSeats: minSeats ? parseInt(minSeats) : undefined,
+                sortBy,
+                sortOrder,
+            },
         },
     });
 });
-exports.getAllFlights = getAllFlights;
 /**
  * Delete all flights with photo cleanup
  */
-const deleteAllFlights = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
+const handleDeleteAllFlights = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const user = req.user;
     if (!user) {
         throw new error_handler_1.UnauthorizedError('Unauthorized, no user provided');
@@ -374,4 +469,109 @@ const deleteAllFlights = (0, error_handler_1.asyncHandler)(async (req, res, next
         message: 'All flights deleted successfully',
     });
 });
-exports.deleteAllFlights = deleteAllFlights;
+/**
+ * Get flight statistics (for admin dashboard)
+ */
+const getFlightStats = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
+    const user = req.user;
+    if (!user) {
+        throw new error_handler_1.UnauthorizedError('Unauthorized, no user provided');
+    }
+    if (user.role !== 'ADMIN' && user.role !== 'AGENT') {
+        throw new error_handler_1.UnauthorizedError('Only admins and agents can view flight statistics');
+    }
+    const [totalFlights, totalSeats, averagePrice, flightsByClass, flightsByAirline, upcomingFlights,] = await Promise.all([
+        prismaClient_1.default.flight.count(),
+        prismaClient_1.default.flight.aggregate({
+            _sum: {
+                seatsAvailable: true,
+            },
+        }),
+        prismaClient_1.default.flight.aggregate({
+            _avg: {
+                price: true,
+            },
+        }),
+        prismaClient_1.default.flight.groupBy({
+            by: ['flightClass'],
+            _count: true,
+        }),
+        prismaClient_1.default.flight.groupBy({
+            by: ['airline'],
+            _count: true,
+            orderBy: {
+                _count: {
+                    airline: 'desc',
+                },
+            },
+            take: 10,
+        }),
+        prismaClient_1.default.flight.count({
+            where: {
+                departure: {
+                    gte: new Date(),
+                },
+            },
+        }),
+    ]);
+    const stats = {
+        totalFlights,
+        totalSeats: totalSeats._sum.seatsAvailable || 0,
+        averagePrice: Math.round((averagePrice._avg.price || 0) * 100) / 100,
+        upcomingFlights,
+        flightsByClass: flightsByClass.map((item) => ({
+            class: item.flightClass,
+            count: item._count,
+        })),
+        topAirlines: flightsByAirline.map((item) => ({
+            airline: item.airline,
+            count: item._count,
+        })),
+    };
+    res.status(constants_1.HTTP_STATUS_CODES.OK).json({
+        message: 'Flight statistics retrieved successfully',
+        data: stats,
+    });
+});
+// Middleware arrays with validations
+exports.createFlight = [
+    multer_1.default.single('flightPhoto'),
+    ...validation_1.default.create([
+        ...flight_validation_1.createFlightValidation,
+        ...flight_validation_1.flightPhotoValidation,
+    ]),
+    (0, conditional_cloudinary_upload_1.default)(constants_2.CLOUDINARY_UPLOAD_OPTIONS, 'flightPhoto'),
+    handleCreateFlight,
+];
+exports.getFlight = [
+    (0, express_validator_1.param)('id')
+        .isInt({ min: 1 })
+        .withMessage('Flight ID must be a positive integer'),
+    ...validation_1.default.create([]),
+    handleGetFlight,
+];
+exports.updateFlight = [
+    multer_1.default.single('flightPhoto'),
+    (0, express_validator_1.param)('id')
+        .isInt({ min: 1 })
+        .withMessage('Flight ID must be a positive integer'),
+    ...validation_1.default.create([
+        ...flight_validation_1.updateFlightValidation,
+        ...flight_validation_1.flightPhotoValidation,
+    ]),
+    (0, conditional_cloudinary_upload_1.default)(constants_2.CLOUDINARY_UPLOAD_OPTIONS, 'flightPhoto'),
+    handleUpdateFlight,
+];
+exports.deleteFlight = [
+    (0, express_validator_1.param)('id')
+        .isInt({ min: 1 })
+        .withMessage('Flight ID must be a positive integer'),
+    ...validation_1.default.create([]),
+    handleDeleteFlight,
+];
+exports.getAllFlights = [
+    ...validation_1.default.create(flight_validation_1.getFlightsValidation),
+    handleGetAllFlights,
+];
+exports.deleteAllFlights = [handleDeleteAllFlights];
+exports.getFlightStatistics = [getFlightStats];

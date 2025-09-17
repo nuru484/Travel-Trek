@@ -8,36 +8,63 @@ const bcrypt_1 = __importDefault(require("bcrypt"));
 const prismaClient_1 = __importDefault(require("../../config/prismaClient"));
 const validation_1 = __importDefault(require("../../middlewares/validation"));
 const auth_validations_1 = require("../../validations/auth-validations");
-// Constants for configuration
-const BCRYPT_SALT_ROUNDS = 10;
-const HTTP_STATUS = {
-    CREATED: 201,
-    NOT_FOUND: 404,
-    CONFLICT: 409,
-};
+const user_profile_types_1 = require("../../../types/user-profile.types");
+const conditional_cloudinary_upload_1 = __importDefault(require("../../middlewares/conditional-cloudinary-upload"));
+const multer_1 = __importDefault(require("../../config/multer"));
+const constants_1 = require("../../config/constants");
+const claudinary_1 = require("../../config/claudinary");
+const constants_2 = require("../../config/constants");
+const constants_3 = require("../../config/constants");
 /**
  * Controller function for user registration
  */
 const handleRegisterUser = async (req, res, next) => {
+    console.log('Before Cloudinary middleware:', {
+        file: req.file,
+        profilePicture: req.body.profilePicture,
+    });
     const userDetails = req.body;
+    let uploadedImageUrl;
     try {
-        const hashedPassword = await bcrypt_1.default.hash(userDetails.password, BCRYPT_SALT_ROUNDS);
+        // Check if any user exists
+        const existingUser = await prismaClient_1.default.user.findFirst();
+        // Set role to ADMIN if no users exist, otherwise use provided role or default
+        const userRole = existingUser ? userDetails.role : user_profile_types_1.UserRole.ADMIN;
+        const hashedPassword = await bcrypt_1.default.hash(userDetails.password, constants_3.BCRYPT_SALT_ROUNDS);
+        // Validate profilePicture
+        const profilePicture = req.body.profilePicture;
+        if (profilePicture && typeof profilePicture !== 'string') {
+            res.status(constants_2.HTTP_STATUS_CODES.BAD_REQUEST);
+            throw new Error('Invalid profile picture format. Expected a string URL.');
+        }
+        uploadedImageUrl = profilePicture;
         // Prepare user creation data
         const userCreationData = {
             ...userDetails,
             password: hashedPassword,
+            profilePicture: profilePicture || undefined,
+            role: userRole,
         };
         const user = await prismaClient_1.default.user.create({
             data: userCreationData,
         });
         const { password, ...userWithoutPassword } = user;
         // Send response
-        res.status(HTTP_STATUS.CREATED).json({
+        res.status(constants_2.HTTP_STATUS_CODES.CREATED).json({
             message: 'Registration successful.',
             data: userWithoutPassword,
         });
     }
     catch (error) {
+        // Clean up Cloudinary image if upload succeeded but DB operation failed
+        if (uploadedImageUrl) {
+            try {
+                await claudinary_1.cloudinaryService.deleteImage(uploadedImageUrl);
+            }
+            catch (cleanupError) {
+                console.error('Failed to clean up Cloudinary image:', cleanupError);
+            }
+        }
         next(error);
     }
 };
@@ -45,7 +72,9 @@ const handleRegisterUser = async (req, res, next) => {
  * Middleware array for user registration
  */
 const registerUser = [
-    validation_1.default.create(auth_validations_1.registerUserValidation),
+    multer_1.default.single('profilePicture'), // Parse FormData (file and text fields)
+    validation_1.default.create(auth_validations_1.registerUserValidation), // Validate the parsed req.body
+    (0, conditional_cloudinary_upload_1.default)(constants_1.CLOUDINARY_UPLOAD_OPTIONS, 'profilePicture'),
     handleRegisterUser,
 ];
 exports.registerUser = registerUser;

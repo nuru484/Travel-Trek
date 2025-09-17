@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getBookingsValidation = exports.dateRangeFilterValidation = exports.bookingStatusFilterValidation = exports.paginationQueryValidation = exports.bookingIdParamValidation = exports.updateBookingValidation = exports.createBookingValidation = void 0;
-// src/validations/bookingValidations/booking-validation.ts
+// src/validations/bookingValidations.ts
 const validation_factory_ts_1 = require("./validation-factory.ts");
 // Validation for creating a new booking
 exports.createBookingValidation = [

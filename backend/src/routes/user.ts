@@ -12,9 +12,9 @@ import { UserRole } from '../../types/user-profile.types';
 
 const userRoutes = Router();
 
-// Create a new tour
-userRoutes.post(
-  '/users/update-profile',
+// Updated user profile
+userRoutes.put(
+  '/users/:userId',
   authorizeRole([UserRole.ADMIN, UserRole.AGENT, UserRole.CUSTOMER]),
   updateUserProfile,
 );
@@ -23,7 +23,7 @@ userRoutes.post(
 userRoutes.get('/users', authorizeRole([UserRole.ADMIN]), getAllUsers);
 
 // Change user role
-userRoutes.put(
+userRoutes.patch(
   '/users/:userId/role',
   authorizeRole([UserRole.ADMIN]),
   changeUserRole,
