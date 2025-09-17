@@ -105,6 +105,7 @@ const customerNavigationItems = [
 export default function DashboardSidebar() {
   const pathname = usePathname();
   const user = useSelector((state: RootState) => state.auth.user);
+
   const isAdmin = user?.role === "ADMIN";
 
   const navigationItems = isAdmin

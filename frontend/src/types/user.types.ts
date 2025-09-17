@@ -1,14 +1,11 @@
 // src/types/user.ts
 
 // Enum
-export enum UserRole {
-  ADMIN = "ADMIN",
-  CUSTOMER = "CUSTOMER",
-  AGENT = "AGENT",
-}
+export type UserRole = "ADMIN" | "CUSTOMER" | "AGENT";
+
 
 export interface IUser {
-  id: string;
+  id: number;
   name: string;
   email: string;
   role: UserRole;
@@ -35,7 +32,6 @@ export interface IUsersPaginatedResponse {
   };
 }
 
-
 export interface IUserUpdateInput {
   name?: string;
   email?: string;
@@ -44,7 +40,6 @@ export interface IUserUpdateInput {
   address?: string;
   profilePicture?: string;
 }
-
 
 export interface IChangeRoleInput {
   role: UserRole;

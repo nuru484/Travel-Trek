@@ -82,30 +82,22 @@ export function UserActionsDropdown({ user }: UserActionsDropdownProps) {
             className="hover:cursor-pointer"
             onClick={() => {
               setRoleDialogOpen(true);
-              setSelectedRole(
-                user.role === UserRole.ADMIN
-                  ? UserRole.CUSTOMER
-                  : UserRole.ADMIN
-              );
+              setSelectedRole(user.role === "ADMIN" ? "CUSTOMER" : "ADMIN");
             }}
           >
             <Shield className="mr-2 h-4 w-4" />
-            {user.role === UserRole.ADMIN ? "Remove Admin" : "Make Admin"}
+            {user.role === "ADMIN" ? "Remove Admin" : "Make Admin"}
           </DropdownMenuItem>
 
           <DropdownMenuItem
             className="hover:cursor-pointer"
             onClick={() => {
               setRoleDialogOpen(true);
-              setSelectedRole(
-                user.role === UserRole.AGENT
-                  ? UserRole.CUSTOMER
-                  : UserRole.AGENT
-              );
+              setSelectedRole(user.role === "AGENT" ? "CUSTOMER" : "AGENT");
             }}
           >
             <Shield className="mr-2 h-4 w-4" />
-            {user.role === UserRole.AGENT ? "Remove Agent" : "Make Agent"}
+            {user.role === "AGENT" ? "Remove Agent" : "Make Agent"}
           </DropdownMenuItem>
 
           <DropdownMenuSeparator />

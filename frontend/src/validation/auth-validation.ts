@@ -1,6 +1,5 @@
 // src/validation/auth-validation.ts
 import { z } from "zod";
-import { UserRole } from "@/types/user.types";
 
 export const loginFormSchema = z.object({
   email: z
@@ -15,6 +14,8 @@ export const loginFormSchema = z.object({
 
 export type ILoginFormSchema = z.infer<typeof loginFormSchema>;
 
+export const userRoleSchema = z.enum(["ADMIN", "CUSTOMER", "AGENT"]);
+
 export const signupFormSchema = z.object({
   name: z
     .string()
@@ -28,11 +29,9 @@ export const signupFormSchema = z.object({
     .string()
     .min(5, "Password must be at least 5 characters")
     .max(255, "Password must be 255 characters or less"),
-  role: z
-    .nativeEnum(UserRole)
-    .refine((val) => Object.values(UserRole).includes(val), {
-      message: "Role must be AGENT or CUSTOMER",
-    }),
+  role: userRoleSchema.refine((val) => val !== "ADMIN", {
+    message: "Role must be AGENT or CUSTOMER",
+  }),
   phone: z
     .string()
     .nonempty("Phone is required")

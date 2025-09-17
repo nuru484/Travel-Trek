@@ -93,9 +93,9 @@ export const createUserColumns = (): ColumnDef<IUser>[] => [
       return (
         <Badge
           variant={
-            role === UserRole.ADMIN
+            role === "ADMIN"
               ? "default"
-              : role === UserRole.AGENT
+              : role === "AGENT"
               ? "secondary"
               : "outline"
           }

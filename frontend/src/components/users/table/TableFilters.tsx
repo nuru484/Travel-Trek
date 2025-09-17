@@ -56,23 +56,24 @@ export function TableFilters({
 
   // Convert filter values to display values
   const getRoleFilterValue = () => {
-    if (filters.role === UserRole.ADMIN) return "admin";
-    if (filters.role === UserRole.AGENT) return "agent";
-    if (filters.role === UserRole.CUSTOMER) return "customer";
+    if (filters.role === "ADMIN") return "admin";
+    if (filters.role === "AGENT") return "agent";
+    if (filters.role === "CUSTOMER") return "customer";
     return "all";
   };
 
   const handleRoleFilterChange = (value: string) => {
     let role: UserRole | undefined;
-    if (value === "admin") role = UserRole.ADMIN;
-    else if (value === "agent") role = UserRole.AGENT;
-    else if (value === "customer") role = UserRole.CUSTOMER;
+    if (value === "admin") role = "ADMIN";
+    else if (value === "agent") role = "AGENT";
+    else if (value === "customer") role = "CUSTOMER";
     else role = undefined;
 
     onFiltersChange({ role });
   };
 
-  const hasFiltersApplied = filters.role !== undefined || filters.search !== undefined;
+  const hasFiltersApplied =
+    filters.role !== undefined || filters.search !== undefined;
 
   const clearFilters = () => {
     setSearchInput("");

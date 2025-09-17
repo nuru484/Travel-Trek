@@ -57,7 +57,7 @@ export const userApi = apiSlice.injectEndpoints({
     // Update user role
     updateUserRole: builder.mutation<
       IUserResponse,
-      { userId: string; role: UserRole }
+      { userId: number; role: UserRole }
     >({
       query: ({ userId, role }) => ({
         url: `/users/${userId}/role`,
@@ -71,7 +71,7 @@ export const userApi = apiSlice.injectEndpoints({
     }),
 
     // Delete a single user
-    deleteUser: builder.mutation<{ message: string }, string>({
+    deleteUser: builder.mutation<{ message: string }, number>({
       query: (userId) => ({
         url: `/users/${userId}`,
         method: "DELETE",
