@@ -165,7 +165,7 @@ export function FlightForm({ flight, mode }: IFlightFormProps) {
       router.push("/dashboard/flights");
     } catch (error) {
       console.error(`Failed to ${mode} flight:`, error);
-      const apiError = extractApiErrorMessage(error);
+      const apiError = extractApiErrorMessage(error).message;
       toast.error(apiError || `Failed to ${mode} flight`);
     }
   };

@@ -121,7 +121,7 @@ export function TourForm({ tour, mode }: ITourFormProps) {
       router.push("/dashboard/tours");
     } catch (error) {
       console.error(`Failed to ${mode} tour:`, error);
-      const apiError = extractApiErrorMessage(error);
+      const apiError = extractApiErrorMessage(error).message;
       toast.error(apiError || `Failed to ${mode} tour`);
     }
   };

@@ -143,7 +143,7 @@ export function HotelForm({ hotel, mode }: IHotelFormProps) {
       router.push("/dashboard/hotels");
     } catch (error) {
       console.error(`Failed to ${mode} hotel:`, error);
-      const apiError = extractApiErrorMessage(error);
+      const apiError = extractApiErrorMessage(error).message;
       toast.error(apiError || `Failed to ${mode} hotel`);
     }
   };

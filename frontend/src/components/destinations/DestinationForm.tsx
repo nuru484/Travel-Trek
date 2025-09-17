@@ -112,7 +112,7 @@ export default function DestinationForm({
       router.push("/dashboard/destinations");
     } catch (error) {
       console.error(`Failed to ${mode} destination:`, error);
-      const apiError = extractApiErrorMessage(error);
+      const apiError = extractApiErrorMessage(error).message;
       toast.error(apiError || `Failed to ${mode} destination`);
     }
   };
