@@ -9,13 +9,12 @@ import {
   UnauthorizedError,
 } from '../middlewares/error-handler';
 import { HTTP_STATUS_CODES } from '../config/constants';
-import { IBookingInput, IBookingResponse } from 'types/booking.types';
+import { IBookingInput, IBooking } from 'types/booking.types';
 import {
   createBookingValidation,
   updateBookingValidation,
   getBookingsValidation,
 } from '../validations/bookingValidations';
-import { validator } from '../validations/validation-factory.ts';
 
 /**
  * Create a new booking
@@ -75,21 +74,87 @@ const handleCreateBooking = asyncHandler(
         totalPrice,
         status: 'PENDING',
       },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true },
+        },
+        tour: {
+          select: { id: true, name: true, description: true },
+        },
+        hotel: {
+          select: { id: true, name: true, description: true },
+        },
+        room: {
+          select: { id: true, roomType: true, description: true },
+        },
+        flight: {
+          select: { id: true, flightNumber: true, airline: true },
+        },
+        payment: {
+          select: { id: true, amount: true, status: true, paymentMethod: true },
+        },
+      },
     });
 
-    const response: IBookingResponse = {
-      id: booking.id,
-      userId: booking.userId,
-      tourId: booking.tourId,
-      hotelId: booking.hotelId,
-      roomId: booking.roomId,
-      flightId: booking.flightId,
-      status: booking.status,
-      totalPrice: booking.totalPrice,
-      bookingDate: booking.bookingDate,
-      createdAt: booking.createdAt,
-      updatedAt: booking.updatedAt,
-    };
+    // Normalize into discriminated union
+    let response: IBooking;
+
+    if (booking.tour) {
+      response = {
+        id: booking.id,
+        userId: booking.userId,
+        user: booking.user,
+        payment: booking.payment,
+        status: booking.status,
+        totalPrice: booking.totalPrice,
+        bookingDate: booking.bookingDate,
+        createdAt: booking.createdAt,
+        updatedAt: booking.updatedAt,
+        type: 'TOUR',
+        tour: booking.tour,
+        hotel: null,
+        room: null,
+        flight: null,
+      };
+    } else if (booking.hotel) {
+      response = {
+        id: booking.id,
+        userId: booking.userId,
+        user: booking.user,
+        payment: booking.payment,
+        status: booking.status,
+        totalPrice: booking.totalPrice,
+        bookingDate: booking.bookingDate,
+        createdAt: booking.createdAt,
+        updatedAt: booking.updatedAt,
+        type: 'HOTEL',
+        hotel: booking.hotel,
+        room: booking.room!,
+        tour: null,
+        flight: null,
+      };
+    } else if (booking.flight) {
+      response = {
+        id: booking.id,
+        userId: booking.userId,
+        user: booking.user,
+        payment: booking.payment,
+        status: booking.status,
+        totalPrice: booking.totalPrice,
+        bookingDate: booking.bookingDate,
+        createdAt: booking.createdAt,
+        updatedAt: booking.updatedAt,
+        type: 'FLIGHT',
+        flight: booking.flight,
+        tour: null,
+        hotel: null,
+        room: null,
+      };
+    } else {
+      throw new Error(
+        'Booking has no associated item (tour, hotel, or flight)',
+      );
+    }
 
     res.status(HTTP_STATUS_CODES.CREATED).json({
       message: 'Booking created successfully',
@@ -97,6 +162,12 @@ const handleCreateBooking = asyncHandler(
     });
   },
 );
+
+// Middleware arrays with validations
+export const createBooking: RequestHandler[] = [
+  ...validationMiddleware.create(createBookingValidation),
+  handleCreateBooking,
+];
 
 /**
  * Get a single booking by ID
@@ -112,30 +183,95 @@ const handleGetBooking = asyncHandler(
 
     const booking = await prisma.booking.findUnique({
       where: { id: parseInt(id) },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true },
+        },
+        tour: {
+          select: { id: true, name: true, description: true },
+        },
+        hotel: {
+          select: { id: true, name: true, description: true },
+        },
+        room: {
+          select: { id: true, roomType: true, description: true },
+        },
+        flight: {
+          select: { id: true, flightNumber: true, airline: true },
+        },
+        payment: {
+          select: { id: true, amount: true, status: true, paymentMethod: true },
+        },
+      },
     });
 
     if (!booking) {
       throw new NotFoundError('Booking not found');
     }
 
-    // Customers can only view their own bookings
     if (user.role === 'CUSTOMER' && booking.userId !== parseInt(user.id)) {
       throw new UnauthorizedError('You can only view your own bookings');
     }
 
-    const response: IBookingResponse = {
-      id: booking.id,
-      userId: booking.userId,
-      tourId: booking.tourId,
-      hotelId: booking.hotelId,
-      roomId: booking.roomId,
-      flightId: booking.flightId,
-      status: booking.status,
-      totalPrice: booking.totalPrice,
-      bookingDate: booking.bookingDate,
-      createdAt: booking.createdAt,
-      updatedAt: booking.updatedAt,
-    };
+    // Normalize into discriminated union
+    let response: IBooking;
+
+    if (booking.tour) {
+      response = {
+        id: booking.id,
+        userId: booking.userId,
+        user: booking.user,
+        payment: booking.payment,
+        status: booking.status,
+        totalPrice: booking.totalPrice,
+        bookingDate: booking.bookingDate,
+        createdAt: booking.createdAt,
+        updatedAt: booking.updatedAt,
+        type: 'TOUR',
+        tour: booking.tour,
+        hotel: null,
+        room: null,
+        flight: null,
+      };
+    } else if (booking.hotel) {
+      response = {
+        id: booking.id,
+        userId: booking.userId,
+        user: booking.user,
+        payment: booking.payment,
+        status: booking.status,
+        totalPrice: booking.totalPrice,
+        bookingDate: booking.bookingDate,
+        createdAt: booking.createdAt,
+        updatedAt: booking.updatedAt,
+        type: 'HOTEL',
+        hotel: booking.hotel,
+        room: booking.room!,
+        tour: null,
+        flight: null,
+      };
+    } else if (booking.flight) {
+      response = {
+        id: booking.id,
+        userId: booking.userId,
+        user: booking.user,
+        payment: booking.payment,
+        status: booking.status,
+        totalPrice: booking.totalPrice,
+        bookingDate: booking.bookingDate,
+        createdAt: booking.createdAt,
+        updatedAt: booking.updatedAt,
+        type: 'FLIGHT',
+        flight: booking.flight,
+        tour: null,
+        hotel: null,
+        room: null,
+      };
+    } else {
+      throw new Error(
+        'Booking has no associated item (tour, hotel, or flight)',
+      );
+    }
 
     res.status(HTTP_STATUS_CODES.OK).json({
       message: 'Booking retrieved successfully',
@@ -143,6 +279,14 @@ const handleGetBooking = asyncHandler(
     });
   },
 );
+
+export const getBooking: RequestHandler[] = [
+  param('id')
+    .isInt({ min: 1 })
+    .withMessage('Booking ID must be a positive integer'),
+  ...validationMiddleware.create([]),
+  handleGetBooking,
+];
 
 /**
  * Update a booking
@@ -218,21 +362,87 @@ const handleUpdateBooking = asyncHandler(
         totalPrice: totalPrice ?? booking.totalPrice,
         status: status ?? booking.status,
       },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true },
+        },
+        tour: {
+          select: { id: true, name: true, description: true },
+        },
+        hotel: {
+          select: { id: true, name: true, description: true },
+        },
+        room: {
+          select: { id: true, roomType: true, description: true },
+        },
+        flight: {
+          select: { id: true, flightNumber: true, airline: true },
+        },
+        payment: {
+          select: { id: true, amount: true, status: true, paymentMethod: true },
+        },
+      },
     });
 
-    const response: IBookingResponse = {
-      id: updatedBooking.id,
-      userId: updatedBooking.userId,
-      tourId: updatedBooking.tourId,
-      hotelId: updatedBooking.hotelId,
-      roomId: updatedBooking.roomId,
-      flightId: updatedBooking.flightId,
-      status: updatedBooking.status,
-      totalPrice: updatedBooking.totalPrice,
-      bookingDate: updatedBooking.bookingDate,
-      createdAt: updatedBooking.createdAt,
-      updatedAt: updatedBooking.updatedAt,
-    };
+    // Normalize into discriminated union
+    let response: IBooking;
+
+    if (updatedBooking.tour) {
+      response = {
+        id: updatedBooking.id,
+        userId: updatedBooking.userId,
+        user: updatedBooking.user,
+        payment: updatedBooking.payment,
+        status: updatedBooking.status,
+        totalPrice: updatedBooking.totalPrice,
+        bookingDate: updatedBooking.bookingDate,
+        createdAt: updatedBooking.createdAt,
+        updatedAt: updatedBooking.updatedAt,
+        type: 'TOUR',
+        tour: updatedBooking.tour,
+        hotel: null,
+        room: null,
+        flight: null,
+      };
+    } else if (updatedBooking.hotel) {
+      response = {
+        id: updatedBooking.id,
+        userId: updatedBooking.userId,
+        user: updatedBooking.user,
+        payment: updatedBooking.payment,
+        status: updatedBooking.status,
+        totalPrice: updatedBooking.totalPrice,
+        bookingDate: updatedBooking.bookingDate,
+        createdAt: updatedBooking.createdAt,
+        updatedAt: updatedBooking.updatedAt,
+        type: 'HOTEL',
+        hotel: updatedBooking.hotel,
+        room: updatedBooking.room!,
+        tour: null,
+        flight: null,
+      };
+    } else if (updatedBooking.flight) {
+      response = {
+        id: updatedBooking.id,
+        userId: updatedBooking.userId,
+        user: updatedBooking.user,
+        payment: updatedBooking.payment,
+        status: updatedBooking.status,
+        totalPrice: updatedBooking.totalPrice,
+        bookingDate: updatedBooking.bookingDate,
+        createdAt: updatedBooking.createdAt,
+        updatedAt: updatedBooking.updatedAt,
+        type: 'FLIGHT',
+        flight: updatedBooking.flight,
+        tour: null,
+        hotel: null,
+        room: null,
+      };
+    } else {
+      throw new Error(
+        'Booking has no associated item (tour, hotel, or flight)',
+      );
+    }
 
     res.status(HTTP_STATUS_CODES.OK).json({
       message: 'Booking updated successfully',
@@ -240,6 +450,14 @@ const handleUpdateBooking = asyncHandler(
     });
   },
 );
+
+export const updateBooking: RequestHandler[] = [
+  param('id')
+    .isInt({ min: 1 })
+    .withMessage('Booking ID must be a positive integer'),
+  ...validationMiddleware.create(updateBookingValidation),
+  handleUpdateBooking,
+];
 
 /**
  * Delete a booking
@@ -283,9 +501,119 @@ const handleDeleteBooking = asyncHandler(
   },
 );
 
+export const deleteBooking: RequestHandler[] = [
+  param('id')
+    .isInt({ min: 1 })
+    .withMessage('Booking ID must be a positive integer'),
+  ...validationMiddleware.create([]),
+  handleDeleteBooking,
+];
+
+/**
+ * Get all bookings for a specific user
+ */
+const handleGetUserBookings = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const { userId } = req.params;
+    const user = req.user;
+
+    if (!user) {
+      throw new UnauthorizedError('Unauthorized, no user provided');
+    }
+
+    // Customers can only view their own bookings
+    if (user.role === 'CUSTOMER' && user.id !== userId) {
+      throw new UnauthorizedError('You can only view your own bookings');
+    }
+
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+
+    const [bookings, total] = await Promise.all([
+      prisma.booking.findMany({
+        where: { userId: parseInt(userId) },
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          tour: { select: { id: true, name: true, description: true } },
+          hotel: { select: { id: true, name: true, description: true } },
+          room: { select: { id: true, roomType: true, description: true } },
+          flight: { select: { id: true, flightNumber: true, airline: true } },
+          payment: {
+            select: {
+              id: true,
+              amount: true,
+              status: true,
+              paymentMethod: true,
+            },
+          },
+        },
+      }),
+      prisma.booking.count({ where: { userId: parseInt(userId) } }),
+    ]);
+
+    const response: IBooking[] = bookings.map((booking) => {
+      if (booking.tour) {
+        return {
+          ...booking,
+          type: 'TOUR' as const,
+          tour: booking.tour,
+          hotel: null,
+          room: null,
+          flight: null,
+        };
+      } else if (booking.hotel && booking.room) {
+        return {
+          ...booking,
+          type: 'HOTEL' as const,
+          hotel: booking.hotel,
+          room: booking.room,
+          tour: null,
+          flight: null,
+        };
+      } else if (booking.flight) {
+        return {
+          ...booking,
+          type: 'FLIGHT' as const,
+          flight: booking.flight,
+          tour: null,
+          hotel: null,
+          room: null,
+        };
+      }
+      throw new Error(
+        'Booking has no associated item (tour, hotel, or flight)',
+      );
+    });
+
+    res.status(HTTP_STATUS_CODES.OK).json({
+      message: `Bookings for user ${userId} retrieved successfully`,
+      data: response,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  },
+);
+
+export const getUserBookings: RequestHandler[] = [
+  param('userId')
+    .isInt({ min: 1 })
+    .withMessage('User ID must be a positive integer'),
+  ...validationMiddleware.create([]),
+  handleGetUserBookings,
+];
+
 /**
  * Get all bookings with pagination
  */
+
 const handleGetAllBookings = asyncHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const user = req.user;
@@ -305,23 +633,93 @@ const handleGetAllBookings = asyncHandler(
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
+        include: {
+          user: {
+            select: { id: true, name: true, email: true },
+          },
+          tour: {
+            select: { id: true, name: true, description: true },
+          },
+          hotel: {
+            select: { id: true, name: true, description: true },
+          },
+          room: {
+            select: { id: true, roomType: true, description: true },
+          },
+          flight: {
+            select: { id: true, flightNumber: true, airline: true },
+          },
+          payment: {
+            select: {
+              id: true,
+              amount: true,
+              status: true,
+              paymentMethod: true,
+            },
+          },
+        },
       }),
       prisma.booking.count({ where }),
     ]);
 
-    const response: IBookingResponse[] = bookings.map((booking) => ({
-      id: booking.id,
-      userId: booking.userId,
-      tourId: booking.tourId,
-      hotelId: booking.hotelId,
-      roomId: booking.roomId,
-      flightId: booking.flightId,
-      status: booking.status,
-      totalPrice: booking.totalPrice,
-      bookingDate: booking.bookingDate,
-      createdAt: booking.createdAt,
-      updatedAt: booking.updatedAt,
-    }));
+    const response: IBooking[] = bookings.map((booking) => {
+      if (booking.tour) {
+        return {
+          id: booking.id,
+          userId: booking.userId,
+          user: booking.user,
+          payment: booking.payment,
+          status: booking.status,
+          totalPrice: booking.totalPrice,
+          bookingDate: booking.bookingDate,
+          createdAt: booking.createdAt,
+          updatedAt: booking.updatedAt,
+          type: 'TOUR',
+          tour: booking.tour,
+          hotel: null,
+          room: null,
+          flight: null,
+        };
+      } else if (booking.hotel) {
+        return {
+          id: booking.id,
+          userId: booking.userId,
+          user: booking.user,
+          payment: booking.payment,
+          status: booking.status,
+          totalPrice: booking.totalPrice,
+          bookingDate: booking.bookingDate,
+          createdAt: booking.createdAt,
+          updatedAt: booking.updatedAt,
+          type: 'HOTEL',
+          hotel: booking.hotel,
+          room: booking.room!,
+          tour: null,
+          flight: null,
+        };
+      } else if (booking.flight) {
+        return {
+          id: booking.id,
+          userId: booking.userId,
+          user: booking.user,
+          payment: booking.payment,
+          status: booking.status,
+          totalPrice: booking.totalPrice,
+          bookingDate: booking.bookingDate,
+          createdAt: booking.createdAt,
+          updatedAt: booking.updatedAt,
+          type: 'FLIGHT',
+          flight: booking.flight,
+          tour: null,
+          hotel: null,
+          room: null,
+        };
+      } else {
+        throw new Error(
+          'Booking has no associated item (tour, hotel, or flight)',
+        );
+      }
+    });
 
     res.status(HTTP_STATUS_CODES.OK).json({
       message: 'Bookings retrieved successfully',
@@ -335,6 +733,11 @@ const handleGetAllBookings = asyncHandler(
     });
   },
 );
+
+export const getAllBookings: RequestHandler[] = [
+  ...validationMiddleware.create(getBookingsValidation),
+  handleGetAllBookings,
+];
 
 /**
  * Delete all bookings
@@ -358,40 +761,5 @@ const handleDeleteAllBookings = asyncHandler(
     });
   },
 );
-
-// Middleware arrays with validations
-export const createBooking: RequestHandler[] = [
-  ...validationMiddleware.create(createBookingValidation),
-  handleCreateBooking,
-];
-
-export const getBooking: RequestHandler[] = [
-  param('id')
-    .isInt({ min: 1 })
-    .withMessage('Booking ID must be a positive integer'),
-  ...validationMiddleware.create([]),
-  handleGetBooking,
-];
-
-export const updateBooking: RequestHandler[] = [
-  param('id')
-    .isInt({ min: 1 })
-    .withMessage('Booking ID must be a positive integer'),
-  ...validationMiddleware.create(updateBookingValidation),
-  handleUpdateBooking,
-];
-
-export const deleteBooking: RequestHandler[] = [
-  param('id')
-    .isInt({ min: 1 })
-    .withMessage('Booking ID must be a positive integer'),
-  ...validationMiddleware.create([]),
-  handleDeleteBooking,
-];
-
-export const getAllBookings: RequestHandler[] = [
-  ...validationMiddleware.create(getBookingsValidation),
-  handleGetAllBookings,
-];
 
 export const deleteAllBookings: RequestHandler[] = [handleDeleteAllBookings];

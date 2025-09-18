@@ -5,6 +5,7 @@ import {
   updateBooking,
   deleteBooking,
   getAllBookings,
+  getUserBookings,
   deleteAllBookings,
 } from '../controllers/index';
 import { authorizeRole } from '../middlewares/authorize-roles';
@@ -29,14 +30,14 @@ bookingRoutes.get(
 // Update a booking by ID
 bookingRoutes.put(
   '/bookings/:id',
-  authorizeRole([UserRole.ADMIN, UserRole.AGENT, UserRole.CUSTOMER]),
+  authorizeRole([UserRole.ADMIN, UserRole.AGENT]),
   updateBooking,
 );
 
 // Delete a booking by ID
 bookingRoutes.delete(
   '/bookings/:id',
-  authorizeRole([UserRole.ADMIN, UserRole.AGENT, UserRole.CUSTOMER]),
+  authorizeRole([UserRole.ADMIN, UserRole.AGENT]),
   deleteBooking,
 );
 
@@ -45,6 +46,13 @@ bookingRoutes.get(
   '/bookings',
   authorizeRole([UserRole.ADMIN, UserRole.AGENT, UserRole.CUSTOMER]),
   getAllBookings,
+);
+
+// Get all user bookings
+bookingRoutes.get(
+  '/bookings/user/:userId',
+  authorizeRole([UserRole.ADMIN, UserRole.AGENT, UserRole.CUSTOMER]),
+  getUserBookings,
 );
 
 // Delete all bookings
