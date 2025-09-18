@@ -12,6 +12,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
 import { IUser, UserRole } from "@/types/user.types";
 import {
@@ -27,23 +30,16 @@ interface UserActionsDropdownProps {
 
 export function UserActionsDropdown({ user }: UserActionsDropdownProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
-  const [roleDialogOpen, setRoleDialogOpen] = React.useState(false);
-  const [selectedRole, setSelectedRole] = React.useState<UserRole | null>(null);
-
   const [updateUserRole] = useUpdateUserRoleMutation();
   const [deleteUser] = useDeleteUserMutation();
 
-  const handleChangeRole = async () => {
-    if (!selectedRole) return;
-
-    const toastId = toast.loading(`Changing role to ${selectedRole}...`);
+  const handleChangeRole = async (newRole: UserRole) => {
+    const toastId = toast.loading(`Changing role to ${newRole}...`);
 
     try {
-      await updateUserRole({ userId: user.id, role: selectedRole }).unwrap();
+      await updateUserRole({ userId: user.id, role: newRole }).unwrap();
       toast.dismiss(toastId);
-      toast.success(`User role changed to ${selectedRole} successfully`);
-      setRoleDialogOpen(false);
-      setSelectedRole(null);
+      toast.success(`User role changed to ${newRole} successfully`);
     } catch (error) {
       const { message } = extractApiErrorMessage(error);
       toast.dismiss(toastId);
@@ -66,6 +62,12 @@ export function UserActionsDropdown({ user }: UserActionsDropdownProps) {
       setDeleteDialogOpen(false);
     }
   };
+
+  const roleOptions: { value: UserRole; label: string }[] = [
+    { value: "ADMIN", label: "Admin" },
+    { value: "AGENT", label: "Agent" },
+    { value: "CUSTOMER", label: "Customer" },
+  ];
 
   return (
     <>
@@ -93,27 +95,31 @@ export function UserActionsDropdown({ user }: UserActionsDropdownProps) {
 
           <DropdownMenuSeparator />
 
-          <DropdownMenuItem
-            className="hover:cursor-pointer"
-            onClick={() => {
-              setRoleDialogOpen(true);
-              setSelectedRole(user.role === "ADMIN" ? "CUSTOMER" : "ADMIN");
-            }}
-          >
-            <Shield className="mr-2 h-4 w-4" />
-            {user.role === "ADMIN" ? "Remove Admin" : "Make Admin"}
-          </DropdownMenuItem>
-
-          <DropdownMenuItem
-            className="hover:cursor-pointer"
-            onClick={() => {
-              setRoleDialogOpen(true);
-              setSelectedRole(user.role === "AGENT" ? "CUSTOMER" : "AGENT");
-            }}
-          >
-            <Shield className="mr-2 h-4 w-4" />
-            {user.role === "AGENT" ? "Remove Agent" : "Make Agent"}
-          </DropdownMenuItem>
+          {/* Update Role Submenu */}
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger className="hover:cursor-pointer">
+              <Shield className="mr-2 h-4 w-4" />
+              Update Role
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              {roleOptions.map((role) => (
+                <DropdownMenuItem
+                  key={role.value}
+                  className="hover:cursor-pointer"
+                  onClick={() => handleChangeRole(role.value)}
+                  disabled={user.role === role.value}
+                >
+                  <Shield className="mr-2 h-4 w-4" />
+                  {role.label}
+                  {user.role === role.value && (
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      Current
+                    </span>
+                  )}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
 
           <DropdownMenuSeparator />
 
@@ -127,6 +133,7 @@ export function UserActionsDropdown({ user }: UserActionsDropdownProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
+      {/* Delete Confirmation Dialog */}
       <ConfirmationDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
@@ -136,16 +143,6 @@ export function UserActionsDropdown({ user }: UserActionsDropdownProps) {
         confirmText="Delete"
         cancelText="Cancel"
         isDestructive={true}
-      />
-
-      <ConfirmationDialog
-        open={roleDialogOpen}
-        onOpenChange={setRoleDialogOpen}
-        title="Change User Role"
-        description={`Are you sure you want to change the role of "${user.name}" to ${selectedRole}?`}
-        onConfirm={handleChangeRole}
-        confirmText="Change Role"
-        cancelText="Cancel"
       />
     </>
   );

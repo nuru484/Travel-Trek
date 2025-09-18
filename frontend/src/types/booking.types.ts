@@ -30,6 +30,8 @@ export interface IBookingFlight {
   airline: string;
 }
 
+export type BookingStatus = "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED";
+
 export interface IBookingPayment {
   id: number;
   amount: number;

@@ -2,7 +2,14 @@
 "use client";
 import * as React from "react";
 import Link from "next/link";
-import { MoreHorizontal, Trash2, Eye } from "lucide-react";
+import {
+  MoreHorizontal,
+  Trash2,
+  Eye,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,8 +19,11 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu";
-import { IBooking } from "@/types/booking.types";
+import { IBooking, BookingStatus } from "@/types/booking.types";
 import {
   useUpdateBookingMutation,
   useDeleteBookingMutation,
@@ -32,31 +42,9 @@ export function BookingActionsDropdown({
   userRole = "CUSTOMER",
 }: BookingActionsDropdownProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
-  const [cancelDialogOpen, setCancelDialogOpen] = React.useState(false);
-
-  console.log("Booking: ", booking);
 
   const [updateBooking] = useUpdateBookingMutation();
   const [deleteBooking] = useDeleteBookingMutation();
-
-  const handleCancelBooking = async () => {
-    const toastId = toast.loading("Cancelling booking...");
-
-    try {
-      await updateBooking({
-        bookingId: booking.id,
-        data: { status: "CANCELLED" },
-      }).unwrap();
-
-      toast.dismiss(toastId);
-      toast.success("Booking cancelled successfully");
-      setCancelDialogOpen(false);
-    } catch (error) {
-      const { message } = extractApiErrorMessage(error);
-      toast.dismiss(toastId);
-      toast.error(message);
-    }
-  };
 
   const handleDeleteBooking = async () => {
     const toastId = toast.loading("Deleting booking...");
@@ -74,6 +62,44 @@ export function BookingActionsDropdown({
     }
   };
 
+  const handleStatusUpdate = async (newStatus: BookingStatus) => {
+    const toastId = toast.loading("Updating status... Please wait");
+
+    try {
+      await updateBooking({
+        bookingId: booking.id,
+        data: { status: newStatus },
+      }).unwrap();
+
+      toast.dismiss(toastId);
+      toast.success(`Booking status updated to ${newStatus}`);
+    } catch (error) {
+      const { message } = extractApiErrorMessage(error);
+      toast.dismiss(toastId);
+      toast.error(message);
+    }
+  };
+
+  const getStatusIcon = (status: BookingStatus) => {
+    switch (status) {
+      case "PENDING":
+        return <AlertCircle className="mr-2 h-4 w-4" />;
+      case "CONFIRMED":
+        return <CheckCircle className="mr-2 h-4 w-4" />;
+      case "CANCELLED":
+        return <Trash2 className="mr-2 h-4 w-4" />;
+      case "COMPLETED":
+        return <Clock className="mr-2 h-4 w-4" />;
+    }
+  };
+
+  const statusOptions: { value: BookingStatus; label: string }[] = [
+    { value: "PENDING", label: "Pending" },
+    { value: "CONFIRMED", label: "Confirmed" },
+    { value: "CANCELLED", label: "Cancelled" },
+    { value: "COMPLETED", label: "Completed" },
+  ];
+
   const needsPayment = booking.status === "PENDING" && !booking.payment;
 
   return (
@@ -89,7 +115,7 @@ export function BookingActionsDropdown({
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
           <DropdownMenuSeparator />
 
-          {/* View Booking Details - Available to all roles */}
+          {/* View Booking */}
           <DropdownMenuItem asChild>
             <Link
               href={`/dashboard/bookings/${booking.id}`}
@@ -100,37 +126,56 @@ export function BookingActionsDropdown({
             </Link>
           </DropdownMenuItem>
 
-          {/* Make Payment - Available to customers and agents, only if payment is needed */}
-          {needsPayment && (
+          {/* Update Status - Only Admin */}
+          {userRole === "ADMIN" && (
             <>
               <DropdownMenuSeparator />
-              <div className="px-2 py-1">
-                <PaymentButton
-                  bookingId={booking.id}
-                  amount={booking.totalPrice}
-                  currency={"GHS"}
-                  variant="ghost"
-                  size="sm"
-                  className="w-full justify-start h-8 px-2 hover:cursor-pointer"
-                />
-              </div>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="hover:cursor-pointer">
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Update Status
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  {statusOptions.map((status) => (
+                    <DropdownMenuItem
+                      key={status.value}
+                      className="hover:cursor-pointer"
+                      onClick={() => handleStatusUpdate(status.value)}
+                      disabled={booking.status === status.value}
+                    >
+                      {getStatusIcon(status.value)}
+                      {status.label}
+                      {booking.status === status.value && (
+                        <span className="ml-auto text-xs text-muted-foreground">
+                          Current
+                        </span>
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
             </>
           )}
 
-          {/* Cancel Booking - Available only to admins */}
-          {userRole === "ADMIN" && booking.status !== "CANCELLED" && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="hover:cursor-pointer text-orange-600"
-                onClick={() => setCancelDialogOpen(true)}
-              >
-                Cancel Booking
-              </DropdownMenuItem>
-            </>
-          )}
+          {/* Payment - Customers/Agents */}
+          {needsPayment &&
+            (userRole === "CUSTOMER" || userRole === "AGENT") && (
+              <>
+                <DropdownMenuSeparator />
+                <div className="px-2 py-1">
+                  <PaymentButton
+                    bookingId={booking.id}
+                    amount={booking.totalPrice}
+                    currency={"GHS"}
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start h-8 px-2 hover:cursor-pointer"
+                  />
+                </div>
+              </>
+            )}
 
-          {/* Delete Booking - Available only to admins */}
+          {/* Delete Booking - Admin only */}
           {userRole === "ADMIN" && (
             <>
               <DropdownMenuSeparator />
@@ -157,20 +202,6 @@ export function BookingActionsDropdown({
         onConfirm={handleDeleteBooking}
         confirmText="Delete"
         cancelText="Cancel"
-        isDestructive={true}
-      />
-
-      {/* Cancel Confirmation Dialog */}
-      <ConfirmationDialog
-        open={cancelDialogOpen}
-        onOpenChange={setCancelDialogOpen}
-        title="Cancel Booking"
-        description={`Are you sure you want to cancel booking #${booking.id
-          .toString()
-          .padStart(6, "0")}? This action cannot be undone.`}
-        onConfirm={handleCancelBooking}
-        confirmText="Cancel Booking"
-        cancelText="Keep Booking"
         isDestructive={true}
       />
     </>
