@@ -530,9 +530,110 @@ const handleGetUserBookings = asyncHandler(
     const limit = parseInt(req.query.limit as string) || 10;
     const skip = (page - 1) * limit;
 
+    // Optional filters
+    const status = req.query.status as string | undefined;
+    const bookingType = req.query.type as string | undefined;
+    const search = req.query.search as string | undefined;
+    const tourId = req.query.tourId as string | undefined;
+    const hotelId = req.query.hotelId as string | undefined;
+    const flightId = req.query.flightId as string | undefined;
+    const fromDate = req.query.fromDate as string | undefined;
+    const toDate = req.query.toDate as string | undefined;
+
+    // Build where clause
+    const whereClause: any = {
+      userId: parseInt(userId), // Always filter by userId for this endpoint
+    };
+
+    if (status) {
+      whereClause.status = status;
+    }
+
+    if (tourId) {
+      whereClause.tourId = parseInt(tourId);
+    }
+
+    if (hotelId) {
+      whereClause.hotelId = parseInt(hotelId);
+    }
+
+    if (flightId) {
+      whereClause.flightId = parseInt(flightId);
+    }
+
+    if (fromDate && toDate) {
+      whereClause.bookingDate = {
+        gte: new Date(fromDate),
+        lte: new Date(toDate),
+      };
+    } else if (fromDate) {
+      whereClause.bookingDate = {
+        gte: new Date(fromDate),
+      };
+    } else if (toDate) {
+      whereClause.bookingDate = {
+        lte: new Date(toDate),
+      };
+    }
+
+    // Handle booking type filter
+    if (bookingType === 'TOUR') {
+      whereClause.tourId = { not: null };
+    } else if (bookingType === 'HOTEL') {
+      whereClause.hotelId = { not: null };
+    } else if (bookingType === 'FLIGHT') {
+      whereClause.flightId = { not: null };
+    }
+
+    // Handle search across related entities
+    if (search) {
+      whereClause.OR = [
+        {
+          tour: {
+            name: { contains: search, mode: 'insensitive' },
+          },
+        },
+        {
+          tour: {
+            description: { contains: search, mode: 'insensitive' },
+          },
+        },
+        {
+          hotel: {
+            name: { contains: search, mode: 'insensitive' },
+          },
+        },
+        {
+          hotel: {
+            description: { contains: search, mode: 'insensitive' },
+          },
+        },
+        {
+          flight: {
+            flightNumber: { contains: search, mode: 'insensitive' },
+          },
+        },
+        {
+          flight: {
+            airline: { contains: search, mode: 'insensitive' },
+          },
+        },
+        {
+          user: {
+            name: { contains: search, mode: 'insensitive' },
+          },
+        },
+        {
+          user: {
+            email: { contains: search, mode: 'insensitive' },
+          },
+        },
+      ];
+    }
+
     const [bookings, total] = await Promise.all([
       prisma.booking.findMany({
-        where: { userId: parseInt(userId) },
+        where: whereClause,
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
@@ -552,7 +653,7 @@ const handleGetUserBookings = asyncHandler(
           },
         },
       }),
-      prisma.booking.count({ where: { userId: parseInt(userId) } }),
+      prisma.booking.count({ where: whereClause }),
     ]);
 
     const response: IBooking[] = bookings.map((booking) => {
@@ -625,11 +726,119 @@ const handleGetAllBookings = asyncHandler(
       throw new UnauthorizedError('Unauthorized, no user provided');
     }
 
-    const where = user.role === 'CUSTOMER' ? { userId: parseInt(user.id) } : {};
+    // Optional filters
+    const userId = req.query.userId as string | undefined;
+    const status = req.query.status as string | undefined;
+    const bookingType = req.query.type as string | undefined;
+    const search = req.query.search as string | undefined;
+    const tourId = req.query.tourId as string | undefined;
+    const hotelId = req.query.hotelId as string | undefined;
+    const flightId = req.query.flightId as string | undefined;
+    const fromDate = req.query.fromDate as string | undefined;
+    const toDate = req.query.toDate as string | undefined;
+
+    // Build where clause
+    const whereClause: any = {};
+
+    // Base authorization filter
+    if (user.role === 'CUSTOMER') {
+      whereClause.userId = parseInt(user.id);
+    }
+
+    // Additional filters
+    if (userId && user.role !== 'CUSTOMER') {
+      whereClause.userId = parseInt(userId);
+    }
+
+    if (status) {
+      whereClause.status = status;
+    }
+
+    if (tourId) {
+      whereClause.tourId = parseInt(tourId);
+    }
+
+    if (hotelId) {
+      whereClause.hotelId = parseInt(hotelId);
+    }
+
+    if (flightId) {
+      whereClause.flightId = parseInt(flightId);
+    }
+
+    if (fromDate && toDate) {
+      whereClause.bookingDate = {
+        gte: new Date(fromDate),
+        lte: new Date(toDate),
+      };
+    } else if (fromDate) {
+      whereClause.bookingDate = {
+        gte: new Date(fromDate),
+      };
+    } else if (toDate) {
+      whereClause.bookingDate = {
+        lte: new Date(toDate),
+      };
+    }
+
+    // Handle booking type filter
+    if (bookingType === 'TOUR') {
+      whereClause.tourId = { not: null };
+    } else if (bookingType === 'HOTEL') {
+      whereClause.hotelId = { not: null };
+    } else if (bookingType === 'FLIGHT') {
+      whereClause.flightId = { not: null };
+    }
+
+    // Handle search across related entities
+    if (search) {
+      whereClause.OR = [
+        {
+          tour: {
+            name: { contains: search, mode: 'insensitive' },
+          },
+        },
+        {
+          tour: {
+            description: { contains: search, mode: 'insensitive' },
+          },
+        },
+        {
+          hotel: {
+            name: { contains: search, mode: 'insensitive' },
+          },
+        },
+        {
+          hotel: {
+            description: { contains: search, mode: 'insensitive' },
+          },
+        },
+        {
+          flight: {
+            flightNumber: { contains: search, mode: 'insensitive' },
+          },
+        },
+        {
+          flight: {
+            airline: { contains: search, mode: 'insensitive' },
+          },
+        },
+        {
+          user: {
+            name: { contains: search, mode: 'insensitive' },
+          },
+        },
+        {
+          user: {
+            email: { contains: search, mode: 'insensitive' },
+          },
+        },
+      ];
+    }
 
     const [bookings, total] = await Promise.all([
       prisma.booking.findMany({
-        where,
+        where: whereClause,
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
@@ -659,7 +868,7 @@ const handleGetAllBookings = asyncHandler(
           },
         },
       }),
-      prisma.booking.count({ where }),
+      prisma.booking.count({ where: whereClause }),
     ]);
 
     const response: IBooking[] = bookings.map((booking) => {
