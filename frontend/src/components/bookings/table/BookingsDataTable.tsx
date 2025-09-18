@@ -1,4 +1,4 @@
-// src/components/users/table/UsersDataTable.tsx
+// src/components/bookings/table/BookingsDataTable.tsx
 "use client";
 import * as React from "react";
 import {
@@ -23,17 +23,28 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  useDeleteUserMutation,
-  useDeleteAllUsersMutation,
-} from "@/redux/userApi";
-import { createUserColumns } from "./columns";
+  useDeleteBookingMutation,
+  useDeleteAllBookingsMutation,
+} from "@/redux/bookingApi";
+import { createBookingColumns } from "./columns";
 import { TableFilters } from "./TableFilters";
 import { DataTablePagination } from "@/components/ui/DataTablePagination";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
-import { IUsersDataTableProps } from "@/types/user.types";
+import { IBookingsDataTableProps } from "@/types/booking.types";
+import { useSelector } from "react-redux";
+import { RootState } from "@/redux/store";
 
-export function UsersDataTable({
+interface BookingsDataTableProps extends IBookingsDataTableProps {
+  showFilters?: boolean;
+  showActions?: boolean;
+  showPagination?: boolean;
+  showSelection?: boolean;
+  showCustomer?: boolean;
+  isRecentsView?: boolean;
+}
+
+export function BookingsDataTable({
   data,
   loading = false,
   totalCount = 0,
@@ -44,7 +55,15 @@ export function UsersDataTable({
   onPageSizeChange,
   onFiltersChange,
   onRefresh,
-}: IUsersDataTableProps) {
+  showFilters = true,
+  showActions = true,
+  showPagination = true,
+  showSelection = true,
+  showCustomer,
+  isRecentsView = false,
+}: BookingsDataTableProps) {
+  const user = useSelector((state: RootState) => state.auth.user);
+  const userRole = user.role;
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
@@ -56,10 +75,23 @@ export function UsersDataTable({
     React.useState(false);
   const [deleteAllDialogOpen, setDeleteAllDialogOpen] = React.useState(false);
 
-  const [deleteUser] = useDeleteUserMutation();
-  const [deleteAllUsers] = useDeleteAllUsersMutation();
+  const [deleteBooking] = useDeleteBookingMutation();
+  const [deleteAllBookings] = useDeleteAllBookingsMutation();
 
-  const columns = React.useMemo(() => createUserColumns(), []);
+  const shouldShowCustomer =
+    showCustomer !== undefined ? showCustomer : showFilters;
+
+  const columns = React.useMemo(() => {
+    const cols = createBookingColumns(
+      showActions,
+      shouldShowCustomer,
+      userRole
+    );
+    if (!showSelection) {
+      return cols.filter((col) => col.id !== "select");
+    }
+    return cols;
+  }, [showActions, showSelection, shouldShowCustomer, userRole]);
 
   const table = useReactTable({
     data,
@@ -86,37 +118,37 @@ export function UsersDataTable({
   const handleDeleteSelected = () => {
     const selectedRows = table.getSelectedRowModel().rows;
     if (selectedRows.length === 0) {
-      toast.error("Please select users to delete");
+      toast.error("Please select bookings to delete");
       return;
     }
 
     const selectedCount = selectedRows.length;
-    const isAllUsersSelected = selectedCount === totalCount;
+    const isAllBookingsSelected = selectedCount === totalCount;
 
-    if (isAllUsersSelected) {
+    if (isAllBookingsSelected) {
       setDeleteAllDialogOpen(true);
     } else {
       setDeleteSelectedDialogOpen(true);
     }
   };
 
-  const handleDeleteSelectedUsers = async () => {
+  const handleDeleteSelectedBookings = async () => {
     const selectedRows = table.getSelectedRowModel().rows;
     const selectedCount = selectedRows.length;
 
     setDeleteSelectedDialogOpen(false);
 
     const toastId = toast.loading(
-      `Deleting ${selectedCount} users..., please wait`
+      `Deleting ${selectedCount} bookings..., please wait`
     );
 
     try {
       const deletePromises = selectedRows.map((row) =>
-        deleteUser(row.original.id).unwrap()
+        deleteBooking(row.original.id).unwrap()
       );
       await Promise.all(deletePromises);
       toast.dismiss(toastId);
-      toast.success(`${selectedCount} users deleted successfully`);
+      toast.success(`${selectedCount} bookings deleted successfully`);
       setRowSelection({});
       onRefresh?.();
     } catch (error) {
@@ -127,13 +159,15 @@ export function UsersDataTable({
     }
   };
 
-  const handleDeleteAllUsers = async () => {
-    const toastId = toast.loading("Deleting all users..., please wait");
+  const handleDeleteAllBookings = async () => {
+    const toastId = toast.loading("Deleting all bookings..., please wait");
 
     try {
-      await deleteAllUsers({ confirmDelete: "DELETE_ALL_USERS" }).unwrap();
+      await deleteAllBookings({
+        confirmDelete: "DELETE_ALL_BOOKINGS",
+      }).unwrap();
       toast.dismiss(toastId);
-      toast.success("All users deleted successfully");
+      toast.success("All bookings deleted successfully");
       setDeleteAllDialogOpen(false);
       setRowSelection({});
       onRefresh?.();
@@ -146,17 +180,33 @@ export function UsersDataTable({
   };
 
   const selectedCount = table.getSelectedRowModel().rows.length;
+  const hasData = !loading && table.getRowModel().rows?.length > 0;
+  const isEmpty = !loading && table.getRowModel().rows?.length === 0;
+
+  if (isRecentsView && isEmpty) {
+    return (
+      <div className="w-full max-w-full space-y-6">
+        <div className="flex flex-col items-center justify-center py-12 space-y-2">
+          <div className="text-muted-foreground">No recent bookings found</div>
+          <div className="text-sm text-muted-foreground">
+            Your recent bookings will appear here
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-full space-y-6">
-      {/* Filters with integrated actions */}
-      <TableFilters
-        table={table}
-        filters={filters}
-        onFiltersChange={onFiltersChange}
-        totalCount={totalCount}
-        onDeleteSelected={handleDeleteSelected}
-      />
+      {showFilters && (
+        <TableFilters
+          table={table}
+          filters={filters}
+          onFiltersChange={onFiltersChange}
+          totalCount={totalCount}
+          onDeleteSelected={handleDeleteSelected}
+        />
+      )}
 
       {/* Table */}
       <div className="rounded-md border overflow-hidden">
@@ -183,32 +233,48 @@ export function UsersDataTable({
               {loading ? (
                 Array.from({ length: pageSize }).map((_, index) => (
                   <TableRow key={`skeleton-${index}`}>
-                    <TableCell>
-                      <Skeleton className="h-4 w-4" />
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-2">
-                        <Skeleton className="h-4 w-full max-w-[300px]" />
-                        <Skeleton className="h-3 w-24" />
-                      </div>
-                    </TableCell>
+                    {showSelection && (
+                      <TableCell>
+                        <Skeleton className="h-4 w-4" />
+                      </TableCell>
+                    )}
                     <TableCell>
                       <Skeleton className="h-6 w-16 rounded-full" />
+                    </TableCell>
+                    {shouldShowCustomer && (
+                      <TableCell>
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-full max-w-[200px]" />
+                          <Skeleton className="h-3 w-24" />
+                        </div>
+                      </TableCell>
+                    )}
+                    <TableCell>
+                      <Skeleton className="h-4 w-32" />
                     </TableCell>
                     <TableCell>
                       <Skeleton className="h-4 w-20" />
                     </TableCell>
                     <TableCell>
-                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-6 w-16 rounded-full" />
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center space-x-1">
-                        <Skeleton className="h-8 w-8 rounded" />
+                      <div className="space-y-1">
+                        <Skeleton className="h-6 w-16 rounded-full" />
+                        <Skeleton className="h-3 w-20" />
                       </div>
                     </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    {showActions && (
+                      <TableCell>
+                        <Skeleton className="h-8 w-8 rounded" />
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))
-              ) : table.getRowModel().rows?.length ? (
+              ) : hasData ? (
                 table.getRowModel().rows.map((row) => (
                   <TableRow
                     key={row.id}
@@ -233,7 +299,7 @@ export function UsersDataTable({
                   >
                     <div className="flex flex-col items-center justify-center space-y-2">
                       <div className="text-muted-foreground">
-                        No users found
+                        No bookings found
                       </div>
                       <div className="text-sm text-muted-foreground">
                         Try adjusting your search or filter criteria
@@ -247,40 +313,43 @@ export function UsersDataTable({
         </div>
       </div>
 
-      {/* Pagination */}
-      <DataTablePagination
-        table={table}
-        totalCount={totalCount}
-        page={page}
-        pageSize={pageSize}
-        onPageChange={onPageChange}
-        onPageSizeChange={onPageSizeChange}
-      />
+      {showPagination && (
+        <DataTablePagination
+          table={table}
+          totalCount={totalCount}
+          page={page}
+          pageSize={pageSize}
+          onPageChange={onPageChange}
+          onPageSizeChange={onPageSizeChange}
+        />
+      )}
 
-      {/* Delete Selected Users Dialog */}
-      <ConfirmationDialog
-        open={deleteSelectedDialogOpen}
-        onOpenChange={setDeleteSelectedDialogOpen}
-        title="Delete Selected Users"
-        description={`Are you sure you want to delete ${selectedCount} selected users? This action cannot be undone.`}
-        onConfirm={handleDeleteSelectedUsers}
-        confirmText="Delete Selected"
-        cancelText="Cancel"
-        isDestructive={true}
-      />
+      {showSelection && (
+        <ConfirmationDialog
+          open={deleteSelectedDialogOpen}
+          onOpenChange={setDeleteSelectedDialogOpen}
+          title="Delete Selected Bookings"
+          description={`Are you sure you want to delete ${selectedCount} selected bookings? This action cannot be undone.`}
+          onConfirm={handleDeleteSelectedBookings}
+          confirmText="Delete Selected"
+          cancelText="Cancel"
+          isDestructive={true}
+        />
+      )}
 
-      {/* Delete All Users Dialog */}
-      <ConfirmationDialog
-        open={deleteAllDialogOpen}
-        onOpenChange={setDeleteAllDialogOpen}
-        title="Delete All Users"
-        description={`Are you sure you want to delete all ${totalCount} users? This action cannot be undone.`}
-        onConfirm={handleDeleteAllUsers}
-        confirmText="Delete All Users"
-        cancelText="Cancel"
-        isDestructive={true}
-        requireExactMatch="DELETE_ALL_USERS"
-      />
+      {showSelection && (
+        <ConfirmationDialog
+          open={deleteAllDialogOpen}
+          onOpenChange={setDeleteAllDialogOpen}
+          title="Delete All Bookings"
+          description={`Are you sure you want to delete all ${totalCount} bookings? This action cannot be undone.`}
+          onConfirm={handleDeleteAllBookings}
+          confirmText="Delete All Bookings"
+          cancelText="Cancel"
+          isDestructive={true}
+          requireExactMatch="DELETE_ALL_BOOKINGS"
+        />
+      )}
     </div>
   );
 }

@@ -1,8 +1,5 @@
 // src/types/user.ts
-
-// Enum
 export type UserRole = "ADMIN" | "CUSTOMER" | "AGENT";
-
 
 export interface IUser {
   id: number;

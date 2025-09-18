@@ -2,14 +2,29 @@
 import React from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { User, Mail, Phone, MapPin, Calendar, Shield } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  Calendar,
+  Shield,
+  Crown,
+  CheckCircle2,
+  Clock,
+} from "lucide-react";
 import { IUser } from "@/types/user.types";
 
 type UserProfileHeaderProps = {
   user?: IUser | null;
+  currentUser?: IUser | null;
 };
 
-export function UserProfileHeader({ user }: UserProfileHeaderProps) {
+export function UserProfileHeader({
+  user,
+  currentUser,
+}: UserProfileHeaderProps) {
   const formatDate = (dateString?: string) => {
     if (!dateString) return "N/A";
     const date = new Date(dateString);
@@ -22,21 +37,35 @@ export function UserProfileHeader({ user }: UserProfileHeaderProps) {
         });
   };
 
-  const getRoleColor = (role?: string) => {
+  const getRoleConfig = (role?: string) => {
     switch (role) {
       case "ADMIN":
-        return "bg-destructive/10 text-destructive border-destructive/20";
-      case "USER":
-        return "bg-chart-2/10 text-chart-2 border-chart-2/20";
-      case "MODERATOR":
-        return "bg-chart-4/10 text-chart-4 border-chart-4/20";
+        return {
+          color:
+            "bg-gradient-to-r from-red-500/10 to-pink-500/10 text-red-600 border-red-200",
+          icon: Crown,
+          label: "Admin",
+        };
+      case "AGENT":
+        return {
+          color:
+            "bg-gradient-to-r from-blue-500/10 to-indigo-500/10 text-blue-600 border-blue-200",
+          icon: Shield,
+          label: "Agent",
+        };
+      case "CUSTOMER":
       default:
-        return "bg-muted text-muted-foreground border-border";
+        return {
+          color:
+            "bg-gradient-to-r from-emerald-500/10 to-teal-500/10 text-emerald-600 border-emerald-200",
+          icon: User,
+          label: "Customer",
+        };
     }
   };
 
   const getUserInitials = (name?: string) => {
-    if (!name) return "NA";
+    if (!name) return "U";
     return name
       .split(" ")
       .map((n) => n[0])
@@ -45,129 +74,190 @@ export function UserProfileHeader({ user }: UserProfileHeaderProps) {
       .toUpperCase();
   };
 
+  const isAdmin = currentUser?.role === "ADMIN";
+  const isViewingOwnProfile = currentUser?.id === user?.id;
+
   if (!user) {
     return (
-      <div className="container mx-auto bg-card rounded-2xl p-6 shadow-sm border border-border text-center text-muted-foreground">
-        No user data available
-      </div>
+      <Card className="w-full rounded-b-none">
+        <CardContent className="flex items-center justify-center p-4 lg:p-8">
+          <div className="text-center space-y-2">
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <User className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-medium text-muted-foreground">
+              No user data available
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Please check back later or contact support.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
+  const roleConfig = getRoleConfig(user.role);
+  const RoleIcon = roleConfig.icon;
+
   return (
-    <div className="container mx-auto bg-card rounded-2xl p-4 lg:p-8 shadow-sm border border-border hover:shadow-md transition-shadow duration-200">
-      <div className="flex flex-col lg:flex-row gap-8">
-        {/* Avatar */}
-        <div className="flex-shrink-0 mx-auto lg:mx-0">
-          <div className="relative">
-            <Avatar className="h-36 w-36 rounded-full shadow-lg ring-4 ring-background">
-              <AvatarImage
-                src={user.profilePicture || undefined}
-                alt={`${user.name ?? "User"} profile picture`}
-                className="object-cover rounded-full"
-              />
-              <AvatarFallback className="rounded-full bg-gradient-to-br from-primary to-chart-1 text-primary-foreground text-2xl font-bold flex items-center justify-center">
-                {getUserInitials(user.name)}
-              </AvatarFallback>
-            </Avatar>
-            {/* Online status indicator */}
-            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-chart-4 rounded-full border-[3px] border-background shadow-sm"></div>
-          </div>
+    <Card className="space-y-4 container  mx-auto shadow-lg border-0 bg-gradient-to-br from-background to-muted/20 rounded-b-none">
+      <CardContent className="p-0">
+        {/* Header Banner */}
+        <div
+          className="h-32 bg-cover bg-center relative overflow-hidden"
+          style={{ backgroundImage: "url('/assets/hero-travel.jpg')" }}
+        >
+          <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
         </div>
 
-        {/* User Info */}
-        <div className="flex-1 min-w-0">
-          <div className="text-center lg:text-left">
-            {/* Name and Role Badge */}
-            <div className="flex flex-col lg:flex-row lg:items-center lg:gap-4 mb-3">
-              <h1 className="text-2xl font-bold text-foreground mb-2 lg:mb-0">
-                {user.name ?? "Unknown User"}
-              </h1>
-              <Badge
-                variant="outline"
-                className={`w-fit mx-auto lg:mx-0 ${getRoleColor(user.role)}`}
-              >
-                <Shield className="w-3 h-3 mr-1.5" />
-                {user.role ?? "N/A"}
-              </Badge>
-            </div>
+        {/* Main Content */}
+        <div className="relative px-6 py-6">
+          <div className="flex flex-col lg:flex-row gap-6">
+            {/* Avatar Section */}
+            <div className="flex-shrink-0 mx-auto lg:mx-0">
+              <div className="relative">
+                <Avatar className="h-32 w-32 border-4 border-background shadow-xl">
+                  <AvatarImage
+                    src={user.profilePicture || undefined}
+                    alt={`${user.name ?? "User"} profile picture`}
+                    className="object-cover"
+                  />
+                  <AvatarFallback className="bg-gradient-to-br from-primary to-primary/70 text-primary-foreground text-2xl font-bold">
+                    {getUserInitials(user.name)}
+                  </AvatarFallback>
+                </Avatar>
 
-            {/* Contact Information Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <div className="flex items-center gap-3 text-foreground bg-muted rounded-lg p-3">
-                <div className="flex-shrink-0 w-8 h-8 bg-chart-2/20 rounded-lg flex items-center justify-center">
-                  <Mail className="w-4 h-4 text-chart-2" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-foreground">Email</p>
-                  <p className="text-sm text-muted-foreground truncate">
-                    {user.email ?? "N/A"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 text-foreground bg-muted rounded-lg p-3">
-                <div className="flex-shrink-0 w-8 h-8 bg-chart-4/20 rounded-lg flex items-center justify-center">
-                  <Phone className="w-4 h-4 text-chart-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-foreground">Phone</p>
-                  <p className="text-sm text-muted-foreground">
-                    {user.phone ?? "N/A"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 text-foreground bg-muted rounded-lg p-3">
-                <div className="flex-shrink-0 w-8 h-8 bg-chart-5/20 rounded-lg flex items-center justify-center">
-                  <MapPin className="w-4 h-4 text-chart-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-foreground">Address</p>
-                  <p className="text-sm text-muted-foreground">
-                    {user.address ?? "N/A"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 text-foreground bg-muted rounded-lg p-3">
-                <div className="flex-shrink-0 w-8 h-8 bg-chart-3/20 rounded-lg flex items-center justify-center">
-                  <Calendar className="w-4 h-4 text-chart-3" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-foreground">Joined</p>
-                  <p className="text-sm text-muted-foreground">
-                    {formatDate(user.createdAt)}
-                  </p>
+                {/* Status Indicator */}
+                <div className="absolute -bottom-1 -right-1 flex items-center justify-center">
+                  <div className="w-8 h-8 bg-emerald-500 rounded-full border-4 border-background shadow-lg flex items-center justify-center">
+                    <div className="w-2 h-2 bg-white rounded-full"></div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Status Badges */}
-            <div className="flex flex-wrap gap-2 justify-center lg:justify-start mb-4">
-              <Badge
-                variant="outline"
-                className="bg-chart-4/10 text-chart-4 border-chart-4/20"
-              >
-                <div className="w-1.5 h-1.5 bg-chart-4 rounded-full mr-1.5"></div>
-                Active
-              </Badge>
-              <Badge
-                variant="outline"
-                className="bg-chart-2/10 text-chart-2 border-chart-2/20"
-              >
-                <User className="w-3 h-3 mr-1" />
-                Verified User
-              </Badge>
-            </div>
+            {/* User Information */}
+            <div className="flex-1 min-w-0 space-y-6">
+              {/* Name and Role */}
+              <div className="text-center lg:text-left space-y-3">
+                <div className="space-y-2">
+                  <h1 className="text-3xl font-bold text-foreground tracking-tight">
+                    {user.name ?? "Unknown User"}
+                  </h1>
+                  {(isAdmin || isViewingOwnProfile) && (
+                    <Badge
+                      variant="outline"
+                      className={`${roleConfig.color} font-medium`}
+                    >
+                      <RoleIcon className="w-3 h-3 mr-1.5" />
+                      {roleConfig.label}
+                    </Badge>
+                  )}
+                </div>
+              </div>
 
-            {/* Last Updated */}
-            <div className="text-xs text-muted-foreground border-t border-border pt-4">
-              Last updated: {formatDate(user.updatedAt)}
+              {/* Contact Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="group">
+                  <div className="flex items-center gap-3 p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors">
+                    <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
+                      <Mail className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Email Address
+                      </p>
+                      <p className="text-base font-medium text-foreground truncate">
+                        {user.email ?? "Not provided"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="group">
+                  <div className="flex items-center gap-3 p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors">
+                    <div className="w-10 h-10 bg-emerald-500/10 rounded-lg flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
+                      <Phone className="w-5 h-5 text-emerald-600" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Phone Number
+                      </p>
+                      <p className="text-base font-medium text-foreground">
+                        {user.phone ?? "Not provided"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="group">
+                  <div className="flex items-center gap-3 p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors">
+                    <div className="w-10 h-10 bg-orange-500/10 rounded-lg flex items-center justify-center group-hover:bg-orange-500/20 transition-colors">
+                      <MapPin className="w-5 h-5 text-orange-600" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Location
+                      </p>
+                      <p className="text-base font-medium text-foreground">
+                        {user.address ?? "Not provided"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="group">
+                  <div className="flex items-center gap-3 p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors">
+                    <div className="w-10 h-10 bg-purple-500/10 rounded-lg flex items-center justify-center group-hover:bg-purple-500/20 transition-colors">
+                      <Calendar className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Member Since
+                      </p>
+                      <p className="text-base font-medium text-foreground">
+                        {formatDate(user.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Badges - Only show to admins or own profile */}
+              {(isAdmin || isViewingOwnProfile) && (
+                <div className="flex flex-wrap gap-2 justify-center lg:justify-start">
+                  <Badge
+                    variant="outline"
+                    className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                  >
+                    <CheckCircle2 className="w-3 h-3 mr-1.5" />
+                    Active Account
+                  </Badge>
+                  <Badge
+                    variant="outline"
+                    className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                  >
+                    <Shield className="w-3 h-3 mr-1.5" />
+                    Verified
+                  </Badge>
+                </div>
+              )}
+
+              {/* Admin-only information */}
+              {isAdmin && (
+                <div className="pt-4 border-t border-border">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Clock className="w-3 h-3" />
+                    <span>Last updated: {formatDate(user.updatedAt)}</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 

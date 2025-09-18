@@ -1,6 +1,8 @@
+// src/components/users/table/UserActionsDropdown.tsx
 "use client";
 import * as React from "react";
-import { MoreHorizontal, Trash2, Shield } from "lucide-react";
+import Link from "next/link";
+import { MoreHorizontal, Trash2, Shield, User } from "lucide-react";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -76,6 +78,19 @@ export function UserActionsDropdown({ user }: UserActionsDropdownProps) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+
+          {/* View User Details */}
+          <DropdownMenuItem asChild>
+            <Link
+              href={`/dashboard/users/${user.id}/user-profile`}
+              className="hover:cursor-pointer"
+            >
+              <User className="mr-2 h-4 w-4" />
+              View Details
+            </Link>
+          </DropdownMenuItem>
+
           <DropdownMenuSeparator />
 
           <DropdownMenuItem

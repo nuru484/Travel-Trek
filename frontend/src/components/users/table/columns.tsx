@@ -1,3 +1,4 @@
+// src/components/users/table/columns.tsx
 "use client";
 import * as React from "react";
 import { ColumnDef } from "@tanstack/react-table";

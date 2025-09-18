@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSelector } from "react-redux";
+import { RootState } from "../redux/store";
 import {
   MapPin,
   Plane,
@@ -12,7 +13,6 @@ import {
   LayoutDashboard,
   Home,
 } from "lucide-react";
-
 import {
   Sidebar,
   SidebarContent,
@@ -23,7 +23,6 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "./ui/sidebar";
-import { RootState } from "../redux/store";
 
 // Navigation items for admins and customers
 const adminNavigationItems = [
@@ -105,7 +104,6 @@ const customerNavigationItems = [
 export default function DashboardSidebar() {
   const pathname = usePathname();
   const user = useSelector((state: RootState) => state.auth.user);
-
   const isAdmin = user?.role === "ADMIN";
 
   const navigationItems = isAdmin

@@ -1,4 +1,4 @@
-// src/components/users/table/TableFilters.tsx
+// src/components/bookings/table/TableFilters.tsx
 "use client";
 import * as React from "react";
 import { Table } from "@tanstack/react-table";
@@ -19,14 +19,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { IUser, IUsersQueryParams, UserRole } from "@/types/user.types";
+import { IBooking, IBookingsQueryParams } from "@/types/booking.types";
 import { useDebounce } from "@/hooks/useDebounce";
 
 interface ITableFiltersProps {
-  table: Table<IUser>;
-  filters: Omit<IUsersQueryParams, "page" | "limit">;
+  table: Table<IBooking>;
+  filters: Omit<IBookingsQueryParams, "page" | "limit">;
   onFiltersChange: (
-    filters: Partial<Omit<IUsersQueryParams, "page" | "limit">>
+    filters: Partial<Omit<IBookingsQueryParams, "page" | "limit">>
   ) => void;
   totalCount: number;
   onDeleteSelected: () => void;
@@ -56,31 +56,33 @@ export function TableFilters({
   }, [debouncedSearch, filters.search, onFiltersChange]);
 
   // Convert filter values to display values
-  const getRoleFilterValue = () => {
-    if (filters.role === "ADMIN") return "admin";
-    if (filters.role === "AGENT") return "agent";
-    if (filters.role === "CUSTOMER") return "customer";
+  const getStatusFilterValue = () => {
+    if (filters.status === "PENDING") return "pending";
+    if (filters.status === "CONFIRMED") return "confirmed";
+    if (filters.status === "CANCELLED") return "cancelled";
+    if (filters.status === "COMPLETED") return "completed";
     return "all";
   };
 
-  const handleRoleFilterChange = (value: string) => {
-    let role: UserRole | undefined;
-    if (value === "admin") role = "ADMIN";
-    else if (value === "agent") role = "AGENT";
-    else if (value === "customer") role = "CUSTOMER";
-    else role = undefined;
+  const handleStatusFilterChange = (value: string) => {
+    let status: IBooking["status"] | undefined;
+    if (value === "pending") status = "PENDING";
+    else if (value === "confirmed") status = "CONFIRMED";
+    else if (value === "cancelled") status = "CANCELLED";
+    else if (value === "completed") status = "COMPLETED";
+    else status = undefined;
 
-    onFiltersChange({ role });
+    onFiltersChange({ status });
   };
 
   const hasFiltersApplied =
-    filters.role !== undefined || filters.search !== undefined;
+    filters.status !== undefined || filters.search !== undefined;
 
   const clearFilters = () => {
     setSearchInput("");
     onFiltersChange({
       search: undefined,
-      role: undefined,
+      status: undefined,
     });
   };
 
@@ -107,7 +109,7 @@ export function TableFilters({
             </div>
           ) : (
             <div className="text-sm text-muted-foreground">
-              {totalCount} total users
+              {totalCount} total bookings
             </div>
           )}
         </div>
@@ -118,7 +120,7 @@ export function TableFilters({
         {/* Search Input */}
         <div className="flex-1 min-w-0">
           <Input
-            placeholder="Search users by name or email..."
+            placeholder="Search bookings by customer name, email, or service..."
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
             className="w-full"
@@ -127,19 +129,20 @@ export function TableFilters({
 
         {/* Filter Controls */}
         <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
-          {/* Role Filter */}
+          {/* Status Filter */}
           <Select
-            value={getRoleFilterValue()}
-            onValueChange={handleRoleFilterChange}
+            value={getStatusFilterValue()}
+            onValueChange={handleStatusFilterChange}
           >
             <SelectTrigger className="w-full sm:w-[140px]">
-              <SelectValue placeholder="Role" />
+              <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Roles</SelectItem>
-              <SelectItem value="admin">Admin</SelectItem>
-              <SelectItem value="agent">Agent</SelectItem>
-              <SelectItem value="customer">Customer</SelectItem>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="confirmed">Confirmed</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
             </SelectContent>
           </Select>
 
@@ -209,11 +212,11 @@ export function TableFilters({
               </button>
             </Badge>
           )}
-          {filters.role !== undefined && (
+          {filters.status !== undefined && (
             <Badge variant="secondary" className="gap-2">
-              Role: {filters.role}
+              Status: {filters.status}
               <button
-                onClick={() => onFiltersChange({ role: undefined })}
+                onClick={() => onFiltersChange({ status: undefined })}
                 className="ml-1 hover:bg-muted-foreground/20 rounded-full p-0.5"
               >
                 ×
