@@ -165,7 +165,7 @@ model Hotel {
   phone         String?
   photo         String?
   starRating    Int         @default(3)
-  amenities     String[] // Array of amenities (e.g., ["WiFi", "Pool", "Gym"])
+  amenities     String[]
   destination   Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   destinationId Int
   createdAt     DateTime    @default(now())
@@ -189,7 +189,7 @@ model Room {
   capacity    Int
   photo       String?
   description String?
-  amenities   String[] // Array of amenities (e.g., ["WiFi", "AC", "TV"])
+  amenities   String[]
   available   Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -214,9 +214,9 @@ model Flight {
   destinationId  Int
   price          Float
   photo          String?
-  flightClass    String // e.g., "Economy", "Business", "First"
-  duration       Int // Duration in minutes
-  stops          Int         @default(0) // Number of stops (0 for direct flights)
+  flightClass    String 
+  duration       Int 
+  stops          Int         @default(0) 
   seatsAvailable Int
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt

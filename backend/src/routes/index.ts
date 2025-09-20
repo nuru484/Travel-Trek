@@ -25,21 +25,28 @@ routes.use(authenticateJWT);
 
 // Tour routes
 routes.use(tourRoutes);
+
 // Destination routes
 routes.use(destinationRoutes);
+
 // Hotel routes
 routes.use(hotelRoutes);
+
 // Flight routes
 routes.use(flightRoutes);
+
 // Booking routes
 routes.use(bookingRoutes);
 
 // Room routes
 routes.use(roomRoutes);
+
 // Itinerary routes
 routes.use(itineraryRoutes);
+
 // Tour Inclusion routes
 routes.use(tourInclusionRoutes);
+
 // User routes
 routes.use(userRoutes);
 

@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteAllHotels = exports.checkHotelAvailability = exports.getHotelsByDestination = exports.getAllHotels = exports.deleteHotel = exports.updateHotel = exports.getHotel = exports.createHotel = void 0;
+exports.deleteAllHotels = exports.getHotelsByDestination = exports.getAllHotels = exports.deleteHotel = exports.updateHotel = exports.getHotel = exports.createHotel = void 0;
 const express_validator_1 = require("express-validator");
 const prismaClient_1 = __importDefault(require("../config/prismaClient"));
 const validation_1 = __importDefault(require("../middlewares/validation"));
@@ -19,13 +19,6 @@ const hotel_validation_1 = require("../validations/hotel-validation");
  */
 const handleCreateHotel = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const { name, description, address, city, country, phone, starRating, amenities, destinationId, } = req.body;
-    const user = req.user;
-    if (!user) {
-        throw new error_handler_1.UnauthorizedError('Unauthorized, no user provided');
-    }
-    if (user.role !== 'ADMIN' && user.role !== 'AGENT') {
-        throw new error_handler_1.UnauthorizedError('Only admins and agents can create hotels');
-    }
     // Check if destination exists
     const destination = await prismaClient_1.default.destination.findUnique({
         where: { id: Number(destinationId) },
@@ -61,31 +54,45 @@ const handleCreateHotel = (0, error_handler_1.asyncHandler)(async (req, res, nex
                 select: {
                     id: true,
                     name: true,
+                    description: true,
                     country: true,
                     city: true,
+                },
+            },
+            rooms: {
+                select: {
+                    id: true,
+                    roomType: true,
+                    description: true,
                 },
             },
         },
     });
     const response = {
-        id: hotel.id,
-        name: hotel.name,
-        description: hotel.description,
-        address: hotel.address,
-        city: hotel.city,
-        country: hotel.country,
-        phone: hotel.phone,
-        starRating: hotel.starRating,
-        amenities: hotel.amenities,
-        photo: hotel.photo,
-        destinationId: hotel.destinationId,
-        createdAt: hotel.createdAt,
-        updatedAt: hotel.updatedAt,
-    };
-    res.status(constants_1.HTTP_STATUS_CODES.CREATED).json({
         message: 'Hotel created successfully',
-        data: response,
-    });
+        data: {
+            id: hotel.id,
+            name: hotel.name,
+            description: hotel.description,
+            address: hotel.address,
+            city: hotel.city,
+            country: hotel.country,
+            phone: hotel.phone,
+            starRating: hotel.starRating,
+            amenities: hotel.amenities,
+            photo: hotel.photo,
+            rooms: hotel.rooms,
+            destination: {
+                id: hotel.destination?.id,
+                name: hotel.destination?.name,
+                description: hotel.destination?.description,
+                country: hotel.destination?.country,
+            },
+            createdAt: hotel.createdAt,
+            updatedAt: hotel.updatedAt,
+        },
+    };
+    res.status(constants_1.HTTP_STATUS_CODES.CREATED).json(response);
 });
 /**
  * Get a single hotel by ID
@@ -99,6 +106,7 @@ const handleGetHotel = (0, error_handler_1.asyncHandler)(async (req, res, next) 
                 select: {
                     id: true,
                     name: true,
+                    description: true,
                     country: true,
                     city: true,
                 },
@@ -107,9 +115,7 @@ const handleGetHotel = (0, error_handler_1.asyncHandler)(async (req, res, next) 
                 select: {
                     id: true,
                     roomType: true,
-                    price: true,
-                    capacity: true,
-                    available: true,
+                    description: true,
                 },
             },
         },
@@ -118,24 +124,25 @@ const handleGetHotel = (0, error_handler_1.asyncHandler)(async (req, res, next) 
         throw new error_handler_1.NotFoundError('Hotel not found');
     }
     const response = {
-        id: hotel.id,
-        name: hotel.name,
-        description: hotel.description,
-        address: hotel.address,
-        city: hotel.city,
-        country: hotel.country,
-        phone: hotel.phone,
-        starRating: hotel.starRating,
-        amenities: hotel.amenities,
-        photo: hotel.photo,
-        destinationId: hotel.destinationId,
-        createdAt: hotel.createdAt,
-        updatedAt: hotel.updatedAt,
-    };
-    res.status(constants_1.HTTP_STATUS_CODES.OK).json({
         message: 'Hotel retrieved successfully',
-        data: response,
-    });
+        data: {
+            id: hotel.id,
+            name: hotel.name,
+            description: hotel.description,
+            address: hotel.address,
+            city: hotel.city,
+            country: hotel.country,
+            phone: hotel.phone,
+            starRating: hotel.starRating,
+            amenities: hotel.amenities,
+            photo: hotel.photo,
+            rooms: hotel.rooms,
+            destination: hotel.destination,
+            createdAt: hotel.createdAt,
+            updatedAt: hotel.updatedAt,
+        },
+    };
+    res.status(constants_1.HTTP_STATUS_CODES.OK).json(response);
 });
 /**
  * Update a hotel with photo handling
@@ -143,13 +150,6 @@ const handleGetHotel = (0, error_handler_1.asyncHandler)(async (req, res, next) 
 const handleUpdateHotel = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const { id } = req.params;
     const { name, description, address, city, country, phone, starRating, amenities, destinationId, } = req.body;
-    const user = req.user;
-    if (!user) {
-        throw new error_handler_1.UnauthorizedError('Unauthorized, no user provided');
-    }
-    if (user.role !== 'ADMIN' && user.role !== 'AGENT') {
-        throw new error_handler_1.UnauthorizedError('Only admins and agents can update hotels');
-    }
     if (!id) {
         throw new error_handler_1.NotFoundError('Hotel ID is required');
     }
@@ -238,6 +238,24 @@ const handleUpdateHotel = (0, error_handler_1.asyncHandler)(async (req, res, nex
         const updatedHotel = await prismaClient_1.default.hotel.update({
             where: { id: Number(id) },
             data: updateData,
+            include: {
+                destination: {
+                    select: {
+                        id: true,
+                        name: true,
+                        description: true,
+                        country: true,
+                        city: true,
+                    },
+                },
+                rooms: {
+                    select: {
+                        id: true,
+                        roomType: true,
+                        description: true,
+                    },
+                },
+            },
         });
         // If we successfully updated with a new photo, clean up the old one
         if (uploadedImageUrl && oldPhoto && oldPhoto !== uploadedImageUrl) {
@@ -249,24 +267,25 @@ const handleUpdateHotel = (0, error_handler_1.asyncHandler)(async (req, res, nex
             }
         }
         const response = {
-            id: updatedHotel.id,
-            name: updatedHotel.name,
-            description: updatedHotel.description,
-            address: updatedHotel.address,
-            city: updatedHotel.city,
-            country: updatedHotel.country,
-            phone: updatedHotel.phone,
-            starRating: updatedHotel.starRating,
-            amenities: updatedHotel.amenities,
-            photo: updatedHotel.photo,
-            destinationId: updatedHotel.destinationId,
-            createdAt: updatedHotel.createdAt,
-            updatedAt: updatedHotel.updatedAt,
-        };
-        res.status(constants_1.HTTP_STATUS_CODES.OK).json({
             message: 'Hotel updated successfully',
-            data: response,
-        });
+            data: {
+                id: updatedHotel.id,
+                name: updatedHotel.name,
+                description: updatedHotel.description,
+                address: updatedHotel.address,
+                city: updatedHotel.city,
+                country: updatedHotel.country,
+                phone: updatedHotel.phone,
+                starRating: updatedHotel.starRating,
+                amenities: updatedHotel.amenities,
+                photo: updatedHotel.photo,
+                rooms: updatedHotel.rooms,
+                destination: updatedHotel.destination,
+                createdAt: updatedHotel.createdAt,
+                updatedAt: updatedHotel.updatedAt,
+            },
+        };
+        res.status(constants_1.HTTP_STATUS_CODES.OK).json(response);
     }
     catch (error) {
         // If Cloudinary upload succeeded but DB update failed, clean up uploaded image
@@ -286,13 +305,6 @@ const handleUpdateHotel = (0, error_handler_1.asyncHandler)(async (req, res, nex
  */
 const handleDeleteHotel = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const { id } = req.params;
-    const user = req.user;
-    if (!user) {
-        throw new error_handler_1.UnauthorizedError('Unauthorized, no user provided');
-    }
-    if (user.role !== 'ADMIN' && user.role !== 'AGENT') {
-        throw new error_handler_1.UnauthorizedError('Only admins and agents can delete hotels');
-    }
     if (!id) {
         throw new error_handler_1.NotFoundError('Hotel ID is required');
     }
@@ -323,28 +335,10 @@ const handleDeleteHotel = (0, error_handler_1.asyncHandler)(async (req, res, nex
  * Get all hotels with pagination and filtering
  */
 const handleGetAllHotels = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
-    // Extract search and filter parameters
-    const search = req.query.search;
-    const destinationId = req.query.destinationId
-        ? parseInt(req.query.destinationId)
-        : undefined;
-    const city = req.query.city;
-    const country = req.query.country;
-    const starRating = req.query.starRating
-        ? parseInt(req.query.starRating)
-        : undefined;
-    const minStarRating = req.query.minStarRating
-        ? parseInt(req.query.minStarRating)
-        : undefined;
-    const maxStarRating = req.query.maxStarRating
-        ? parseInt(req.query.maxStarRating)
-        : undefined;
-    const amenities = req.query.amenities;
-    const sortBy = req.query.sortBy || 'createdAt';
-    const sortOrder = req.query.sortOrder || 'desc';
+    const { page = 1, limit = 10, search, destinationId, city, country, starRating, minStarRating, maxStarRating, amenities, sortBy = 'createdAt', sortOrder = 'desc', } = req.query;
+    const pageNum = Number(page);
+    const limitNum = Number(limit);
+    const skip = (pageNum - 1) * limitNum;
     // Build where clause for filtering
     const where = {};
     if (search) {
@@ -357,7 +351,7 @@ const handleGetAllHotels = (0, error_handler_1.asyncHandler)(async (req, res, ne
         ];
     }
     if (destinationId) {
-        where.destinationId = destinationId;
+        where.destinationId = Number(destinationId);
     }
     if (city) {
         where.city = { contains: city, mode: 'insensitive' };
@@ -366,14 +360,14 @@ const handleGetAllHotels = (0, error_handler_1.asyncHandler)(async (req, res, ne
         where.country = { contains: country, mode: 'insensitive' };
     }
     if (starRating) {
-        where.starRating = starRating;
+        where.starRating = Number(starRating);
     }
     if (minStarRating || maxStarRating) {
         where.starRating = {};
         if (minStarRating)
-            where.starRating.gte = minStarRating;
+            where.starRating.gte = Number(minStarRating);
         if (maxStarRating)
-            where.starRating.lte = maxStarRating;
+            where.starRating.lte = Number(maxStarRating);
     }
     if (amenities) {
         const amenitiesArray = Array.isArray(amenities) ? amenities : [amenities];
@@ -388,22 +382,30 @@ const handleGetAllHotels = (0, error_handler_1.asyncHandler)(async (req, res, ne
         prismaClient_1.default.hotel.findMany({
             where,
             skip,
-            take: limit,
+            take: limitNum,
             orderBy,
             include: {
                 destination: {
                     select: {
                         id: true,
                         name: true,
+                        description: true,
                         country: true,
                         city: true,
+                    },
+                },
+                rooms: {
+                    select: {
+                        id: true,
+                        roomType: true,
+                        description: true,
                     },
                 },
             },
         }),
         prismaClient_1.default.hotel.count({ where }),
     ]);
-    const response = hotels.map((hotel) => ({
+    const hotelData = hotels.map((hotel) => ({
         id: hotel.id,
         name: hotel.name,
         description: hotel.description,
@@ -414,32 +416,22 @@ const handleGetAllHotels = (0, error_handler_1.asyncHandler)(async (req, res, ne
         starRating: hotel.starRating,
         amenities: hotel.amenities,
         photo: hotel.photo,
-        destinationId: hotel.destinationId,
+        rooms: hotel.rooms,
+        destination: hotel.destination,
         createdAt: hotel.createdAt,
         updatedAt: hotel.updatedAt,
     }));
-    res.status(constants_1.HTTP_STATUS_CODES.OK).json({
+    const response = {
         message: 'Hotels retrieved successfully',
-        data: response,
+        data: hotelData,
         meta: {
             total,
-            page,
-            limit,
-            totalPages: Math.ceil(total / limit),
-            filters: {
-                search,
-                destinationId,
-                city,
-                country,
-                starRating,
-                minStarRating,
-                maxStarRating,
-                amenities,
-                sortBy,
-                sortOrder,
-            },
+            page: pageNum,
+            limit: limitNum,
+            totalPages: Math.ceil(total / limitNum),
         },
-    });
+    };
+    res.status(constants_1.HTTP_STATUS_CODES.OK).json(response);
 });
 /**
  * Get hotels by destination
@@ -467,8 +459,16 @@ const handleGetHotelsByDestination = (0, error_handler_1.asyncHandler)(async (re
                     select: {
                         id: true,
                         name: true,
+                        description: true,
                         country: true,
                         city: true,
+                    },
+                },
+                rooms: {
+                    select: {
+                        id: true,
+                        roomType: true,
+                        description: true,
                     },
                 },
             },
@@ -477,7 +477,7 @@ const handleGetHotelsByDestination = (0, error_handler_1.asyncHandler)(async (re
             where: { destinationId: parseInt(destinationId) },
         }),
     ]);
-    const response = hotels.map((hotel) => ({
+    const hotelData = hotels.map((hotel) => ({
         id: hotel.id,
         name: hotel.name,
         description: hotel.description,
@@ -488,93 +488,27 @@ const handleGetHotelsByDestination = (0, error_handler_1.asyncHandler)(async (re
         starRating: hotel.starRating,
         amenities: hotel.amenities,
         photo: hotel.photo,
-        destinationId: hotel.destinationId,
+        rooms: hotel.rooms,
+        destination: hotel.destination,
         createdAt: hotel.createdAt,
         updatedAt: hotel.updatedAt,
     }));
-    res.status(constants_1.HTTP_STATUS_CODES.OK).json({
+    const response = {
         message: 'Hotels retrieved successfully',
-        data: response,
+        data: hotelData,
         meta: {
             total,
             page,
             limit,
             totalPages: Math.ceil(total / limit),
-            destination: {
-                id: destination.id,
-                name: destination.name,
-                country: destination.country,
-                city: destination.city,
-            },
         },
-    });
-});
-/**
- * Check hotel availability
- */
-const handleCheckHotelAvailability = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
-    const { hotelId } = req.params;
-    const { checkIn, checkOut, guests } = req.body;
-    const hotel = await prismaClient_1.default.hotel.findUnique({
-        where: { id: parseInt(hotelId) },
-        include: {
-            rooms: {
-                where: { available: true },
-                select: {
-                    id: true,
-                    roomType: true,
-                    price: true,
-                    capacity: true,
-                    description: true,
-                    amenities: true,
-                    photo: true,
-                },
-            },
-        },
-    });
-    if (!hotel) {
-        throw new error_handler_1.NotFoundError('Hotel not found');
-    }
-    // Filter rooms by guest capacity if specified
-    let availableRooms = hotel.rooms;
-    if (guests) {
-        availableRooms = hotel.rooms.filter((room) => room.capacity >= guests);
-    }
-    // Here you would typically check for existing bookings between checkIn and checkOut dates
-    // For now, we'll return all available rooms that meet the criteria
-    res.status(constants_1.HTTP_STATUS_CODES.OK).json({
-        message: 'Hotel availability checked successfully',
-        data: {
-            hotel: {
-                id: hotel.id,
-                name: hotel.name,
-                address: hotel.address,
-                city: hotel.city,
-                country: hotel.country,
-                starRating: hotel.starRating,
-                amenities: hotel.amenities,
-                photo: hotel.photo,
-            },
-            availableRooms,
-            searchCriteria: {
-                checkIn,
-                checkOut,
-                guests,
-            },
-        },
-    });
+    };
+    res.status(constants_1.HTTP_STATUS_CODES.OK).json(response);
 });
 /**
  * Delete all hotels with photo cleanup
  */
 const handleDeleteAllHotels = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
-    const user = req.user;
-    if (!user) {
-        throw new error_handler_1.UnauthorizedError('Unauthorized, no user provided');
-    }
-    if (user.role !== 'ADMIN') {
-        throw new error_handler_1.UnauthorizedError('Only admins can delete all hotels');
-    }
     // Get all hotels with photos before deleting
     const hotels = await prismaClient_1.default.hotel.findMany({
         select: { photo: true },
@@ -644,12 +578,5 @@ exports.getHotelsByDestination = [
         .isInt({ min: 1 })
         .withMessage('Destination ID must be a positive integer'),
     handleGetHotelsByDestination,
-];
-exports.checkHotelAvailability = [
-    (0, express_validator_1.param)('hotelId')
-        .isInt({ min: 1 })
-        .withMessage('Hotel ID must be a positive integer'),
-    ...validation_1.default.create(hotel_validation_1.hotelAvailabilityValidation),
-    handleCheckHotelAvailability,
 ];
 exports.deleteAllHotels = [handleDeleteAllHotels];

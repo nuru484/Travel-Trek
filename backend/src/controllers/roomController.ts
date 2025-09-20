@@ -35,7 +35,7 @@ const handleCreateRoom = asyncHandler(
 
     // Check if hotel exists
     const hotel = await prisma.hotel.findUnique({
-      where: { id: hotelId },
+      where: { id: Number(hotelId) },
     });
 
     if (!hotel) {
@@ -47,13 +47,13 @@ const handleCreateRoom = asyncHandler(
 
     const room = await prisma.room.create({
       data: {
-        hotel: { connect: { id: hotelId } },
+        hotel: { connect: { id: Number(hotelId) } },
         roomType,
-        price,
-        capacity,
+        price: Number(price),
+        capacity: Number(capacity),
         description,
         photo: typeof photoUrl === 'string' ? photoUrl : null,
-        available: available ?? true,
+        available: Boolean(available) ?? true,
       },
     });
 

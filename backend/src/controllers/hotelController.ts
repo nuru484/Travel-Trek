@@ -9,7 +9,12 @@ import {
   UnauthorizedError,
 } from '../middlewares/error-handler';
 import { HTTP_STATUS_CODES } from '../config/constants';
-import { IHotelInput, IHotelResponse } from 'types/hotel.types';
+import {
+  IHotelInput,
+  IHotelResponse,
+  IHotelsPaginatedResponse,
+  IHotelQueryParams,
+} from 'types/hotel.types';
 import multerUpload from '../config/multer';
 import conditionalCloudinaryUpload from '../middlewares/conditional-cloudinary-upload';
 import { CLOUDINARY_UPLOAD_OPTIONS } from '../config/constants';
@@ -19,7 +24,6 @@ import {
   updateHotelValidation,
   getHotelsValidation,
   hotelPhotoValidation,
-  hotelAvailabilityValidation,
 } from '../validations/hotel-validation';
 
 /**
@@ -42,15 +46,6 @@ const handleCreateHotel = asyncHandler(
       amenities,
       destinationId,
     } = req.body;
-    const user = req.user;
-
-    if (!user) {
-      throw new UnauthorizedError('Unauthorized, no user provided');
-    }
-
-    if (user.role !== 'ADMIN' && user.role !== 'AGENT') {
-      throw new UnauthorizedError('Only admins and agents can create hotels');
-    }
 
     // Check if destination exists
     const destination = await prisma.destination.findUnique({
@@ -89,40 +84,56 @@ const handleCreateHotel = asyncHandler(
         photo: typeof photoUrl === 'string' ? photoUrl : null,
         destination: { connect: { id: Number(destinationId) } },
       },
+
       include: {
         destination: {
           select: {
             id: true,
             name: true,
+            description: true,
             country: true,
             city: true,
+          },
+        },
+        rooms: {
+          select: {
+            id: true,
+            roomType: true,
+            description: true,
           },
         },
       },
     });
 
     const response: IHotelResponse = {
-      id: hotel.id,
-      name: hotel.name,
-      description: hotel.description,
-      address: hotel.address,
-      city: hotel.city,
-      country: hotel.country,
-      phone: hotel.phone,
-      starRating: hotel.starRating,
-      amenities: hotel.amenities,
-      photo: hotel.photo,
-      destinationId: hotel.destinationId,
-      createdAt: hotel.createdAt,
-      updatedAt: hotel.updatedAt,
+      message: 'Hotel created successfully',
+      data: {
+        id: hotel.id,
+        name: hotel.name,
+        description: hotel.description,
+        address: hotel.address,
+        city: hotel.city,
+        country: hotel.country,
+        phone: hotel.phone,
+        starRating: hotel.starRating,
+        amenities: hotel.amenities,
+        photo: hotel.photo,
+        rooms: hotel.rooms,
+        destination: {
+          id: hotel.destination?.id,
+          name: hotel.destination?.name,
+          description: hotel.destination?.description,
+          country: hotel.destination?.country,
+        },
+        createdAt: hotel.createdAt,
+        updatedAt: hotel.updatedAt,
+      },
     };
 
-    res.status(HTTP_STATUS_CODES.CREATED).json({
-      message: 'Hotel created successfully',
-      data: response,
-    });
+    res.status(HTTP_STATUS_CODES.CREATED).json(response);
   },
 );
+
 /**
  * Get a single hotel by ID
  */
@@ -137,6 +148,7 @@ const handleGetHotel = asyncHandler(
           select: {
             id: true,
             name: true,
+            description: true,
             country: true,
             city: true,
           },
@@ -145,9 +157,7 @@ const handleGetHotel = asyncHandler(
           select: {
             id: true,
             roomType: true,
-            price: true,
-            capacity: true,
-            available: true,
+            description: true,
           },
         },
       },
@@ -158,25 +168,26 @@ const handleGetHotel = asyncHandler(
     }
 
     const response: IHotelResponse = {
-      id: hotel.id,
-      name: hotel.name,
-      description: hotel.description,
-      address: hotel.address,
-      city: hotel.city,
-      country: hotel.country,
-      phone: hotel.phone,
-      starRating: hotel.starRating,
-      amenities: hotel.amenities,
-      photo: hotel.photo,
-      destinationId: hotel.destinationId,
-      createdAt: hotel.createdAt,
-      updatedAt: hotel.updatedAt,
+      message: 'Hotel retrieved successfully',
+      data: {
+        id: hotel.id,
+        name: hotel.name,
+        description: hotel.description,
+        address: hotel.address,
+        city: hotel.city,
+        country: hotel.country,
+        phone: hotel.phone,
+        starRating: hotel.starRating,
+        amenities: hotel.amenities,
+        photo: hotel.photo,
+        rooms: hotel.rooms,
+        destination: hotel.destination,
+        createdAt: hotel.createdAt,
+        updatedAt: hotel.updatedAt,
+      },
     };
 
-    res.status(HTTP_STATUS_CODES.OK).json({
-      message: 'Hotel retrieved successfully',
-      data: response,
-    });
+    res.status(HTTP_STATUS_CODES.OK).json(response);
   },
 );
 
@@ -201,15 +212,6 @@ const handleUpdateHotel = asyncHandler(
       amenities,
       destinationId,
     } = req.body;
-    const user = req.user;
-
-    if (!user) {
-      throw new UnauthorizedError('Unauthorized, no user provided');
-    }
-
-    if (user.role !== 'ADMIN' && user.role !== 'AGENT') {
-      throw new UnauthorizedError('Only admins and agents can update hotels');
-    }
 
     if (!id) {
       throw new NotFoundError('Hotel ID is required');
@@ -312,6 +314,24 @@ const handleUpdateHotel = asyncHandler(
       const updatedHotel = await prisma.hotel.update({
         where: { id: Number(id) },
         data: updateData,
+        include: {
+          destination: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              country: true,
+              city: true,
+            },
+          },
+          rooms: {
+            select: {
+              id: true,
+              roomType: true,
+              description: true,
+            },
+          },
+        },
       });
 
       // If we successfully updated with a new photo, clean up the old one
@@ -324,25 +344,26 @@ const handleUpdateHotel = asyncHandler(
       }
 
       const response: IHotelResponse = {
-        id: updatedHotel.id,
-        name: updatedHotel.name,
-        description: updatedHotel.description,
-        address: updatedHotel.address,
-        city: updatedHotel.city,
-        country: updatedHotel.country,
-        phone: updatedHotel.phone,
-        starRating: updatedHotel.starRating,
-        amenities: updatedHotel.amenities,
-        photo: updatedHotel.photo,
-        destinationId: updatedHotel.destinationId,
-        createdAt: updatedHotel.createdAt,
-        updatedAt: updatedHotel.updatedAt,
+        message: 'Hotel updated successfully',
+        data: {
+          id: updatedHotel.id,
+          name: updatedHotel.name,
+          description: updatedHotel.description,
+          address: updatedHotel.address,
+          city: updatedHotel.city,
+          country: updatedHotel.country,
+          phone: updatedHotel.phone,
+          starRating: updatedHotel.starRating,
+          amenities: updatedHotel.amenities,
+          photo: updatedHotel.photo,
+          rooms: updatedHotel.rooms,
+          destination: updatedHotel.destination,
+          createdAt: updatedHotel.createdAt,
+          updatedAt: updatedHotel.updatedAt,
+        },
       };
 
-      res.status(HTTP_STATUS_CODES.OK).json({
-        message: 'Hotel updated successfully',
-        data: response,
-      });
+      res.status(HTTP_STATUS_CODES.OK).json(response);
     } catch (error) {
       // If Cloudinary upload succeeded but DB update failed, clean up uploaded image
       if (uploadedImageUrl) {
@@ -367,15 +388,6 @@ const handleDeleteHotel = asyncHandler(
     next: NextFunction,
   ): Promise<void> => {
     const { id } = req.params;
-    const user = req.user;
-
-    if (!user) {
-      throw new UnauthorizedError('Unauthorized, no user provided');
-    }
-
-    if (user.role !== 'ADMIN' && user.role !== 'AGENT') {
-      throw new UnauthorizedError('Only admins and agents can delete hotels');
-    }
 
     if (!id) {
       throw new NotFoundError('Hotel ID is required');
@@ -417,29 +429,24 @@ const handleDeleteHotel = asyncHandler(
  */
 const handleGetAllHotels = asyncHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const skip = (page - 1) * limit;
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      destinationId,
+      city,
+      country,
+      starRating,
+      minStarRating,
+      maxStarRating,
+      amenities,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+    }: IHotelQueryParams = req.query;
 
-    // Extract search and filter parameters
-    const search = req.query.search as string;
-    const destinationId = req.query.destinationId
-      ? parseInt(req.query.destinationId as string)
-      : undefined;
-    const city = req.query.city as string;
-    const country = req.query.country as string;
-    const starRating = req.query.starRating
-      ? parseInt(req.query.starRating as string)
-      : undefined;
-    const minStarRating = req.query.minStarRating
-      ? parseInt(req.query.minStarRating as string)
-      : undefined;
-    const maxStarRating = req.query.maxStarRating
-      ? parseInt(req.query.maxStarRating as string)
-      : undefined;
-    const amenities = req.query.amenities as string | string[];
-    const sortBy = (req.query.sortBy as string) || 'createdAt';
-    const sortOrder = (req.query.sortOrder as string) || 'desc';
+    const pageNum = Number(page);
+    const limitNum = Number(limit);
+    const skip = (pageNum - 1) * limitNum;
 
     // Build where clause for filtering
     const where: any = {};
@@ -455,7 +462,7 @@ const handleGetAllHotels = asyncHandler(
     }
 
     if (destinationId) {
-      where.destinationId = destinationId;
+      where.destinationId = Number(destinationId);
     }
 
     if (city) {
@@ -467,13 +474,13 @@ const handleGetAllHotels = asyncHandler(
     }
 
     if (starRating) {
-      where.starRating = starRating;
+      where.starRating = Number(starRating);
     }
 
     if (minStarRating || maxStarRating) {
       where.starRating = {};
-      if (minStarRating) where.starRating.gte = minStarRating;
-      if (maxStarRating) where.starRating.lte = maxStarRating;
+      if (minStarRating) where.starRating.gte = Number(minStarRating);
+      if (maxStarRating) where.starRating.lte = Number(maxStarRating);
     }
 
     if (amenities) {
@@ -491,15 +498,23 @@ const handleGetAllHotels = asyncHandler(
       prisma.hotel.findMany({
         where,
         skip,
-        take: limit,
+        take: limitNum,
         orderBy,
         include: {
           destination: {
             select: {
               id: true,
               name: true,
+              description: true,
               country: true,
               city: true,
+            },
+          },
+          rooms: {
+            select: {
+              id: true,
+              roomType: true,
+              description: true,
             },
           },
         },
@@ -507,7 +522,7 @@ const handleGetAllHotels = asyncHandler(
       prisma.hotel.count({ where }),
     ]);
 
-    const response: IHotelResponse[] = hotels.map((hotel) => ({
+    const hotelData = hotels.map((hotel) => ({
       id: hotel.id,
       name: hotel.name,
       description: hotel.description,
@@ -518,33 +533,24 @@ const handleGetAllHotels = asyncHandler(
       starRating: hotel.starRating,
       amenities: hotel.amenities,
       photo: hotel.photo,
-      destinationId: hotel.destinationId,
+      rooms: hotel.rooms,
+      destination: hotel.destination,
       createdAt: hotel.createdAt,
       updatedAt: hotel.updatedAt,
     }));
 
-    res.status(HTTP_STATUS_CODES.OK).json({
+    const response: IHotelsPaginatedResponse = {
       message: 'Hotels retrieved successfully',
-      data: response,
+      data: hotelData,
       meta: {
         total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-        filters: {
-          search,
-          destinationId,
-          city,
-          country,
-          starRating,
-          minStarRating,
-          maxStarRating,
-          amenities,
-          sortBy,
-          sortOrder,
-        },
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(total / limitNum),
       },
-    });
+    };
+
+    res.status(HTTP_STATUS_CODES.OK).json(response);
   },
 );
 
@@ -578,8 +584,16 @@ const handleGetHotelsByDestination = asyncHandler(
             select: {
               id: true,
               name: true,
+              description: true,
               country: true,
               city: true,
+            },
+          },
+          rooms: {
+            select: {
+              id: true,
+              roomType: true,
+              description: true,
             },
           },
         },
@@ -589,7 +603,7 @@ const handleGetHotelsByDestination = asyncHandler(
       }),
     ]);
 
-    const response: IHotelResponse[] = hotels.map((hotel) => ({
+    const hotelData = hotels.map((hotel) => ({
       id: hotel.id,
       name: hotel.name,
       description: hotel.description,
@@ -600,90 +614,24 @@ const handleGetHotelsByDestination = asyncHandler(
       starRating: hotel.starRating,
       amenities: hotel.amenities,
       photo: hotel.photo,
-      destinationId: hotel.destinationId,
+      rooms: hotel.rooms,
+      destination: hotel.destination,
       createdAt: hotel.createdAt,
       updatedAt: hotel.updatedAt,
     }));
 
-    res.status(HTTP_STATUS_CODES.OK).json({
+    const response: IHotelsPaginatedResponse = {
       message: 'Hotels retrieved successfully',
-      data: response,
+      data: hotelData,
       meta: {
         total,
         page,
         limit,
         totalPages: Math.ceil(total / limit),
-        destination: {
-          id: destination.id,
-          name: destination.name,
-          country: destination.country,
-          city: destination.city,
-        },
       },
-    });
-  },
-);
+    };
 
-/**
- * Check hotel availability
- */
-const handleCheckHotelAvailability = asyncHandler(
-  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const { hotelId } = req.params;
-    const { checkIn, checkOut, guests } = req.body;
-
-    const hotel = await prisma.hotel.findUnique({
-      where: { id: parseInt(hotelId) },
-      include: {
-        rooms: {
-          where: { available: true },
-          select: {
-            id: true,
-            roomType: true,
-            price: true,
-            capacity: true,
-            description: true,
-            amenities: true,
-            photo: true,
-          },
-        },
-      },
-    });
-
-    if (!hotel) {
-      throw new NotFoundError('Hotel not found');
-    }
-
-    // Filter rooms by guest capacity if specified
-    let availableRooms = hotel.rooms;
-    if (guests) {
-      availableRooms = hotel.rooms.filter((room) => room.capacity >= guests);
-    }
-
-    // Here you would typically check for existing bookings between checkIn and checkOut dates
-    // For now, we'll return all available rooms that meet the criteria
-
-    res.status(HTTP_STATUS_CODES.OK).json({
-      message: 'Hotel availability checked successfully',
-      data: {
-        hotel: {
-          id: hotel.id,
-          name: hotel.name,
-          address: hotel.address,
-          city: hotel.city,
-          country: hotel.country,
-          starRating: hotel.starRating,
-          amenities: hotel.amenities,
-          photo: hotel.photo,
-        },
-        availableRooms,
-        searchCriteria: {
-          checkIn,
-          checkOut,
-          guests,
-        },
-      },
-    });
+    res.status(HTTP_STATUS_CODES.OK).json(response);
   },
 );
 
@@ -692,16 +640,6 @@ const handleCheckHotelAvailability = asyncHandler(
  */
 const handleDeleteAllHotels = asyncHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const user = req.user;
-
-    if (!user) {
-      throw new UnauthorizedError('Unauthorized, no user provided');
-    }
-
-    if (user.role !== 'ADMIN') {
-      throw new UnauthorizedError('Only admins can delete all hotels');
-    }
-
     // Get all hotels with photos before deleting
     const hotels = await prisma.hotel.findMany({
       select: { photo: true },
@@ -784,14 +722,6 @@ export const getHotelsByDestination: RequestHandler[] = [
     .isInt({ min: 1 })
     .withMessage('Destination ID must be a positive integer'),
   handleGetHotelsByDestination,
-];
-
-export const checkHotelAvailability: RequestHandler[] = [
-  param('hotelId')
-    .isInt({ min: 1 })
-    .withMessage('Hotel ID must be a positive integer'),
-  ...validationMiddleware.create(hotelAvailabilityValidation),
-  handleCheckHotelAvailability,
 ];
 
 export const deleteAllHotels: RequestHandler[] = [handleDeleteAllHotels];

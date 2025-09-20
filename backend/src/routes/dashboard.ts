@@ -5,10 +5,10 @@ import { UserRole } from '../../types/user-profile.types';
 
 const dashboardRoutes = Router();
 
-dashboardRoutes.use(
-  authorizeRole([UserRole.ADMIN, UserRole.AGENT, UserRole.CUSTOMER]),
+dashboardRoutes.get(
+  '/dashboard',
+  authorizeRole([UserRole.CUSTOMER, UserRole.ADMIN, UserRole.AGENT]),
+  getDashboardStats,
 );
-
-dashboardRoutes.get('/dashboard', getDashboardStats);
 
 export default dashboardRoutes;
