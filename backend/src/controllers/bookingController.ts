@@ -129,7 +129,7 @@ const handleCreateBooking = asyncHandler(
         updatedAt: booking.updatedAt,
         type: 'HOTEL',
         hotel: booking.hotel,
-        room: booking.room!,
+        room: booking.room ?? null,
         tour: null,
         flight: null,
       };
@@ -246,7 +246,7 @@ const handleGetBooking = asyncHandler(
         updatedAt: booking.updatedAt,
         type: 'HOTEL',
         hotel: booking.hotel,
-        room: booking.room!,
+        room: booking.room ?? null,
         tour: null,
         flight: null,
       };
@@ -417,7 +417,7 @@ const handleUpdateBooking = asyncHandler(
         updatedAt: updatedBooking.updatedAt,
         type: 'HOTEL',
         hotel: updatedBooking.hotel,
-        room: updatedBooking.room!,
+        room: updatedBooking.room ?? null,
         tour: null,
         flight: null,
       };
@@ -542,7 +542,7 @@ const handleGetUserBookings = asyncHandler(
 
     // Build where clause
     const whereClause: any = {
-      userId: parseInt(userId), // Always filter by userId for this endpoint
+      userId: parseInt(userId),
     };
 
     if (status) {
@@ -666,12 +666,12 @@ const handleGetUserBookings = asyncHandler(
           room: null,
           flight: null,
         };
-      } else if (booking.hotel && booking.room) {
+      } else if (booking.hotel) {
         return {
           ...booking,
           type: 'HOTEL' as const,
           hotel: booking.hotel,
-          room: booking.room,
+          room: booking.room ?? null,
           tour: null,
           flight: null,
         };
@@ -902,7 +902,7 @@ const handleGetAllBookings = asyncHandler(
           updatedAt: booking.updatedAt,
           type: 'HOTEL',
           hotel: booking.hotel,
-          room: booking.room!,
+          room: booking.room ?? null,
           tour: null,
           flight: null,
         };

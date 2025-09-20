@@ -118,7 +118,7 @@ const handleCreateBooking = (0, error_handler_1.asyncHandler)(async (req, res, n
             updatedAt: booking.updatedAt,
             type: 'HOTEL',
             hotel: booking.hotel,
-            room: booking.room,
+            room: booking.room ?? null,
             tour: null,
             flight: null,
         };
@@ -225,7 +225,7 @@ const handleGetBooking = (0, error_handler_1.asyncHandler)(async (req, res, next
             updatedAt: booking.updatedAt,
             type: 'HOTEL',
             hotel: booking.hotel,
-            room: booking.room,
+            room: booking.room ?? null,
             tour: null,
             flight: null,
         };
@@ -384,7 +384,7 @@ const handleUpdateBooking = (0, error_handler_1.asyncHandler)(async (req, res, n
             updatedAt: updatedBooking.updatedAt,
             type: 'HOTEL',
             hotel: updatedBooking.hotel,
-            room: updatedBooking.room,
+            room: updatedBooking.room ?? null,
             tour: null,
             flight: null,
         };
@@ -484,7 +484,7 @@ const handleGetUserBookings = (0, error_handler_1.asyncHandler)(async (req, res)
     const toDate = req.query.toDate;
     // Build where clause
     const whereClause = {
-        userId: parseInt(userId), // Always filter by userId for this endpoint
+        userId: parseInt(userId),
     };
     if (status) {
         whereClause.status = status;
@@ -604,12 +604,12 @@ const handleGetUserBookings = (0, error_handler_1.asyncHandler)(async (req, res)
                 flight: null,
             };
         }
-        else if (booking.hotel && booking.room) {
+        else if (booking.hotel) {
             return {
                 ...booking,
                 type: 'HOTEL',
                 hotel: booking.hotel,
-                room: booking.room,
+                room: booking.room ?? null,
                 tour: null,
                 flight: null,
             };
@@ -824,7 +824,7 @@ const handleGetAllBookings = (0, error_handler_1.asyncHandler)(async (req, res, 
                 updatedAt: booking.updatedAt,
                 type: 'HOTEL',
                 hotel: booking.hotel,
-                room: booking.room,
+                room: booking.room ?? null,
                 tour: null,
                 flight: null,
             };

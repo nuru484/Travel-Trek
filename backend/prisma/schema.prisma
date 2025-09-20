@@ -184,7 +184,7 @@ model Room {
   id          Int      @id @default(autoincrement())
   hotel       Hotel    @relation(fields: [hotelId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   hotelId     Int
-  roomType    String // e.g., "Single", "Double", "Suite"
+  roomType    String
   price       Float
   capacity    Int
   photo       String?

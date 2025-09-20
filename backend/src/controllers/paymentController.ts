@@ -570,8 +570,8 @@ export const getAllPayments = asyncHandler(
       } else if (payment.booking.flight) {
         bookedItem = {
           id: payment.booking.flight.id,
-          name: `${payment.booking.flight.origin} to ${payment.booking.flight.destination}`,
-          description: payment.booking.flight.airline,
+          name: payment.booking.flight.airline,
+          description: `${payment.booking.flight.origin.name} to ${payment.booking.flight.destination.name}`,
           type: 'FLIGHT' as const,
         };
       } else {
@@ -725,8 +725,8 @@ export const getUserPayments = asyncHandler(
       } else if (payment.booking.flight) {
         bookedItem = {
           id: payment.booking.flight.id,
-          name: `${payment.booking.flight.origin} to ${payment.booking.flight.destination}`,
-          description: payment.booking.flight.airline,
+          name: payment.booking.flight.airline,
+          description: `${payment.booking.flight.origin.name} to ${payment.booking.flight.destination.name}`,
           type: 'FLIGHT' as const,
         };
       } else {

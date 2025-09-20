@@ -462,8 +462,8 @@ exports.getAllPayments = (0, error_handler_1.asyncHandler)(async (req, res, next
         else if (payment.booking.flight) {
             bookedItem = {
                 id: payment.booking.flight.id,
-                name: `${payment.booking.flight.origin} to ${payment.booking.flight.destination}`,
-                description: payment.booking.flight.airline,
+                name: payment.booking.flight.airline,
+                description: `${payment.booking.flight.origin.name} to ${payment.booking.flight.destination.name}`,
                 type: 'FLIGHT',
             };
         }
@@ -597,8 +597,8 @@ exports.getUserPayments = (0, error_handler_1.asyncHandler)(async (req, res, nex
         else if (payment.booking.flight) {
             bookedItem = {
                 id: payment.booking.flight.id,
-                name: `${payment.booking.flight.origin} to ${payment.booking.flight.destination}`,
-                description: payment.booking.flight.airline,
+                name: payment.booking.flight.airline,
+                description: `${payment.booking.flight.origin.name} to ${payment.booking.flight.destination.name}`,
                 type: 'FLIGHT',
             };
         }
