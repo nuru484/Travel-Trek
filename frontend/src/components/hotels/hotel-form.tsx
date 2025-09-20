@@ -81,7 +81,7 @@ export function HotelForm({ hotel, mode }: IHotelFormProps) {
       phone: hotel?.phone || null,
       starRating: hotel?.starRating || 3,
       amenities: hotel?.amenities || [],
-      destinationId: hotel?.destinationId || 0,
+      destinationId: hotel?.destination.id || 0,
       hotelPhoto: undefined,
     },
   });

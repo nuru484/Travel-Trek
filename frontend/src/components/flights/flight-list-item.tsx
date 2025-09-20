@@ -54,7 +54,7 @@ export function FlightListItem({ flight }: IFlightListItemProps) {
 
   const isFlightBooked = bookingsData?.data.some(
     (booking) =>
-      booking.flight.id === flight.id &&
+      booking.flight?.id === flight.id &&
       booking.userId === parseInt(user?.id || "0")
   );
 

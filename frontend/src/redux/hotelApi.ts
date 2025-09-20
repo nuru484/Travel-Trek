@@ -1,71 +1,55 @@
+// src/redux/hotelApi.ts
 import { apiSlice } from "./apiSlice";
 import {
   IHotelResponse,
   IHotelsPaginatedResponse,
-  IHotelAvailabilityResponse,
+  IHotelQueryParams,
 } from "@/types/hotel.types";
 import { IApiResponse } from "@/types/api";
 
 export const hotelApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
-    getAllHotels: builder.query<
-      IHotelsPaginatedResponse,
-      {
-        page?: number;
-        limit?: number;
-        search?: string;
-        destinationId?: number;
-        city?: string;
-        country?: string;
-        starRating?: number;
-        minStarRating?: number;
-        maxStarRating?: number;
-        amenities?: string | string[];
-        sortBy?: string;
-        sortOrder?: string;
-      }
-    >({
-      query: ({
-        page = 1,
-        limit = 10,
-        search,
-        destinationId,
-        city,
-        country,
-        starRating,
-        minStarRating,
-        maxStarRating,
-        amenities,
-        sortBy = "createdAt",
-        sortOrder = "desc",
-      }) => {
-        const queryParams = new URLSearchParams({
-          page: page.toString(),
-          limit: limit.toString(),
-          ...(search && { search }),
-          ...(destinationId && { destinationId: destinationId.toString() }),
-          ...(city && { city }),
-          ...(country && { country }),
-          ...(starRating && { starRating: starRating.toString() }),
-          ...(minStarRating && { minStarRating: minStarRating.toString() }),
-          ...(maxStarRating && { maxStarRating: maxStarRating.toString() }),
-          ...(amenities && {
-            amenities: Array.isArray(amenities)
-              ? amenities.join(",")
-              : amenities,
-          }),
-          sortBy,
-          sortOrder,
+    // Create a new hotel
+    createHotel: builder.mutation<IApiResponse<IHotelResponse>, FormData>({
+      query: (formData) => ({
+        url: "/hotels",
+        method: "POST",
+        body: formData,
+      }),
+      invalidatesTags: ["Hotels", "Hotel"],
+    }),
+
+    // Get all hotels (paginated + filters)
+    getAllHotels: builder.query<IHotelsPaginatedResponse, IHotelQueryParams>({
+      query: (params = {}) => {
+        const searchParams = new URLSearchParams();
+
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined && value !== null && value !== "") {
+            if (Array.isArray(value)) {
+              searchParams.append(key, value.join(","));
+            } else {
+              searchParams.append(key, String(value));
+            }
+          }
         });
 
+        const queryString = searchParams.toString();
         return {
-          url: `/hotels?${queryParams.toString()}`,
+          url: `/hotels${queryString ? `?${queryString}` : ""}`,
           method: "GET",
         };
       },
-      providesTags: ["Hotel"],
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.data.map(({ id }) => ({ type: "Hotel" as const, id })),
+              "Hotels",
+            ]
+          : ["Hotels"],
     }),
 
+    // Get a single hotel
     getHotel: builder.query<IHotelResponse, string>({
       query: (id) => ({
         url: `/hotels/${id}`,
@@ -74,15 +58,7 @@ export const hotelApi = apiSlice.injectEndpoints({
       providesTags: (result, error, id) => [{ type: "Hotel", id }],
     }),
 
-    createHotel: builder.mutation<IApiResponse<IHotelResponse>, FormData>({
-      query: (formData) => ({
-        url: "/hotels",
-        method: "POST",
-        body: formData,
-      }),
-      invalidatesTags: ["Hotel"],
-    }),
-
+    // Update a hotel
     updateHotel: builder.mutation<
       IApiResponse<IHotelResponse>,
       { id: string; formData: FormData }
@@ -94,58 +70,72 @@ export const hotelApi = apiSlice.injectEndpoints({
       }),
       invalidatesTags: (result, error, { id }) => [
         { type: "Hotel", id },
+        "Hotels",
         "Hotel",
       ],
     }),
 
-    deleteHotel: builder.mutation<void, string>({
+    // Delete a single hotel
+    deleteHotel: builder.mutation<{ message: string }, string>({
       query: (id) => ({
         url: `/hotels/${id}`,
         method: "DELETE",
       }),
-      invalidatesTags: ["Hotel"],
+      invalidatesTags: (result, error, id) => [
+        { type: "Hotel", id },
+        "Hotels",
+        "Hotel",
+      ],
     }),
 
-    deleteAllHotels: builder.mutation<void, void>({
+    // Delete all hotels
+    deleteAllHotels: builder.mutation<{ message: string }, void>({
       query: () => ({
         url: "/hotels",
         method: "DELETE",
       }),
-      invalidatesTags: ["Hotel"],
+      invalidatesTags: ["Hotels", "Hotel"],
     }),
 
+    // Get hotels by destination
     getHotelsByDestination: builder.query<
       IHotelsPaginatedResponse,
-      { destinationId: string; page?: number; limit?: number }
+      { destinationId: string } & Omit<IHotelQueryParams, "destinationId">
     >({
-      query: ({ destinationId, page = 1, limit = 10 }) => ({
-        url: `/hotels/destination/${destinationId}?page=${page}&limit=${limit}`,
-        method: "GET",
-      }),
-      providesTags: ["Hotel"],
-    }),
+      query: ({ destinationId, ...params }) => {
+        const searchParams = new URLSearchParams({ destinationId });
 
-    checkHotelAvailability: builder.mutation<
-      IHotelAvailabilityResponse,
-      { hotelId: string; checkIn: string; checkOut: string; guests?: number }
-    >({
-      query: ({ hotelId, checkIn, checkOut, guests }) => ({
-        url: `/hotels/${hotelId}/availability`,
-        method: "POST",
-        body: { checkIn, checkOut, guests },
-      }),
-      invalidatesTags: ["Hotel"],
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined && value !== null && value !== "") {
+            if (Array.isArray(value)) {
+              searchParams.append(key, value.join(","));
+            } else {
+              searchParams.append(key, String(value));
+            }
+          }
+        });
+
+        return {
+          url: `/hotels?${searchParams.toString()}`,
+          method: "GET",
+        };
+      },
+      providesTags: ["Hotels"],
     }),
   }),
 });
 
 export const {
+  useCreateHotelMutation,
   useGetAllHotelsQuery,
   useGetHotelQuery,
-  useCreateHotelMutation,
   useUpdateHotelMutation,
   useDeleteHotelMutation,
   useDeleteAllHotelsMutation,
   useGetHotelsByDestinationQuery,
-  useCheckHotelAvailabilityMutation,
+
+  // Lazy hooks
+  useLazyGetAllHotelsQuery,
+  useLazyGetHotelQuery,
+  useLazyGetHotelsByDestinationQuery,
 } = hotelApi;

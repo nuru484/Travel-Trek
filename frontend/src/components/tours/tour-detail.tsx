@@ -52,7 +52,7 @@ export function TourDetail({ tour }: ITourDetailProps) {
 
   const userBooking = bookingsData?.data.find(
     (booking) =>
-      booking.tour.id === tour.id &&
+      booking.tour?.id === tour.id &&
       booking.userId === parseInt(user?.id || "0")
   );
   const isTourBooked = !!userBooking;

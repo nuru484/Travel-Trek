@@ -50,7 +50,7 @@ export function TourListItem({ tour }: ITourListItemProps) {
 
   const isTourBooked = bookingsData?.data.some(
     (booking) =>
-      booking.tour.id === tour.id &&
+      booking.tour?.id === tour.id &&
       booking.userId === parseInt(user?.id || "0")
   );
 

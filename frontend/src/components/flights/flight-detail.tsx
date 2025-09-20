@@ -58,7 +58,7 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
 
   const userBooking = bookingsData?.data.find(
     (booking) =>
-      booking.flight.id === flight.id &&
+      booking.flight?.id === flight.id &&
       booking.userId === parseInt(user?.id || "0")
   );
 

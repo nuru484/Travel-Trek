@@ -1,3 +1,33 @@
+export interface IHotelInput {
+  name: string;
+  description?: string | null;
+  address: string;
+  city: string;
+  country: string;
+  phone?: string | null;
+  starRating?: number;
+  amenities: string[];
+  destinationId: number;
+  hotelPhoto?: string | null;
+}
+
+export interface IHotelUpdateInput extends Partial<IHotelInput> {
+  id: number;
+}
+
+export interface IHotelRoom {
+  id: number;
+  roomType: string;
+  description: string | null;
+}
+
+export interface IHotelDestination {
+  id: number;
+  name: string;
+  description: string | null;
+  country: string;
+}
+
 export interface IHotel {
   id: number;
   name: string;
@@ -5,13 +35,14 @@ export interface IHotel {
   address: string;
   city: string;
   country: string;
+  rooms: IHotelRoom[] | null;
   phone: string | null;
   starRating: number;
   amenities: string[];
   photo: string | null;
-  destinationId: number;
-  createdAt: string;
-  updatedAt: string;
+  destination: IHotelDestination | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface IHotelResponse {
@@ -27,64 +58,20 @@ export interface IHotelsPaginatedResponse {
     page: number;
     limit: number;
     totalPages: number;
-    filters?: {
-      search?: string;
-      destinationId?: number;
-      city?: string;
-      country?: string;
-      starRating?: number;
-      minStarRating?: number;
-      maxStarRating?: number;
-      amenities?: string | string[];
-      sortBy?: string;
-      sortOrder?: string;
-    };
   };
 }
 
-export interface IHotelInput {
-  name: string;
-  description?: string | null;
-  address: string;
-  city: string;
-  country: string;
-  phone?: string | null;
+export interface IHotelQueryParams {
+  page?: number;
+  limit?: number;
+  destinationId?: number;
+  city?: string;
+  search?: string;
+  country?: string;
   starRating?: number;
-  amenities?: string[];
-  destinationId: number;
-  hotelPhoto?: string | File;
-}
-
-export interface IUpdateHotelInput extends Partial<IHotelInput> {
-  id: string;
-}
-
-export interface IHotelAvailabilityResponse {
-  message: string;
-  data: {
-    hotel: {
-      id: number;
-      name: string;
-      address: string;
-      city: string;
-      country: string;
-      starRating: number;
-      amenities: string[];
-      photo: string | null;
-    };
-    availableRooms: {
-      id: number;
-      roomType: string;
-      price: number;
-      capacity: number;
-      description: string | null;
-      amenities: string[];
-      photo: string | null;
-    }[];
-    searchCriteria: {
-      checkIn: string;
-      checkOut: string;
-      guests?: number;
-    };
-  };
+  minStarRating?: number;
+  maxStarRating?: number;
+  amenities?: string | string[];
+  sortBy?: string | "createdAt";
+  sortOrder?: string | "desc";
 }

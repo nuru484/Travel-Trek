@@ -4,6 +4,7 @@ export const apiSliceTags = [
   "Flight",
   "Destination",
   "Hotel",
+  "Hotels",
   "Tour",
   "Booking",
   "Bookings",
