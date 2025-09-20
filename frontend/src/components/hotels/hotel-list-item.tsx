@@ -5,7 +5,7 @@ import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 import { useDeleteHotelMutation } from "@/redux/hotelApi";
 import {
-  useGetAllBookingsQuery,
+  useGetAllUserBookingsQuery,
   useCreateBookingMutation,
 } from "@/redux/bookingApi";
 import { useGetAllDestinationsQuery } from "@/redux/destinationApi";
@@ -38,13 +38,14 @@ export function HotelListItem({ hotel }: IHotelListItemProps) {
   const destinations = destinationsData?.data || [];
 
   // Fetch user's bookings to check if this hotel is already booked
-  const { data: bookingsData } = useGetAllBookingsQuery(
-    { page: 1, limit: 100 },
+  const { data: bookingsData } = useGetAllUserBookingsQuery(
+    { userId: user.id, params: { page: 1, limit: 1000 } },
     { skip: !user }
   );
+
   const isHotelBooked = bookingsData?.data.some(
     (booking) =>
-      booking.hotelId === hotel.id &&
+      booking.hotel.id === hotel.id &&
       booking.userId === parseInt(user?.id || "0")
   );
 

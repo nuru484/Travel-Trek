@@ -1,3 +1,4 @@
+// src/components/tours/tour-detail.tsx
 "use client";
 import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
@@ -6,7 +7,7 @@ import { format } from "date-fns";
 import { RootState } from "@/redux/store";
 import { useDeleteTourMutation } from "@/redux/tourApi";
 import {
-  useGetAllBookingsQuery,
+  useGetAllUserBookingsQuery,
   useCreateBookingMutation,
   useDeleteBookingMutation,
 } from "@/redux/bookingApi";
@@ -44,14 +45,15 @@ export function TourDetail({ tour }: ITourDetailProps) {
   const [showBookDialog, setShowBookDialog] = useState(false);
   const [showUnbookDialog, setShowUnbookDialog] = useState(false);
 
-  // Fetch user's bookings to check if this tour is booked and its status
-  const { data: bookingsData } = useGetAllBookingsQuery(
-    { page: 1, limit: 100 },
+  const { data: bookingsData } = useGetAllUserBookingsQuery(
+    { userId: user.id, params: { page: 1, limit: 1000 } },
     { skip: !user }
   );
+
   const userBooking = bookingsData?.data.find(
     (booking) =>
-      booking.tourId === tour.id && booking.userId === parseInt(user?.id || "0")
+      booking.tour.id === tour.id &&
+      booking.userId === parseInt(user?.id || "0")
   );
   const isTourBooked = !!userBooking;
 
@@ -108,7 +110,7 @@ export function TourDetail({ tour }: ITourDetailProps) {
     if (!userBooking) return;
 
     try {
-      await deleteBooking(userBooking.id.toString()).unwrap();
+      await deleteBooking(userBooking.id).unwrap();
       toast.success("Booking cancelled successfully");
       setShowUnbookDialog(false);
     } catch (error) {

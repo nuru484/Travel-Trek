@@ -1,3 +1,4 @@
+// src/components/flights/flight-detail.tsx
 "use client";
 import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
@@ -6,7 +7,7 @@ import { format } from "date-fns";
 import { RootState } from "@/redux/store";
 import { useDeleteFlightMutation } from "@/redux/flightApi";
 import {
-  useGetAllBookingsQuery,
+  useGetAllUserBookingsQuery,
   useCreateBookingMutation,
   useDeleteBookingMutation,
 } from "@/redux/bookingApi";
@@ -47,20 +48,20 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
   const [showBookDialog, setShowBookDialog] = useState(false);
   const [showUnbookDialog, setShowUnbookDialog] = useState(false);
 
-  // Fetch destinations to get names instead of IDs
   const { data: destinationsData } = useGetAllDestinationsQuery({ limit: 100 });
   const destinations = destinationsData?.data || [];
 
-  // Fetch user's bookings to check if this flight is booked and its status
-  const { data: bookingsData } = useGetAllBookingsQuery(
-    { page: 1, limit: 100 },
+  const { data: bookingsData } = useGetAllUserBookingsQuery(
+    { userId: user.id, params: { page: 1, limit: 1000 } },
     { skip: !user }
   );
+
   const userBooking = bookingsData?.data.find(
     (booking) =>
-      booking.flightId === flight.id &&
+      booking.flight.id === flight.id &&
       booking.userId === parseInt(user?.id || "0")
   );
+
   const isFlightBooked = !!userBooking;
 
   const formatDate = (date: string | Date) => {
@@ -125,7 +126,7 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
     if (!userBooking) return;
 
     try {
-      await deleteBooking(userBooking.id.toString()).unwrap();
+      await deleteBooking(userBooking.id).unwrap();
       toast.success("Booking cancelled successfully");
       setShowUnbookDialog(false);
     } catch (error) {

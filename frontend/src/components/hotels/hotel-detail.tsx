@@ -6,7 +6,7 @@ import { format } from "date-fns";
 import { RootState } from "@/redux/store";
 import { useDeleteHotelMutation } from "@/redux/hotelApi";
 import {
-  useGetAllBookingsQuery,
+  useGetAllUserBookingsQuery,
   useCreateBookingMutation,
   useDeleteBookingMutation,
 } from "@/redux/bookingApi";
@@ -50,15 +50,17 @@ export function HotelDetail({ hotel }: IHotelDetailProps) {
   const destinations = destinationsData?.data || [];
 
   // Fetch user's bookings to check if this hotel is booked and its status
-  const { data: bookingsData } = useGetAllBookingsQuery(
-    { page: 1, limit: 100 },
+  const { data: bookingsData } = useGetAllUserBookingsQuery(
+    { userId: user.id, params: { page: 1, limit: 1000 } },
     { skip: !user }
   );
+
   const userBooking = bookingsData?.data.find(
     (booking) =>
-      booking.hotelId === hotel.id &&
+      booking.hotel.id === hotel.id &&
       booking.userId === parseInt(user?.id || "0")
   );
+
   const isHotelBooked = !!userBooking;
 
   const formatDate = (date: string | Date) => {
@@ -117,7 +119,8 @@ export function HotelDetail({ hotel }: IHotelDetailProps) {
     if (!userBooking) return;
 
     try {
-      await deleteBooking(userBooking.id.toString()).unwrap();
+      await deleteBooking(userBooking.id).unwrap();
+
       toast.success("Booking cancelled successfully");
       setShowUnbookDialog(false);
     } catch (error) {

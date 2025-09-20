@@ -7,7 +7,7 @@ import { RootState } from "@/redux/store";
 import { useCreateBookingMutation } from "@/redux/bookingApi";
 import { useDeleteFlightMutation } from "@/redux/flightApi";
 import { useGetAllDestinationsQuery } from "@/redux/destinationApi";
-import { useGetAllBookingsQuery } from "@/redux/bookingApi";
+import { useGetAllUserBookingsQuery } from "@/redux/bookingApi";
 import { IFlight } from "@/types/flight.types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -47,13 +47,14 @@ export function FlightListItem({ flight }: IFlightListItemProps) {
   const destinations = destinationsData?.data || [];
 
   // Fetch user's bookings to check if this flight is already booked
-  const { data: bookingsData } = useGetAllBookingsQuery(
-    { page: 1, limit: 100 },
+  const { data: bookingsData } = useGetAllUserBookingsQuery(
+    { userId: user.id, params: { page: 1, limit: 1000 } },
     { skip: !user }
   );
+
   const isFlightBooked = bookingsData?.data.some(
     (booking) =>
-      booking.flightId === flight.id &&
+      booking.flight.id === flight.id &&
       booking.userId === parseInt(user?.id || "0")
   );
 

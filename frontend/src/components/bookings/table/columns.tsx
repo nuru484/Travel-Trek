@@ -139,7 +139,7 @@ export const createBookingColumns = (
             serviceName = booking.tour.name;
             break;
           case "HOTEL":
-            serviceName = `${booking.hotel.name} - ${booking.room.roomType}`;
+            serviceName = `${booking.hotel.name} - ${booking?.room?.roomType}`;
             break;
           case "FLIGHT":
             serviceName = `${booking.flight.airline} ${booking.flight.flightNumber}`;

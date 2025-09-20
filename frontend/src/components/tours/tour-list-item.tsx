@@ -5,7 +5,7 @@ import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 import { useDeleteTourMutation } from "@/redux/tourApi";
 import {
-  useGetAllBookingsQuery,
+  useGetAllUserBookingsQuery,
   useCreateBookingMutation,
 } from "@/redux/bookingApi";
 import { ITour } from "@/types/tour.types";
@@ -43,13 +43,15 @@ export function TourListItem({ tour }: ITourListItemProps) {
   const [showBookDialog, setShowBookDialog] = useState(false);
 
   // Fetch user's bookings to check if this tour is already booked
-  const { data: bookingsData } = useGetAllBookingsQuery(
-    { page: 1, limit: 100 },
+  const { data: bookingsData } = useGetAllUserBookingsQuery(
+    { userId: user.id, params: { page: 1, limit: 1000 } },
     { skip: !user }
   );
+
   const isTourBooked = bookingsData?.data.some(
     (booking) =>
-      booking.tourId === tour.id && booking.userId === parseInt(user?.id || "0")
+      booking.tour.id === tour.id &&
+      booking.userId === parseInt(user?.id || "0")
   );
 
   const handleView = () => {

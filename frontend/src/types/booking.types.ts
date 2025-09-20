@@ -67,7 +67,7 @@ export interface ITourBooking extends IBookingBase {
 export interface IHotelBooking extends IBookingBase {
   type: "HOTEL";
   hotel: IBookingHotel;
-  room: IBookingRoom;
+  room: IBookingRoom | null;
   tour: null;
   flight: null;
 }
