@@ -7,7 +7,21 @@ import {
   UnauthorizedError,
 } from '../middlewares/error-handler';
 import { HTTP_STATUS_CODES } from '../config/constants';
-import { IPaymentInput, IPaymentResponse } from 'types/payment.types';
+import {
+  IPaymentInput,
+  IPayment,
+  IPaymentsPaginatedResponse,
+  IPaymentResponse,
+  IPaymentInitializeResponse,
+  IPaymentVerificationResponse,
+  IUpdatePaymentStatusInput,
+  IUpdatePaymentStatusResponse,
+  IDeletePaymentResponse,
+  IDeleteAllPaymentsResponse,
+  IRefundPaymentInput,
+  IRefundPaymentResponse,
+  IPaymentsQueryParams,
+} from 'types/payment.types';
 import crypto from 'crypto';
 import ENV from '../config/env';
 
@@ -34,8 +48,8 @@ const getPaystackChannel = (paymentMethod: string): string => {
  */
 export const createPayment = asyncHandler(
   async (
-    req: Request<{}, {}, IPaymentInput>,
-    res: Response,
+    req: Request<{}, IPaymentInitializeResponse, IPaymentInput>,
+    res: Response<IPaymentInitializeResponse>,
     next: NextFunction,
   ): Promise<void> => {
     const { bookingId, paymentMethod } = req.body;
@@ -110,7 +124,7 @@ export const createPayment = asyncHandler(
         data: {
           authorization_url,
           paymentId: existingPayment.id,
-          transactionReference: existingPayment.transactionReference,
+          transactionReference: existingPayment.transactionReference!,
         },
       });
       return;
@@ -143,7 +157,10 @@ export const createPayment = asyncHandler(
 );
 
 export const handleCallback = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
+  async (
+    req: Request,
+    res: Response<IPaymentVerificationResponse>,
+  ): Promise<void> => {
     const { reference } = req.query;
 
     if (!reference) {
@@ -200,9 +217,10 @@ export const handleCallback = asyncHandler(
         success: false,
         message: 'Payment verification failed',
         data: {
-          reference,
+          reference: reference as string,
           bookingId,
           paymentStatus: 'FAILED',
+          amount: verifiedData.amount / 100,
         },
       });
       return;
@@ -219,9 +237,10 @@ export const handleCallback = asyncHandler(
         success: false,
         message: 'Payment amount does not match booking total price',
         data: {
-          reference,
+          reference: reference as string,
           bookingId,
           paymentStatus: 'FAILED',
+          amount: verifiedData.amount / 100,
         },
       });
       return;
@@ -246,7 +265,7 @@ export const handleCallback = asyncHandler(
       message: 'Payment verified successfully',
       data: {
         bookingId,
-        reference,
+        reference: reference as string,
         amount: verifiedData.amount / 100,
         paymentStatus: 'COMPLETED',
       },
@@ -306,7 +325,7 @@ export const handleWebhook = asyncHandler(
       }
 
       // Update payment and booking status
-      const payment = await prisma.payment.updateMany({
+      await prisma.payment.updateMany({
         where: { transactionReference: reference },
         data: {
           status: 'COMPLETED',
@@ -342,7 +361,28 @@ export const getPayment = asyncHandler(
 
     const payment = await prisma.payment.findUnique({
       where: { id: parseInt(id) },
-      include: { booking: true },
+      include: {
+        booking: {
+          include: {
+            tour: true,
+            hotel: true,
+            room: true,
+            flight: {
+              include: {
+                origin: true,
+                destination: true,
+              },
+            },
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
     });
 
     if (!payment) {
@@ -354,7 +394,46 @@ export const getPayment = asyncHandler(
       throw new UnauthorizedError('You can only view your own payments');
     }
 
-    const response: IPaymentResponse = {
+    // Determine booked item based on booking type
+    let bookedItem;
+    if (payment.booking.tour) {
+      bookedItem = {
+        id: payment.booking.tour.id,
+        name: payment.booking.tour.name,
+        description: payment.booking.tour.description,
+        type: 'TOUR' as const,
+      };
+    } else if (payment.booking.hotel) {
+      bookedItem = {
+        id: payment.booking.hotel.id,
+        name: payment.booking.hotel.name,
+        description: payment.booking.hotel.description,
+        type: 'HOTEL' as const,
+      };
+    } else if (payment.booking.room) {
+      bookedItem = {
+        id: payment.booking.room.id,
+        name: payment.booking.room.roomType,
+        description: payment.booking.room.description,
+        type: 'ROOM' as const,
+      };
+    } else if (payment.booking.flight) {
+      bookedItem = {
+        id: payment.booking.flight.id,
+        name: `${payment.booking.flight.origin} to ${payment.booking.flight.destination}`,
+        description: payment.booking.flight.airline,
+        type: 'FLIGHT' as const,
+      };
+    } else {
+      bookedItem = {
+        id: payment.booking.id,
+        name: 'Unknown Item',
+        description: null,
+        type: 'TOUR' as const,
+      };
+    }
+
+    const response: IPayment = {
       id: payment.id,
       bookingId: payment.bookingId,
       userId: payment.userId,
@@ -366,6 +445,12 @@ export const getPayment = asyncHandler(
       paymentDate: payment.paymentDate,
       createdAt: payment.createdAt,
       updatedAt: payment.updatedAt,
+      bookedItem,
+      user: {
+        id: payment.user.id,
+        name: payment.user.name,
+        email: payment.user.email,
+      },
     };
 
     res.status(HTTP_STATUS_CODES.OK).json({
@@ -379,66 +464,177 @@ export const getPayment = asyncHandler(
  * Get all payments with pagination
  */
 export const getAllPayments = asyncHandler(
-  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  async (
+    req: Request<{}, IPaymentsPaginatedResponse, {}, IPaymentsQueryParams>,
+    res: Response<IPaymentsPaginatedResponse>,
+    next: NextFunction,
+  ): Promise<void> => {
     const user = req.user;
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const skip = (page - 1) * limit;
+    const {
+      page = 1,
+      limit = 10,
+      status,
+      paymentMethod,
+      userId: queryUserId,
+      search,
+    } = req.query;
+
+    const pageNum = parseInt(page.toString()) || 1;
+    const limitNum = parseInt(limit.toString()) || 10;
+    const skip = (pageNum - 1) * limitNum;
 
     if (!user) {
       throw new UnauthorizedError('Unauthorized, no user provided');
     }
 
-    const where = user.role === 'CUSTOMER' ? { userId: parseInt(user.id) } : {};
+    // Build where clause
+    const where: any =
+      user.role === 'CUSTOMER' ? { userId: parseInt(user.id) } : {};
+
+    if (status) {
+      where.status = status;
+    }
+
+    if (paymentMethod) {
+      where.paymentMethod = paymentMethod;
+    }
+
+    if (queryUserId && user.role === 'ADMIN') {
+      where.userId = parseInt(queryUserId.toString());
+    }
+
+    if (search) {
+      where.OR = [
+        { transactionReference: { contains: search, mode: 'insensitive' } },
+        { user: { name: { contains: search, mode: 'insensitive' } } },
+        { user: { email: { contains: search, mode: 'insensitive' } } },
+      ];
+    }
 
     const [payments, total] = await Promise.all([
       prisma.payment.findMany({
         where,
         skip,
-        take: limit,
+        take: limitNum,
         orderBy: { createdAt: 'desc' },
+        include: {
+          booking: {
+            include: {
+              tour: true,
+              hotel: true,
+              room: true,
+              flight: {
+                include: {
+                  origin: true,
+                  destination: true,
+                },
+              },
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
       }),
       prisma.payment.count({ where }),
     ]);
 
-    const response: IPaymentResponse[] = payments.map((payment) => ({
-      id: payment.id,
-      bookingId: payment.bookingId,
-      userId: payment.userId,
-      amount: payment.amount,
-      currency: payment.currency,
-      paymentMethod: payment.paymentMethod,
-      status: payment.status,
-      transactionReference: payment.transactionReference ?? '',
-      paymentDate: payment.paymentDate,
-      createdAt: payment.createdAt,
-      updatedAt: payment.updatedAt,
-    }));
+    const response: IPayment[] = payments.map((payment) => {
+      // Determine booked item based on booking type
+      let bookedItem;
+      if (payment.booking.tour) {
+        bookedItem = {
+          id: payment.booking.tour.id,
+          name: payment.booking.tour.name,
+          description: payment.booking.tour.description,
+          type: 'TOUR' as const,
+        };
+      } else if (payment.booking.hotel) {
+        bookedItem = {
+          id: payment.booking.hotel.id,
+          name: payment.booking.hotel.name,
+          description: payment.booking.hotel.description,
+          type: 'HOTEL' as const,
+        };
+      } else if (payment.booking.room) {
+        bookedItem = {
+          id: payment.booking.room.id,
+          name: payment.booking.room.roomType,
+          description: payment.booking.room.description,
+          type: 'ROOM' as const,
+        };
+      } else if (payment.booking.flight) {
+        bookedItem = {
+          id: payment.booking.flight.id,
+          name: `${payment.booking.flight.origin} to ${payment.booking.flight.destination}`,
+          description: payment.booking.flight.airline,
+          type: 'FLIGHT' as const,
+        };
+      } else {
+        bookedItem = {
+          id: payment.booking.id,
+          name: 'Unknown Item',
+          description: null,
+          type: 'TOUR' as const,
+        };
+      }
+
+      return {
+        id: payment.id,
+        bookingId: payment.bookingId,
+        userId: payment.userId,
+        amount: payment.amount,
+        currency: payment.currency,
+        paymentMethod: payment.paymentMethod,
+        status: payment.status,
+        transactionReference: payment.transactionReference ?? '',
+        paymentDate: payment.paymentDate,
+        createdAt: payment.createdAt,
+        updatedAt: payment.updatedAt,
+        bookedItem,
+        user: {
+          id: payment.user.id,
+          name: payment.user.name,
+          email: payment.user.email,
+        },
+      };
+    });
 
     res.status(HTTP_STATUS_CODES.OK).json({
       message: 'Payments retrieved successfully',
       data: response,
       meta: {
         total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(total / limitNum),
       },
     });
   },
 );
 
-
 /**
  * Get all payments for a specific user
  */
 export const getUserPayments = asyncHandler(
-  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  async (
+    req: Request,
+    res: Response<IPaymentsPaginatedResponse>,
+    next: NextFunction,
+  ): Promise<void> => {
     const { userId } = req.params;
     const user = req.user;
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const skip = (page - 1) * limit;
+    const { page = 1, limit = 10 } = req.query;
+    const status = req.query.status as string | undefined;
+    const paymentMethod = req.query.paymentMethod as string | undefined;
+
+    const pageNum = parseInt(page.toString()) || 1;
+    const limitNum = parseInt(limit.toString()) || 10;
+    const skip = (pageNum - 1) * limitNum;
 
     if (!user) {
       throw new UnauthorizedError('Unauthorized, no user provided');
@@ -451,14 +647,13 @@ export const getUserPayments = asyncHandler(
       throw new UnauthorizedError('You can only view your own payments');
     }
 
-    // Optional status filter
-    const status = req.query.status as string;
-    const paymentMethod = req.query.paymentMethod as string;
-
     // Build where clause
     const where: any = { userId: targetUserId };
 
-    if (status && ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED'].includes(status)) {
+    if (
+      status &&
+      ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED'].includes(status)
+    ) {
       where.status = status;
     }
 
@@ -475,15 +670,27 @@ export const getUserPayments = asyncHandler(
       prisma.payment.findMany({
         where,
         skip,
-        take: limit,
+        take: limitNum,
         orderBy: { createdAt: 'desc' },
         include: {
           booking: {
+            include: {
+              tour: true,
+              hotel: true,
+              room: true,
+              flight: {
+                include: {
+                  origin: true,
+                  destination: true,
+                },
+              },
+            },
+          },
+          user: {
             select: {
               id: true,
-              status: true,
-              totalPrice: true,
-              createdAt: true,
+              name: true,
+              email: true,
             },
           },
         },
@@ -491,44 +698,89 @@ export const getUserPayments = asyncHandler(
       prisma.payment.count({ where }),
     ]);
 
-    const response: IPaymentResponse[] = payments.map((payment) => ({
-      id: payment.id,
-      bookingId: payment.bookingId,
-      userId: payment.userId,
-      amount: payment.amount,
-      currency: payment.currency,
-      paymentMethod: payment.paymentMethod,
-      status: payment.status,
-      transactionReference: payment.transactionReference ?? '',
-      paymentDate: payment.paymentDate,
-      createdAt: payment.createdAt,
-      updatedAt: payment.updatedAt,
-    }));
+    const response: IPayment[] = payments.map((payment) => {
+      // Determine booked item based on booking type
+      let bookedItem;
+      if (payment.booking.tour) {
+        bookedItem = {
+          id: payment.booking.tour.id,
+          name: payment.booking.tour.name,
+          description: payment.booking.tour.description,
+          type: 'TOUR' as const,
+        };
+      } else if (payment.booking.hotel) {
+        bookedItem = {
+          id: payment.booking.hotel.id,
+          name: payment.booking.hotel.name,
+          description: payment.booking.hotel.description,
+          type: 'HOTEL' as const,
+        };
+      } else if (payment.booking.room) {
+        bookedItem = {
+          id: payment.booking.room.id,
+          name: payment.booking.room.roomType,
+          description: payment.booking.room.description,
+          type: 'ROOM' as const,
+        };
+      } else if (payment.booking.flight) {
+        bookedItem = {
+          id: payment.booking.flight.id,
+          name: `${payment.booking.flight.origin} to ${payment.booking.flight.destination}`,
+          description: payment.booking.flight.airline,
+          type: 'FLIGHT' as const,
+        };
+      } else {
+        bookedItem = {
+          id: payment.booking.id,
+          name: 'Unknown Item',
+          description: null,
+          type: 'TOUR' as const,
+        };
+      }
+
+      return {
+        id: payment.id,
+        bookingId: payment.bookingId,
+        userId: payment.userId,
+        amount: payment.amount,
+        currency: payment.currency,
+        paymentMethod: payment.paymentMethod,
+        status: payment.status,
+        transactionReference: payment.transactionReference ?? '',
+        paymentDate: payment.paymentDate,
+        createdAt: payment.createdAt,
+        updatedAt: payment.updatedAt,
+        bookedItem,
+        user: {
+          id: payment.user.id,
+          name: payment.user.name,
+          email: payment.user.email,
+        },
+      };
+    });
 
     res.status(HTTP_STATUS_CODES.OK).json({
       message: `Payments for user ${targetUserId} retrieved successfully`,
       data: response,
       meta: {
         total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-        userId: targetUserId,
-        filters: {
-          status: status || null,
-          paymentMethod: paymentMethod || null,
-        },
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(total / limitNum),
       },
     });
   },
 );
 
-
 /**
  * Update payment status
  */
 export const updatePaymentStatus = asyncHandler(
-  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  async (
+    req: Request,
+    res: Response<IUpdatePaymentStatusResponse>,
+    next: NextFunction,
+  ): Promise<void> => {
     const { id } = req.params;
     const { status } = req.body;
     const user = req.user;
@@ -539,7 +791,9 @@ export const updatePaymentStatus = asyncHandler(
 
     // Only ADMIN can update payment status
     if (user.role !== 'ADMIN') {
-      throw new UnauthorizedError('Only administrators can update payment status');
+      throw new UnauthorizedError(
+        'Only administrators can update payment status',
+      );
     }
 
     // Validate status
@@ -580,7 +834,7 @@ export const updatePaymentStatus = asyncHandler(
 
     // Update booking status based on payment status
     let bookingStatus = payment.booking.status;
-    
+
     if (status === 'COMPLETED') {
       bookingStatus = 'CONFIRMED';
     } else if (status === 'FAILED' || status === 'REFUNDED') {
@@ -610,7 +864,11 @@ export const updatePaymentStatus = asyncHandler(
  * Delete a single payment
  */
 export const deletePayment = asyncHandler(
-  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  async (
+    req: Request,
+    res: Response<IDeletePaymentResponse>,
+    next: NextFunction,
+  ): Promise<void> => {
     const { id } = req.params;
     const user = req.user;
 
@@ -637,10 +895,12 @@ export const deletePayment = asyncHandler(
 
     // Prevent deletion of completed payments (for audit purposes)
     if (payment.status === 'COMPLETED') {
-      throw new Error('Cannot delete completed payments. Consider refunding instead.');
+      throw new Error(
+        'Cannot delete completed payments. Consider refunding instead.',
+      );
     }
 
-    // Delete the payment (this will cascade and affect the booking due to foreign key constraint)
+    // Delete the payment
     await prisma.payment.delete({
       where: { id: parseInt(id) },
     });
@@ -665,7 +925,11 @@ export const deletePayment = asyncHandler(
  * Delete all payments (with optional filters)
  */
 export const deleteAllPayments = asyncHandler(
-  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  async (
+    req: Request<{}, IDeleteAllPaymentsResponse>,
+    res: Response<IDeleteAllPaymentsResponse>,
+    next: NextFunction,
+  ): Promise<void> => {
     const user = req.user;
 
     if (!user) {
@@ -674,7 +938,9 @@ export const deleteAllPayments = asyncHandler(
 
     // Only ADMIN can delete all payments
     if (user.role !== 'ADMIN') {
-      throw new UnauthorizedError('Only administrators can delete all payments');
+      throw new UnauthorizedError(
+        'Only administrators can delete all payments',
+      );
     }
 
     // Extract filter parameters from query
@@ -715,7 +981,9 @@ export const deleteAllPayments = asyncHandler(
     if (beforeDate) {
       const date = new Date(beforeDate);
       if (isNaN(date.getTime())) {
-        throw new Error('Invalid beforeDate format. Use ISO 8601 format (YYYY-MM-DD)');
+        throw new Error(
+          'Invalid beforeDate format. Use ISO 8601 format (YYYY-MM-DD)',
+        );
       }
       where.createdAt = {
         lt: date,
@@ -738,15 +1006,25 @@ export const deleteAllPayments = asyncHandler(
         data: {
           deletedCount: 0,
           bookingsAffected: [],
+          filters: {
+            status,
+            paymentMethod,
+            userId: userId ? parseInt(userId) : undefined,
+            beforeDate,
+          },
         },
       });
       return;
     }
 
     // Prevent deletion if any completed payments are included
-    const completedPayments = paymentsToDelete.filter(p => p.status === 'COMPLETED');
+    const completedPayments = paymentsToDelete.filter(
+      (p) => p.status === 'COMPLETED',
+    );
     if (completedPayments.length > 0) {
-      throw new Error(`Cannot delete ${completedPayments.length} completed payment(s). Remove completed payments from selection or refund them instead.`);
+      throw new Error(
+        `Cannot delete ${completedPayments.length} completed payment(s). Remove completed payments from selection or refund them instead.`,
+      );
     }
 
     // Delete the payments
@@ -755,8 +1033,8 @@ export const deleteAllPayments = asyncHandler(
     });
 
     // Update booking statuses back to PENDING for affected bookings
-    const bookingIds = paymentsToDelete.map(p => p.bookingId);
-    
+    const bookingIds = paymentsToDelete.map((p) => p.bookingId);
+
     await prisma.booking.updateMany({
       where: {
         id: { in: bookingIds },
@@ -786,7 +1064,11 @@ export const deleteAllPayments = asyncHandler(
  * Refund a payment (safer alternative to deletion for completed payments)
  */
 export const refundPayment = asyncHandler(
-  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  async (
+    req: Request,
+    res: Response<IRefundPaymentResponse>,
+    next: NextFunction,
+  ): Promise<void> => {
     const { id } = req.params;
     const { reason } = req.body;
     const user = req.user;

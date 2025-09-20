@@ -70,7 +70,7 @@ model User {
   updatedAt      DateTime @updatedAt
 
   bookings     Booking[]
-  payments     Payment[] // Add this line
+  payments     Payment[]
   reviews      Review[]
   inquiries    Inquiry[]
   Wishlist     Wishlist[]
@@ -250,6 +250,11 @@ model Booking {
 
   payment Payment?
 
+  // Prevent duplicate bookings
+  @@unique([userId, tourId])
+  @@unique([userId, hotelId])
+  @@unique([userId, roomId])
+  @@unique([userId, flightId])
   @@index([userId, tourId, hotelId, roomId, flightId], name: "booking_user_tour_hotel_room_flight_idx")
 }
 

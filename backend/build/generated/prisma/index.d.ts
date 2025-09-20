@@ -22995,6 +22995,10 @@ export namespace Prisma {
 
   export type BookingWhereUniqueInput = Prisma.AtLeast<{
     id?: number
+    userId_tourId?: BookingUserIdTourIdCompoundUniqueInput
+    userId_hotelId?: BookingUserIdHotelIdCompoundUniqueInput
+    userId_roomId?: BookingUserIdRoomIdCompoundUniqueInput
+    userId_flightId?: BookingUserIdFlightIdCompoundUniqueInput
     AND?: BookingWhereInput | BookingWhereInput[]
     OR?: BookingWhereInput[]
     NOT?: BookingWhereInput | BookingWhereInput[]
@@ -23014,7 +23018,7 @@ export namespace Prisma {
     room?: XOR<RoomNullableScalarRelationFilter, RoomWhereInput> | null
     flight?: XOR<FlightNullableScalarRelationFilter, FlightWhereInput> | null
     payment?: XOR<PaymentNullableScalarRelationFilter, PaymentWhereInput> | null
-  }, "id">
+  }, "id" | "userId_tourId" | "userId_hotelId" | "userId_roomId" | "userId_flightId">
 
   export type BookingOrderByWithAggregationInput = {
     id?: SortOrder
@@ -25688,6 +25692,26 @@ export namespace Prisma {
   export type PaymentNullableScalarRelationFilter = {
     is?: PaymentWhereInput | null
     isNot?: PaymentWhereInput | null
+  }
+
+  export type BookingUserIdTourIdCompoundUniqueInput = {
+    userId: number
+    tourId: number
+  }
+
+  export type BookingUserIdHotelIdCompoundUniqueInput = {
+    userId: number
+    hotelId: number
+  }
+
+  export type BookingUserIdRoomIdCompoundUniqueInput = {
+    userId: number
+    roomId: number
+  }
+
+  export type BookingUserIdFlightIdCompoundUniqueInput = {
+    userId: number
+    flightId: number
   }
 
   export type BookingCountOrderByAggregateInput = {

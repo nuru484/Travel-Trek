@@ -10,11 +10,13 @@ bookingRoutes.post('/bookings', (0, authorize_roles_1.authorizeRole)([user_profi
 // Get a single booking by ID
 bookingRoutes.get('/bookings/:id', (0, authorize_roles_1.authorizeRole)([user_profile_types_1.UserRole.ADMIN, user_profile_types_1.UserRole.AGENT, user_profile_types_1.UserRole.CUSTOMER]), index_1.getBooking);
 // Update a booking by ID
-bookingRoutes.put('/bookings/:id', (0, authorize_roles_1.authorizeRole)([user_profile_types_1.UserRole.ADMIN, user_profile_types_1.UserRole.AGENT, user_profile_types_1.UserRole.CUSTOMER]), index_1.updateBooking);
+bookingRoutes.put('/bookings/:id', (0, authorize_roles_1.authorizeRole)([user_profile_types_1.UserRole.ADMIN, user_profile_types_1.UserRole.AGENT]), index_1.updateBooking);
 // Delete a booking by ID
-bookingRoutes.delete('/bookings/:id', (0, authorize_roles_1.authorizeRole)([user_profile_types_1.UserRole.ADMIN, user_profile_types_1.UserRole.AGENT, user_profile_types_1.UserRole.CUSTOMER]), index_1.deleteBooking);
+bookingRoutes.delete('/bookings/:id', (0, authorize_roles_1.authorizeRole)([user_profile_types_1.UserRole.ADMIN, user_profile_types_1.UserRole.AGENT]), index_1.deleteBooking);
 // Get all bookings
 bookingRoutes.get('/bookings', (0, authorize_roles_1.authorizeRole)([user_profile_types_1.UserRole.ADMIN, user_profile_types_1.UserRole.AGENT, user_profile_types_1.UserRole.CUSTOMER]), index_1.getAllBookings);
+// Get all user bookings
+bookingRoutes.get('/bookings/user/:userId', (0, authorize_roles_1.authorizeRole)([user_profile_types_1.UserRole.ADMIN, user_profile_types_1.UserRole.AGENT, user_profile_types_1.UserRole.CUSTOMER]), index_1.getUserBookings);
 // Delete all bookings
 bookingRoutes.delete('/bookings', (0, authorize_roles_1.authorizeRole)([user_profile_types_1.UserRole.ADMIN]), index_1.deleteAllBookings);
 exports.default = bookingRoutes;

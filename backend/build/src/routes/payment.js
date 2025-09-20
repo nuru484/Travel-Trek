@@ -1,15 +1,21 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const index_1 = require("../controllers/index");
+const authenticate_jwt_1 = __importDefault(require("../middlewares/authenticate-jwt"));
 const paymentRoutes = (0, express_1.Router)();
-// Create a new payment
+paymentRoutes.post('/payments/webhook', index_1.handleWebhook);
+paymentRoutes.use(authenticate_jwt_1.default);
+paymentRoutes.patch('/payments/:id', index_1.updatePaymentStatus);
+paymentRoutes.patch('/payments/:id/refund', index_1.refundPayment);
+paymentRoutes.delete('/payments/:id', index_1.deletePayment);
+paymentRoutes.delete('/payments', index_1.deleteAllPayments);
 paymentRoutes.post('/payments', index_1.createPayment);
 paymentRoutes.get('/payments/callback', index_1.handleCallback);
-// Handle Paystack webhook
-paymentRoutes.post('/payments/webhook', index_1.handleWebhook);
-// Get a single payment by ID
 paymentRoutes.get('/payments/:id', index_1.getPayment);
-// Get all payments
 paymentRoutes.get('/payments', index_1.getAllPayments);
+paymentRoutes.get('/payments/user/:userId', index_1.getUserPayments);
 exports.default = paymentRoutes;

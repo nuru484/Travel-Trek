@@ -20,26 +20,27 @@ const dashboard_1 = __importDefault(require("./dashboard"));
 const routes = express_1.default.Router();
 // Authentication routes
 routes.use('/', authentication_1.authenticationRouter);
-// Tour routes
-routes.use(authenticate_jwt_1.default, tour_1.default);
-// Destination routes
-routes.use(authenticate_jwt_1.default, destination_1.default);
-// Hotel routes
-routes.use(authenticate_jwt_1.default, hotel_1.default);
-// Flight routes
-routes.use(authenticate_jwt_1.default, flight_1.default);
-// Booking routes
-routes.use(authenticate_jwt_1.default, booking_1.default);
 // Payment routes
-routes.use(authenticate_jwt_1.default, payment_1.default);
+routes.use(payment_1.default);
+routes.use(authenticate_jwt_1.default);
+// Tour routes
+routes.use(tour_1.default);
+// Destination routes
+routes.use(destination_1.default);
+// Hotel routes
+routes.use(hotel_1.default);
+// Flight routes
+routes.use(flight_1.default);
+// Booking routes
+routes.use(booking_1.default);
 // Room routes
-routes.use(authenticate_jwt_1.default, room_1.default);
+routes.use(room_1.default);
 // Itinerary routes
-routes.use(authenticate_jwt_1.default, itinerary_1.default);
+routes.use(itinerary_1.default);
 // Tour Inclusion routes
-routes.use(authenticate_jwt_1.default, tourInclusion_1.default);
+routes.use(tourInclusion_1.default);
 // User routes
-routes.use(authenticate_jwt_1.default, user_1.default);
+routes.use(user_1.default);
 // Dashboard routes
-routes.use(authenticate_jwt_1.default, dashboard_1.default);
+routes.use(dashboard_1.default);
 exports.default = routes;
