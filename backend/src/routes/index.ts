@@ -17,28 +17,33 @@ const routes = express.Router();
 
 // Authentication routes
 routes.use('/', authenticationRouter);
-// Tour routes
-routes.use(authenticateJWT, tourRoutes);
-// Destination routes
-routes.use(authenticateJWT, destinationRoutes);
-// Hotel routes
-routes.use(authenticateJWT, hotelRoutes);
-// Flight routes
-routes.use(authenticateJWT, flightRoutes);
-// Booking routes
-routes.use(authenticateJWT, bookingRoutes);
+
 // Payment routes
-routes.use(authenticateJWT, paymentRoutes);
+routes.use(paymentRoutes);
+
+routes.use(authenticateJWT);
+
+// Tour routes
+routes.use(tourRoutes);
+// Destination routes
+routes.use(destinationRoutes);
+// Hotel routes
+routes.use(hotelRoutes);
+// Flight routes
+routes.use(flightRoutes);
+// Booking routes
+routes.use(bookingRoutes);
+
 // Room routes
-routes.use(authenticateJWT, roomRoutes);
+routes.use(roomRoutes);
 // Itinerary routes
-routes.use(authenticateJWT, itineraryRoutes);
+routes.use(itineraryRoutes);
 // Tour Inclusion routes
-routes.use(authenticateJWT, tourInclusionRoutes);
+routes.use(tourInclusionRoutes);
 // User routes
-routes.use(authenticateJWT, userRoutes);
+routes.use(userRoutes);
 
 // Dashboard routes
-routes.use(authenticateJWT, dashboardRoutes);
+routes.use(dashboardRoutes);
 
 export default routes;
