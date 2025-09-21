@@ -23,10 +23,6 @@ export const authorizeRole = (allowedRoles: UserRole[]) =>
         throw new ForbiddenError('Unauthorized: User role not defined');
       }
 
-      console.log('User Role (from request):', req.user.role);
-      console.log('Allowed Roles:', allowedRoles);
-      console.log('Comparison check:', allowedRoles.includes(req.user.role));
-
       // Check if user has required role
       if (!allowedRoles.includes(req.user.role as UserRole)) {
         throw new ForbiddenError();

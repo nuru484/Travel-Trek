@@ -239,7 +239,6 @@ exports.Prisma.BookingScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
   tourId: 'tourId',
-  hotelId: 'hotelId',
   roomId: 'roomId',
   flightId: 'flightId',
   status: 'status',

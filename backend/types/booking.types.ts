@@ -1,11 +1,27 @@
 export interface IBookingInput {
   userId: number;
   tourId?: number | null;
-  hotelId?: number | null;
   roomId?: number | null;
   flightId?: number | null;
   totalPrice: number;
   status?: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
+}
+
+export interface IBookingUser {
+  id: number;
+  name: string;
+  email: string;
+}
+
+export interface IBookingRoom {
+  id: number;
+  roomType: string;
+  description: string | null;
+  hotel: {
+    id: number;
+    name: string;
+    description: string | null;
+  };
 }
 
 export interface IBookingUser {
@@ -26,12 +42,6 @@ export interface IBookingHotel {
   description: string | null;
 }
 
-export interface IBookingRoom {
-  id: number;
-  roomType: string;
-  description: string | null;
-}
-
 export interface IBookingFlight {
   id: number;
   flightNumber: string;
@@ -48,7 +58,6 @@ export interface IBookingPayment {
     | 'MOBILE_MONEY'
     | 'BANK_TRANSFER';
 }
-
 export interface IBookingBase {
   id: number;
   userId: number;
@@ -64,25 +73,25 @@ export interface IBookingBase {
 export interface ITourBooking extends IBookingBase {
   type: 'TOUR';
   tour: IBookingTour;
-  hotel?: null;
-  room?: null;
-  flight?: null;
+  room: null;
+  flight: null;
+  hotel: null;
 }
 
-export interface IHotelBooking extends IBookingBase {
-  type: 'HOTEL';
-  hotel: IBookingHotel;
+export interface IRoomBooking extends IBookingBase {
+  type: 'ROOM';
   room: IBookingRoom | null;
-  tour?: null;
-  flight?: null;
+  hotel: IBookingHotel | null;
+  tour: null;
+  flight: null;
 }
 
 export interface IFlightBooking extends IBookingBase {
   type: 'FLIGHT';
   flight: IBookingFlight;
-  tour?: null;
-  hotel?: null;
-  room?: null;
+  tour: null;
+  room: null;
+  hotel: null;
 }
 
-export type IBooking = ITourBooking | IHotelBooking | IFlightBooking;
+export type IBooking = ITourBooking | IRoomBooking | IFlightBooking;

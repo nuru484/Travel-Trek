@@ -25,7 +25,7 @@ const handleCreateRoom = (0, error_handler_1.asyncHandler)(async (req, res, next
     }
     // Check if hotel exists
     const hotel = await prismaClient_1.default.hotel.findUnique({
-        where: { id: hotelId },
+        where: { id: Number(hotelId) },
     });
     if (!hotel) {
         throw new error_handler_1.NotFoundError('Hotel not found');
@@ -34,13 +34,13 @@ const handleCreateRoom = (0, error_handler_1.asyncHandler)(async (req, res, next
     const photoUrl = req.body.roomPhoto;
     const room = await prismaClient_1.default.room.create({
         data: {
-            hotel: { connect: { id: hotelId } },
+            hotel: { connect: { id: Number(hotelId) } },
             roomType,
-            price,
-            capacity,
+            price: Number(price),
+            capacity: Number(capacity),
             description,
             photo: typeof photoUrl === 'string' ? photoUrl : null,
-            available: available ?? true,
+            available: Boolean(available) ?? true,
         },
     });
     const response = {

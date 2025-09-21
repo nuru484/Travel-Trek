@@ -165,14 +165,13 @@ model Hotel {
   phone         String?
   photo         String?
   starRating    Int         @default(3)
-  amenities     String[] // Array of amenities (e.g., ["WiFi", "Pool", "Gym"])
+  amenities     String[]
   destination   Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   destinationId Int
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
-  rooms    Room[]
-  bookings Booking[]
+  rooms Room[]
 
   @@index([name], name: "hotel_name_idx")
   @@index([destinationId], name: "hotel_destination_idx")
@@ -184,12 +183,12 @@ model Room {
   id          Int      @id @default(autoincrement())
   hotel       Hotel    @relation(fields: [hotelId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   hotelId     Int
-  roomType    String // e.g., "Single", "Double", "Suite"
+  roomType    String
   price       Float
   capacity    Int
   photo       String?
   description String?
-  amenities   String[] // Array of amenities (e.g., ["WiFi", "AC", "TV"])
+  amenities   String[]
   available   Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -214,9 +213,9 @@ model Flight {
   destinationId  Int
   price          Float
   photo          String?
-  flightClass    String // e.g., "Economy", "Business", "First"
-  duration       Int // Duration in minutes
-  stops          Int         @default(0) // Number of stops (0 for direct flights)
+  flightClass    String
+  duration       Int
+  stops          Int         @default(0)
   seatsAvailable Int
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
@@ -236,8 +235,6 @@ model Booking {
   userId      Int
   tour        Tour?         @relation(fields: [tourId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   tourId      Int?
-  hotel       Hotel?        @relation(fields: [hotelId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  hotelId     Int?
   room        Room?         @relation(fields: [roomId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   roomId      Int?
   flight      Flight?       @relation(fields: [flightId], references: [id], onDelete: Cascade, onUpdate: Cascade)
@@ -252,10 +249,9 @@ model Booking {
 
   // Prevent duplicate bookings
   @@unique([userId, tourId])
-  @@unique([userId, hotelId])
   @@unique([userId, roomId])
   @@unique([userId, flightId])
-  @@index([userId, tourId, hotelId, roomId, flightId], name: "booking_user_tour_hotel_room_flight_idx")
+  @@index([userId, tourId, roomId, flightId], name: "booking_user_tour_hotel_room_flight_idx")
 }
 
 model Payment {
@@ -267,9 +263,9 @@ model Payment {
   amount               Float
   currency             String        @default("GHS")
   status               PaymentStatus @default(PENDING)
-  paymentDate          DateTime? // Make nullable since it's set after payment completion
+  paymentDate          DateTime?
   paymentMethod        PaymentMethod
-  transactionReference String?       @unique // Changed from transactionId
+  transactionReference String?       @unique
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
 

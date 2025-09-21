@@ -35,10 +35,24 @@ exports.createPayment = (0, error_handler_1.asyncHandler)(async (req, res, next)
     if (!user) {
         throw new error_handler_1.UnauthorizedError('Unauthorized, no user provided');
     }
-    // Validate booking
+    // Validate booking with updated relations
     const booking = await prismaClient_1.default.booking.findUnique({
         where: { id: bookingId },
-        include: { user: true },
+        include: {
+            user: true,
+            tour: true,
+            room: {
+                include: {
+                    hotel: true,
+                },
+            },
+            flight: {
+                include: {
+                    origin: true,
+                    destination: true,
+                },
+            },
+        },
     });
     if (!booking) {
         throw new error_handler_1.NotFoundError('Booking not found');
@@ -112,6 +126,41 @@ exports.createPayment = (0, error_handler_1.asyncHandler)(async (req, res, next)
         },
     });
 });
+// Helper function to determine booked item from booking
+const getBookedItemFromBooking = (booking) => {
+    if (booking.tour) {
+        return {
+            id: booking.tour.id,
+            name: booking.tour.name,
+            description: booking.tour.description,
+            type: 'TOUR',
+        };
+    }
+    else if (booking.room) {
+        return {
+            id: booking.room.id,
+            name: `${booking.room.hotel.name} - ${booking.room.roomType}`,
+            description: booking.room.description,
+            type: 'ROOM',
+        };
+    }
+    else if (booking.flight) {
+        return {
+            id: booking.flight.id,
+            name: `${booking.flight.airline} ${booking.flight.flightNumber}`,
+            description: `${booking.flight.origin.name} to ${booking.flight.destination.name}`,
+            type: 'FLIGHT',
+        };
+    }
+    else {
+        return {
+            id: booking.id,
+            name: 'Unknown Item',
+            description: null,
+            type: 'TOUR',
+        };
+    }
+};
 exports.handleCallback = (0, error_handler_1.asyncHandler)(async (req, res) => {
     const { reference } = req.query;
     if (!reference) {
@@ -279,8 +328,11 @@ exports.getPayment = (0, error_handler_1.asyncHandler)(async (req, res, next) =>
             booking: {
                 include: {
                     tour: true,
-                    hotel: true,
-                    room: true,
+                    room: {
+                        include: {
+                            hotel: true,
+                        },
+                    },
                     flight: {
                         include: {
                             origin: true,
@@ -305,48 +357,7 @@ exports.getPayment = (0, error_handler_1.asyncHandler)(async (req, res, next) =>
     if (user.role === 'CUSTOMER' && payment.userId !== parseInt(user.id)) {
         throw new error_handler_1.UnauthorizedError('You can only view your own payments');
     }
-    // Determine booked item based on booking type
-    let bookedItem;
-    if (payment.booking.tour) {
-        bookedItem = {
-            id: payment.booking.tour.id,
-            name: payment.booking.tour.name,
-            description: payment.booking.tour.description,
-            type: 'TOUR',
-        };
-    }
-    else if (payment.booking.hotel) {
-        bookedItem = {
-            id: payment.booking.hotel.id,
-            name: payment.booking.hotel.name,
-            description: payment.booking.hotel.description,
-            type: 'HOTEL',
-        };
-    }
-    else if (payment.booking.room) {
-        bookedItem = {
-            id: payment.booking.room.id,
-            name: payment.booking.room.roomType,
-            description: payment.booking.room.description,
-            type: 'ROOM',
-        };
-    }
-    else if (payment.booking.flight) {
-        bookedItem = {
-            id: payment.booking.flight.id,
-            name: `${payment.booking.flight.origin} to ${payment.booking.flight.destination}`,
-            description: payment.booking.flight.airline,
-            type: 'FLIGHT',
-        };
-    }
-    else {
-        bookedItem = {
-            id: payment.booking.id,
-            name: 'Unknown Item',
-            description: null,
-            type: 'TOUR',
-        };
-    }
+    const bookedItem = getBookedItemFromBooking(payment.booking);
     const response = {
         id: payment.id,
         bookingId: payment.bookingId,
@@ -411,8 +422,11 @@ exports.getAllPayments = (0, error_handler_1.asyncHandler)(async (req, res, next
                 booking: {
                     include: {
                         tour: true,
-                        hotel: true,
-                        room: true,
+                        room: {
+                            include: {
+                                hotel: true,
+                            },
+                        },
                         flight: {
                             include: {
                                 origin: true,
@@ -433,48 +447,7 @@ exports.getAllPayments = (0, error_handler_1.asyncHandler)(async (req, res, next
         prismaClient_1.default.payment.count({ where }),
     ]);
     const response = payments.map((payment) => {
-        // Determine booked item based on booking type
-        let bookedItem;
-        if (payment.booking.tour) {
-            bookedItem = {
-                id: payment.booking.tour.id,
-                name: payment.booking.tour.name,
-                description: payment.booking.tour.description,
-                type: 'TOUR',
-            };
-        }
-        else if (payment.booking.hotel) {
-            bookedItem = {
-                id: payment.booking.hotel.id,
-                name: payment.booking.hotel.name,
-                description: payment.booking.hotel.description,
-                type: 'HOTEL',
-            };
-        }
-        else if (payment.booking.room) {
-            bookedItem = {
-                id: payment.booking.room.id,
-                name: payment.booking.room.roomType,
-                description: payment.booking.room.description,
-                type: 'ROOM',
-            };
-        }
-        else if (payment.booking.flight) {
-            bookedItem = {
-                id: payment.booking.flight.id,
-                name: payment.booking.flight.airline,
-                description: `${payment.booking.flight.origin.name} to ${payment.booking.flight.destination.name}`,
-                type: 'FLIGHT',
-            };
-        }
-        else {
-            bookedItem = {
-                id: payment.booking.id,
-                name: 'Unknown Item',
-                description: null,
-                type: 'TOUR',
-            };
-        }
+        const bookedItem = getBookedItemFromBooking(payment.booking);
         return {
             id: payment.id,
             bookingId: payment.bookingId,
@@ -546,8 +519,11 @@ exports.getUserPayments = (0, error_handler_1.asyncHandler)(async (req, res, nex
                 booking: {
                     include: {
                         tour: true,
-                        hotel: true,
-                        room: true,
+                        room: {
+                            include: {
+                                hotel: true,
+                            },
+                        },
                         flight: {
                             include: {
                                 origin: true,
@@ -568,48 +544,7 @@ exports.getUserPayments = (0, error_handler_1.asyncHandler)(async (req, res, nex
         prismaClient_1.default.payment.count({ where }),
     ]);
     const response = payments.map((payment) => {
-        // Determine booked item based on booking type
-        let bookedItem;
-        if (payment.booking.tour) {
-            bookedItem = {
-                id: payment.booking.tour.id,
-                name: payment.booking.tour.name,
-                description: payment.booking.tour.description,
-                type: 'TOUR',
-            };
-        }
-        else if (payment.booking.hotel) {
-            bookedItem = {
-                id: payment.booking.hotel.id,
-                name: payment.booking.hotel.name,
-                description: payment.booking.hotel.description,
-                type: 'HOTEL',
-            };
-        }
-        else if (payment.booking.room) {
-            bookedItem = {
-                id: payment.booking.room.id,
-                name: payment.booking.room.roomType,
-                description: payment.booking.room.description,
-                type: 'ROOM',
-            };
-        }
-        else if (payment.booking.flight) {
-            bookedItem = {
-                id: payment.booking.flight.id,
-                name: payment.booking.flight.airline,
-                description: `${payment.booking.flight.origin.name} to ${payment.booking.flight.destination.name}`,
-                type: 'FLIGHT',
-            };
-        }
-        else {
-            bookedItem = {
-                id: payment.booking.id,
-                name: 'Unknown Item',
-                description: null,
-                type: 'TOUR',
-            };
-        }
+        const bookedItem = getBookedItemFromBooking(payment.booking);
         return {
             id: payment.id,
             bookingId: payment.bookingId,
@@ -641,6 +576,8 @@ exports.getUserPayments = (0, error_handler_1.asyncHandler)(async (req, res, nex
         },
     });
 });
+// Continue with the remaining controller methods (updatePaymentStatus, deletePayment, deleteAllPayments, refundPayment)
+// They remain largely the same, just ensure the Prisma queries match the schema structure
 /**
  * Update payment status
  */
