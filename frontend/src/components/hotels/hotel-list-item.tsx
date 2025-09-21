@@ -104,13 +104,6 @@ export function HotelListItem({ hotel }: IHotelListItemProps) {
   };
 
   const handleRoomBook = async (roomId: number) => {
-    if (!user) {
-      toast.error("Please log in to book a room");
-      router.push("/login");
-      return;
-    }
-
-    // Check if this specific room is already booked by the user
     const isRoomBooked = bookingsData?.data.some(
       (booking) =>
         booking?.room?.id === roomId &&
@@ -133,7 +126,7 @@ export function HotelListItem({ hotel }: IHotelListItemProps) {
       await createBooking({
         userId: parseInt(user.id),
         roomId: selectedRoom.id,
-        totalPrice: selectedRoom.price || 0,
+        totalPrice: selectedRoom.price || 100,
       }).unwrap();
       toast.success("Room booked successfully");
       setShowBookDialog(false);

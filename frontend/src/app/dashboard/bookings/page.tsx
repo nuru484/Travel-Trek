@@ -32,7 +32,6 @@ const BookingsPage = () => {
     skip: !isAdmin,
   });
 
-  // User query
   const {
     data: userBookingsData,
     error: userError,
@@ -48,6 +47,9 @@ const BookingsPage = () => {
       skip: isAdmin || !user?.id,
     }
   );
+
+  console.log("User bookings Data:", userBookingsData);
+  console.log("Admin bookings Data:", adminBookingsData);
 
   // Determine which data to use
   const bookingsData = isAdmin ? adminBookingsData : userBookingsData;

@@ -8,7 +8,7 @@ export const loginFormSchema = z.object({
     .email("Email must be a valid email address"),
   password: z
     .string()
-    .min(5, "Password must be at least 5 characters")
+    .min(4, "Password must be at least 5 characters")
     .max(255, "Password must be 255 characters or less"),
 });
 
@@ -27,7 +27,7 @@ export const signupFormSchema = z.object({
     .email("Email must be a valid email address"),
   password: z
     .string()
-    .min(5, "Password must be at least 5 characters")
+    .min(4, "Password must be at least 5 characters")
     .max(255, "Password must be 255 characters or less"),
   role: userRoleSchema.refine((val) => val !== "ADMIN", {
     message: "Role must be AGENT or CUSTOMER",
