@@ -11,7 +11,7 @@ export const registerUserValidation: ValidationChain[] = [
   }),
   validator.password('password', {
     required: true,
-    minLength: 5,
+    minLength: 4,
     maxLength: 255,
     // requireUppercase: true,
     // requireLowercase: true,

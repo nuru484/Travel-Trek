@@ -221,9 +221,6 @@ const handleGetBooking = asyncHandler(
       throw new UnauthorizedError('You can only view your own bookings');
     }
 
-
-    
-
     // Normalize into discriminated union
     let response: IBooking;
 
@@ -671,6 +668,8 @@ const handleGetUserBookings = asyncHandler(
       }),
       prisma.booking.count({ where: whereClause }),
     ]);
+
+    console.log('Bookings: ', bookings);
 
     const response: IBooking[] = bookings
       .map((booking) => {
