@@ -2,7 +2,7 @@
 export const apiSliceTags = [
   "Customer",
   "Flight",
-  "Flights",  
+  "Flights",
   "Destination",
   "Hotel",
   "Hotels",
@@ -19,6 +19,8 @@ export const apiSliceTags = [
   "User",
   "Users",
   "Dashboard",
+  "Rooms",
+  "Room",
 ] as const;
 
 export interface IApiResponse<T> {

@@ -1,0 +1,108 @@
+// src/redux/roomApi.ts
+import { apiSlice } from "./apiSlice";
+import {
+  IRoomResponse,
+  IRoomsPaginatedResponse,
+  IRoomQueryParams,
+} from "@/types/room.types";
+import { IApiResponse } from "@/types/api";
+
+export const roomApi = apiSlice.injectEndpoints({
+  endpoints: (builder) => ({
+    // Create a new room
+    createRoom: builder.mutation<IApiResponse<IRoomResponse>, FormData>({
+      query: (formData) => ({
+        url: "/rooms",
+        method: "POST",
+        body: formData,
+      }),
+      invalidatesTags: ["Rooms", "Room"],
+    }),
+
+    // Get all rooms (paginated + filters)
+    getAllRooms: builder.query<IRoomsPaginatedResponse, IRoomQueryParams>({
+      query: (params = {}) => {
+        const searchParams = new URLSearchParams();
+
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined && value !== null && value !== "") {
+            if (Array.isArray(value)) {
+              searchParams.append(key, value.join(","));
+            } else {
+              searchParams.append(key, String(value));
+            }
+          }
+        });
+
+        const queryString = searchParams.toString();
+        return {
+          url: `/rooms${queryString ? `?${queryString}` : ""}`,
+          method: "GET",
+        };
+      },
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.data.map(({ id }) => ({ type: "Room" as const, id })),
+              "Rooms",
+            ]
+          : ["Rooms"],
+    }),
+
+    // Get a single room
+    getRoom: builder.query<IRoomResponse, string>({
+      query: (id) => ({
+        url: `/rooms/${id}`,
+        method: "GET",
+      }),
+      providesTags: (result, error, id) => [{ type: "Room", id }],
+    }),
+
+    // Update a room
+    updateRoom: builder.mutation<
+      IApiResponse<IRoomResponse>,
+      { id: string; formData: FormData }
+    >({
+      query: ({ id, formData }) => ({
+        url: `/rooms/${id}`,
+        method: "PUT",
+        body: formData,
+      }),
+      invalidatesTags: (result, error, { id }) => [
+        { type: "Room", id },
+        "Rooms",
+      ],
+    }),
+
+    // Delete a single room
+    deleteRoom: builder.mutation<{ message: string }, string>({
+      query: (id) => ({
+        url: `/rooms/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (result, error, id) => [{ type: "Room", id }, "Rooms"],
+    }),
+
+    // Delete all rooms
+    deleteAllRooms: builder.mutation<{ message: string }, void>({
+      query: () => ({
+        url: "/rooms",
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Rooms", "Room"],
+    }),
+  }),
+});
+
+export const {
+  useCreateRoomMutation,
+  useGetAllRoomsQuery,
+  useGetRoomQuery,
+  useUpdateRoomMutation,
+  useDeleteRoomMutation,
+  useDeleteAllRoomsMutation,
+
+  // Lazy hooks
+  useLazyGetAllRoomsQuery,
+  useLazyGetRoomQuery,
+} = roomApi;
