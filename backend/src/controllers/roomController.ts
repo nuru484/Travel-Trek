@@ -6,7 +6,7 @@ import {
   UnauthorizedError,
 } from '../middlewares/error-handler';
 import { HTTP_STATUS_CODES } from '../config/constants';
-import { IRoomInput, IRoomResponse } from 'types/room.types';
+import { IRoomInput, IRoom, IRoomQueryParams } from 'types/room.types';
 import multerUpload from '../config/multer';
 import conditionalCloudinaryUpload from '../middlewares/conditional-cloudinary-upload';
 import { CLOUDINARY_UPLOAD_OPTIONS } from '../config/constants';
@@ -21,8 +21,15 @@ const handleCreateRoom = asyncHandler(
     res: Response,
     next: NextFunction,
   ): Promise<void> => {
-    const { hotelId, roomType, price, capacity, description, available } =
-      req.body;
+    const {
+      hotelId,
+      roomType,
+      price,
+      capacity,
+      description,
+      amenities,
+      available,
+    } = req.body;
     const user = req.user;
 
     if (!user) {
@@ -36,6 +43,7 @@ const handleCreateRoom = asyncHandler(
     // Check if hotel exists
     const hotel = await prisma.hotel.findUnique({
       where: { id: Number(hotelId) },
+      select: { id: true, name: true, description: true },
     });
 
     if (!hotel) {
@@ -52,20 +60,31 @@ const handleCreateRoom = asyncHandler(
         price: Number(price),
         capacity: Number(capacity),
         description,
+        amenities: amenities || [],
         photo: typeof photoUrl === 'string' ? photoUrl : null,
         available: Boolean(available) ?? true,
       },
+      include: {
+        hotel: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+          },
+        },
+      },
     });
 
-    const response: IRoomResponse = {
+    const response: IRoom = {
       id: room.id,
-      hotelId: room.hotelId,
       roomType: room.roomType,
       price: room.price,
       capacity: room.capacity,
       description: room.description,
+      amenities: room.amenities,
       photo: room.photo,
       available: room.available,
+      hotel: room.hotel,
       createdAt: room.createdAt,
       updatedAt: room.updatedAt,
     };
@@ -95,21 +114,31 @@ const getRoom = asyncHandler(
 
     const room = await prisma.room.findUnique({
       where: { id: parseInt(id) },
+      include: {
+        hotel: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+          },
+        },
+      },
     });
 
     if (!room) {
       throw new NotFoundError('Room not found');
     }
 
-    const response: IRoomResponse = {
+    const response: IRoom = {
       id: room.id,
-      hotelId: room.hotelId,
       roomType: room.roomType,
       price: room.price,
       capacity: room.capacity,
       description: room.description,
+      amenities: room.amenities,
       photo: room.photo,
       available: room.available,
+      hotel: room.hotel,
       createdAt: room.createdAt,
       updatedAt: room.updatedAt,
     };
@@ -131,8 +160,15 @@ const handleUpdateRoom = asyncHandler(
     next: NextFunction,
   ): Promise<void> => {
     const { id } = req.params;
-    const { hotelId, roomType, price, capacity, description, available } =
-      req.body;
+    const {
+      hotelId,
+      roomType,
+      price,
+      capacity,
+      description,
+      amenities,
+      available,
+    } = req.body;
     const user = req.user;
 
     if (!user) {
@@ -168,6 +204,7 @@ const handleUpdateRoom = asyncHandler(
       if (hotelId) {
         const hotel = await prisma.hotel.findUnique({
           where: { id: hotelId },
+          select: { id: true, name: true, description: true },
         });
         if (!hotel) {
           throw new NotFoundError('Hotel not found');
@@ -193,6 +230,9 @@ const handleUpdateRoom = asyncHandler(
       if (description !== undefined) {
         updateData.description = description;
       }
+      if (amenities !== undefined) {
+        updateData.amenities = amenities;
+      }
       if (available !== undefined) {
         updateData.available = available;
       }
@@ -207,6 +247,15 @@ const handleUpdateRoom = asyncHandler(
       const updatedRoom = await prisma.room.update({
         where: { id: parseInt(id) },
         data: updateData,
+        include: {
+          hotel: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+            },
+          },
+        },
       });
 
       // If we successfully updated with a new photo, clean up the old one
@@ -218,15 +267,16 @@ const handleUpdateRoom = asyncHandler(
         }
       }
 
-      const response: IRoomResponse = {
+      const response: IRoom = {
         id: updatedRoom.id,
-        hotelId: updatedRoom.hotelId,
         roomType: updatedRoom.roomType,
         price: updatedRoom.price,
         capacity: updatedRoom.capacity,
         description: updatedRoom.description,
+        amenities: updatedRoom.amenities,
         photo: updatedRoom.photo,
         available: updatedRoom.available,
+        hotel: updatedRoom.hotel,
         createdAt: updatedRoom.createdAt,
         updatedAt: updatedRoom.updatedAt,
       };
@@ -314,32 +364,101 @@ const deleteRoom = asyncHandler(
 );
 
 /**
- * Get all rooms with pagination
+ * Get all rooms with pagination and filtering
  */
 const getAllRooms = asyncHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const skip = (page - 1) * limit;
+    const {
+      page = 1,
+      limit = 10,
+      hotelId,
+      roomType,
+      available,
+      minPrice,
+      maxPrice,
+      minCapacity,
+      maxCapacity,
+      amenities,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+    }: IRoomQueryParams = req.query;
+
+    const skip = (Number(page) - 1) * Number(limit);
+
+    // Build where clause
+    const where: any = {};
+
+    if (hotelId) {
+      where.hotelId = Number(hotelId);
+    }
+
+    if (roomType) {
+      where.roomType = {
+        contains: roomType,
+        mode: 'insensitive',
+      };
+    }
+
+    if (available !== undefined) {
+      where.available = Boolean(available);
+    }
+
+    if (minPrice || maxPrice) {
+      where.price = {};
+      if (minPrice) where.price.gte = Number(minPrice);
+      if (maxPrice) where.price.lte = Number(maxPrice);
+    }
+
+    if (minCapacity || maxCapacity) {
+      where.capacity = {};
+      if (minCapacity) where.capacity.gte = Number(minCapacity);
+      if (maxCapacity) where.capacity.lte = Number(maxCapacity);
+    }
+
+    if (amenities) {
+      const amenitiesArray = Array.isArray(amenities) ? amenities : [amenities];
+      where.amenities = {
+        hasEvery: amenitiesArray,
+      };
+    }
+
+    // Build orderBy clause
+    const orderBy: any = {};
+    if (sortBy === 'price' || sortBy === 'capacity' || sortBy === 'createdAt') {
+      orderBy[sortBy] = sortOrder === 'asc' ? 'asc' : 'desc';
+    } else {
+      orderBy.createdAt = 'desc';
+    }
 
     const [rooms, total] = await Promise.all([
       prisma.room.findMany({
+        where,
         skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
+        take: Number(limit),
+        orderBy,
+        include: {
+          hotel: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+            },
+          },
+        },
       }),
-      prisma.room.count(),
+      prisma.room.count({ where }),
     ]);
 
-    const response: IRoomResponse[] = rooms.map((room) => ({
+    const response: IRoom[] = rooms.map((room) => ({
       id: room.id,
-      hotelId: room.hotelId,
       roomType: room.roomType,
       price: room.price,
       capacity: room.capacity,
       description: room.description,
+      amenities: room.amenities,
       photo: room.photo,
       available: room.available,
+      hotel: room.hotel,
       createdAt: room.createdAt,
       updatedAt: room.updatedAt,
     }));
@@ -349,9 +468,9 @@ const getAllRooms = asyncHandler(
       data: response,
       meta: {
         total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
+        page: Number(page),
+        limit: Number(limit),
+        totalPages: Math.ceil(total / Number(limit)),
       },
     });
   },
