@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteAllUsers = exports.deleteUser = exports.changeUserRole = exports.getAllUsers = exports.updateUserProfile = exports.getUserById = void 0;
+exports.deleteAllUsers = exports.deleteUser = exports.changeUserRole = exports.getAllUsers = exports.getUserById = exports.updateUserProfile = void 0;
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const prismaClient_1 = __importDefault(require("../config/prismaClient"));
 const validation_1 = __importDefault(require("../middlewares/validation"));
@@ -114,13 +114,12 @@ const handleUpdateUserProfile = (0, error_handler_1.asyncHandler)(async (req, re
 /**
  * Middleware array for user profile update
  */
-const updateUserProfile = [
+exports.updateUserProfile = [
     ...validation_1.default.create(user_validations_1.updateUserProfileValidation),
     multer_1.default.single('profilePicture'),
     (0, conditional_cloudinary_upload_1.default)(constants_2.CLOUDINARY_UPLOAD_OPTIONS, 'profilePicture'),
     handleUpdateUserProfile,
 ];
-exports.updateUserProfile = updateUserProfile;
 /**
  * Get single user by ID
  */
@@ -177,7 +176,7 @@ exports.getUserById = (0, error_handler_1.asyncHandler)(async (req, res, next) =
 /**
  * Get all users with pagination
  */
-const getAllUsers = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
+exports.getAllUsers = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
@@ -239,11 +238,10 @@ const getAllUsers = (0, error_handler_1.asyncHandler)(async (req, res, next) => 
     };
     res.status(constants_1.HTTP_STATUS_CODES.OK).json(paginatedResponse);
 });
-exports.getAllUsers = getAllUsers;
 /**
  * Change user role - Admin only
  */
-const changeUserRole = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
+exports.changeUserRole = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const { userId } = req.params;
     const { role } = req.body;
     const currentUserId = req.user?.id;
@@ -305,11 +303,10 @@ const changeUserRole = (0, error_handler_1.asyncHandler)(async (req, res, next) 
         data: response,
     });
 });
-exports.changeUserRole = changeUserRole;
 /**
  * Delete a single user - Admin only
  */
-const deleteUser = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
+exports.deleteUser = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const { userId } = req.params;
     const currentUserId = req.user?.id;
     const currentUserRole = req.user?.role;
@@ -384,11 +381,10 @@ const deleteUser = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
         message: `User "${existingUser.name}" (${existingUser.email}) deleted successfully`,
     });
 });
-exports.deleteUser = deleteUser;
 /**
  * Delete all users - Super Admin only (dangerous operation)
  */
-const deleteAllUsers = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
+exports.deleteAllUsers = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const currentUserId = req.user?.id;
     const confirmDelete = req.body.confirmDelete;
     // Require explicit confirmation
@@ -466,4 +462,3 @@ const deleteAllUsers = (0, error_handler_1.asyncHandler)(async (req, res, next) 
         deletedCount: deleteResult.count,
     });
 });
-exports.deleteAllUsers = deleteAllUsers;

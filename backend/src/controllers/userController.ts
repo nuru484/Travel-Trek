@@ -141,13 +141,12 @@ const handleUpdateUserProfile = asyncHandler(
 /**
  * Middleware array for user profile update
  */
-const updateUserProfile: RequestHandler[] = [
+export const updateUserProfile: RequestHandler[] = [
   ...validationMiddleware.create(updateUserProfileValidation),
   multerUpload.single('profilePicture'),
   conditionalCloudinaryUpload(CLOUDINARY_UPLOAD_OPTIONS, 'profilePicture'),
   handleUpdateUserProfile,
 ];
-
 
 /**
  * Get single user by ID
@@ -217,7 +216,7 @@ export const getUserById = asyncHandler(
 /**
  * Get all users with pagination
  */
-const getAllUsers = asyncHandler(
+export const getAllUsers = asyncHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
@@ -293,7 +292,7 @@ const getAllUsers = asyncHandler(
 /**
  * Change user role - Admin only
  */
-const changeUserRole = asyncHandler(
+export const changeUserRole = asyncHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { userId } = req.params;
     const { role } = req.body;
@@ -370,7 +369,7 @@ const changeUserRole = asyncHandler(
 /**
  * Delete a single user - Admin only
  */
-const deleteUser = asyncHandler(
+export const deleteUser = asyncHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { userId } = req.params;
     const currentUserId = req.user?.id;
@@ -465,7 +464,7 @@ const deleteUser = asyncHandler(
 /**
  * Delete all users - Super Admin only (dangerous operation)
  */
-const deleteAllUsers = asyncHandler(
+export const deleteAllUsers = asyncHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const currentUserId = req.user?.id;
     const confirmDelete = req.body.confirmDelete;
@@ -570,11 +569,3 @@ const deleteAllUsers = asyncHandler(
     });
   },
 );
-
-export {
-  updateUserProfile,
-  getAllUsers,
-  changeUserRole,
-  deleteUser,
-  deleteAllUsers,
-};
