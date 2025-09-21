@@ -258,3 +258,17 @@ export class InternalServerError extends CustomError {
     super(500, message, { ...options, severity: ErrorSeverity.HIGH });
   }
 }
+
+
+export class BadRequestError extends CustomError {
+  constructor(
+    message = 'Bad request',
+    options?: {
+      layer?: string;
+      code?: string;
+      context?: Record<string, unknown>;
+    }
+  ) {
+    super(400, message, { ...options, severity: ErrorSeverity.LOW });
+  }
+}

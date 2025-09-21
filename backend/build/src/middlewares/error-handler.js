@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.InternalServerError = exports.ValidationError = exports.ForbiddenError = exports.UnauthorizedError = exports.NotFoundError = exports.asyncHandler = exports.errorHandler = exports.CustomError = exports.ErrorSeverity = void 0;
+exports.BadRequestError = exports.InternalServerError = exports.ValidationError = exports.ForbiddenError = exports.UnauthorizedError = exports.NotFoundError = exports.asyncHandler = exports.errorHandler = exports.CustomError = exports.ErrorSeverity = void 0;
 const logger_1 = __importDefault(require("../utils/logger"));
 const env_1 = __importDefault(require("../config/env"));
 /**
@@ -182,3 +182,9 @@ class InternalServerError extends CustomError {
     }
 }
 exports.InternalServerError = InternalServerError;
+class BadRequestError extends CustomError {
+    constructor(message = 'Bad request', options) {
+        super(400, message, { ...options, severity: ErrorSeverity.LOW });
+    }
+}
+exports.BadRequestError = BadRequestError;

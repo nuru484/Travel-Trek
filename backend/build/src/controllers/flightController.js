@@ -143,13 +143,48 @@ const handleUpdateFlight = (0, error_handler_1.asyncHandler)(async (req, res, ne
     if (!id) {
         throw new error_handler_1.NotFoundError('Flight ID is required');
     }
+    // Parse numeric values to integers
+    const parsedId = parseInt(id);
+    const parsedOriginId = originId ? parseInt(String(originId)) : undefined;
+    const parsedDestinationId = destinationId
+        ? parseInt(String(destinationId))
+        : undefined;
+    const parsedPrice = price !== undefined ? parseFloat(String(price)) : undefined;
+    const parsedDuration = duration !== undefined ? parseInt(String(duration)) : undefined;
+    const parsedStops = stops !== undefined ? parseInt(String(stops)) : undefined;
+    const parsedSeatsAvailable = seatsAvailable !== undefined
+        ? parseInt(String(seatsAvailable))
+        : undefined;
+    // Validate parsed ID
+    if (isNaN(parsedId)) {
+        throw new error_handler_1.NotFoundError('Invalid flight ID');
+    }
+    // Validate parsed numeric fields
+    if (parsedOriginId !== undefined && isNaN(parsedOriginId)) {
+        throw new error_handler_1.BadRequestError('Invalid origin ID');
+    }
+    if (parsedDestinationId !== undefined && isNaN(parsedDestinationId)) {
+        throw new error_handler_1.BadRequestError('Invalid destination ID');
+    }
+    if (parsedPrice !== undefined && isNaN(parsedPrice)) {
+        throw new error_handler_1.BadRequestError('Invalid price value');
+    }
+    if (parsedDuration !== undefined && isNaN(parsedDuration)) {
+        throw new error_handler_1.BadRequestError('Invalid duration value');
+    }
+    if (parsedStops !== undefined && isNaN(parsedStops)) {
+        throw new error_handler_1.BadRequestError('Invalid stops value');
+    }
+    if (parsedSeatsAvailable !== undefined && isNaN(parsedSeatsAvailable)) {
+        throw new error_handler_1.BadRequestError('Invalid seats available value');
+    }
     // Track the uploaded image URL for cleanup if needed
     let uploadedImageUrl;
     let oldPhoto = null;
     try {
         // First, get the current flight to check for existing photo
         const existingFlight = await prismaClient_1.default.flight.findUnique({
-            where: { id: parseInt(id) },
+            where: { id: parsedId },
             select: { photo: true },
         });
         if (!existingFlight) {
@@ -157,16 +192,19 @@ const handleUpdateFlight = (0, error_handler_1.asyncHandler)(async (req, res, ne
         }
         oldPhoto = existingFlight.photo;
         // Check if origin and destination exist if provided
-        if (originId || destinationId) {
+        if (parsedOriginId || parsedDestinationId) {
             const [origin, destination] = await Promise.all([
-                originId
-                    ? prismaClient_1.default.destination.findUnique({ where: { id: originId } })
+                parsedOriginId
+                    ? prismaClient_1.default.destination.findUnique({ where: { id: parsedOriginId } })
                     : null,
-                destinationId
-                    ? prismaClient_1.default.destination.findUnique({ where: { id: destinationId } })
+                parsedDestinationId
+                    ? prismaClient_1.default.destination.findUnique({
+                        where: { id: parsedDestinationId },
+                    })
                     : null,
             ]);
-            if ((originId && !origin) || (destinationId && !destination)) {
+            if ((parsedOriginId && !origin) ||
+                (parsedDestinationId && !destination)) {
                 throw new error_handler_1.NotFoundError('Origin or destination not found');
             }
         }
@@ -185,26 +223,26 @@ const handleUpdateFlight = (0, error_handler_1.asyncHandler)(async (req, res, ne
         if (arrival !== undefined) {
             updateData.arrival = new Date(arrival);
         }
-        if (originId !== undefined) {
-            updateData.origin = { connect: { id: originId } };
+        if (parsedOriginId !== undefined) {
+            updateData.origin = { connect: { id: parsedOriginId } };
         }
-        if (destinationId !== undefined) {
-            updateData.destination = { connect: { id: destinationId } };
+        if (parsedDestinationId !== undefined) {
+            updateData.destination = { connect: { id: parsedDestinationId } };
         }
-        if (price !== undefined) {
-            updateData.price = price;
+        if (parsedPrice !== undefined) {
+            updateData.price = parsedPrice;
         }
         if (flightClass !== undefined) {
             updateData.flightClass = flightClass;
         }
-        if (duration !== undefined) {
-            updateData.duration = duration;
+        if (parsedDuration !== undefined) {
+            updateData.duration = parsedDuration;
         }
-        if (stops !== undefined) {
-            updateData.stops = stops;
+        if (parsedStops !== undefined) {
+            updateData.stops = parsedStops;
         }
-        if (seatsAvailable !== undefined) {
-            updateData.seatsAvailable = seatsAvailable;
+        if (parsedSeatsAvailable !== undefined) {
+            updateData.seatsAvailable = parsedSeatsAvailable;
         }
         // Handle photo - it should be a string URL after middleware processing
         if (req.body.flightPhoto && typeof req.body.flightPhoto === 'string') {
@@ -213,7 +251,7 @@ const handleUpdateFlight = (0, error_handler_1.asyncHandler)(async (req, res, ne
         }
         // Update flight in database
         const updatedFlight = await prismaClient_1.default.flight.update({
-            where: { id: parseInt(id) },
+            where: { id: parsedId },
             data: updateData,
         });
         // If we successfully updated with a new photo, clean up the old one

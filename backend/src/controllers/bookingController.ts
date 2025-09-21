@@ -669,8 +669,6 @@ const handleGetUserBookings = asyncHandler(
       prisma.booking.count({ where: whereClause }),
     ]);
 
-    console.log('Bookings: ', bookings);
-
     const response: IBooking[] = bookings
       .map((booking) => {
         if (booking.tour) {

@@ -610,7 +610,6 @@ const handleGetUserBookings = (0, error_handler_1.asyncHandler)(async (req, res)
         }),
         prismaClient_1.default.booking.count({ where: whereClause }),
     ]);
-    console.log('Bookings: ', bookings);
     const response = bookings
         .map((booking) => {
         if (booking.tour) {

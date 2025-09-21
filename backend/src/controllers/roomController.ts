@@ -203,9 +203,10 @@ const handleUpdateRoom = asyncHandler(
       // Check if hotel exists if provided
       if (hotelId) {
         const hotel = await prisma.hotel.findUnique({
-          where: { id: hotelId },
+          where: { id: Number(hotelId) },
           select: { id: true, name: true, description: true },
         });
+
         if (!hotel) {
           throw new NotFoundError('Hotel not found');
         }
@@ -216,16 +217,16 @@ const handleUpdateRoom = asyncHandler(
 
       // Only update fields that are provided
       if (hotelId !== undefined) {
-        updateData.hotel = { connect: { id: hotelId } };
+        updateData.hotel = { connect: { id: Number(hotelId) } };
       }
       if (roomType !== undefined) {
         updateData.roomType = roomType;
       }
       if (price !== undefined) {
-        updateData.price = price;
+        updateData.price = Number(price);
       }
       if (capacity !== undefined) {
-        updateData.capacity = capacity;
+        updateData.capacity = Number(capacity);
       }
       if (description !== undefined) {
         updateData.description = description;
@@ -234,7 +235,7 @@ const handleUpdateRoom = asyncHandler(
         updateData.amenities = amenities;
       }
       if (available !== undefined) {
-        updateData.available = available;
+        updateData.available = Boolean(available);
       }
 
       // Handle photo - it should be a string URL after middleware processing
