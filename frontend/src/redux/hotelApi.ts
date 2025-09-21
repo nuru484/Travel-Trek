@@ -50,7 +50,7 @@ export const hotelApi = apiSlice.injectEndpoints({
     }),
 
     // Get a single hotel
-    getHotel: builder.query<IHotelResponse, string>({
+    getHotel: builder.query<IHotelResponse, number>({
       query: (id) => ({
         url: `/hotels/${id}`,
         method: "GET",
@@ -61,7 +61,7 @@ export const hotelApi = apiSlice.injectEndpoints({
     // Update a hotel
     updateHotel: builder.mutation<
       IApiResponse<IHotelResponse>,
-      { id: string; formData: FormData }
+      { id: number; formData: FormData }
     >({
       query: ({ id, formData }) => ({
         url: `/hotels/${id}`,
@@ -76,7 +76,7 @@ export const hotelApi = apiSlice.injectEndpoints({
     }),
 
     // Delete a single hotel
-    deleteHotel: builder.mutation<{ message: string }, string>({
+    deleteHotel: builder.mutation<{ message: string }, number>({
       query: (id) => ({
         url: `/hotels/${id}`,
         method: "DELETE",

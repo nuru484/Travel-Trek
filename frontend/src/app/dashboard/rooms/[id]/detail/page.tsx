@@ -21,13 +21,13 @@ export default function RoomDetailPage() {
     isError,
     isLoading,
     refetch,
-  } = useGetRoomQuery(roomId.toString());
+  } = useGetRoomQuery(roomId);
 
   const room = roomData?.data;
   const errorMessage = extractApiErrorMessage(error).message;
 
   const handleGoBack = () => {
-    router.back();
+    router.push("/dashboard/hotels");
   };
 
   if (isLoading)
@@ -103,7 +103,7 @@ export default function RoomDetailPage() {
               className="flex items-center gap-2 shrink-0 ml-4 hover:cursor-pointer"
             >
               <ArrowLeft className="h-4 w-4" />
-              <span className="hidden sm:inline">Back to Rooms</span>
+              <span className="hidden sm:inline">Back to Hotels</span>
               <span className="sm:hidden">Back</span>
             </Button>
           </div>

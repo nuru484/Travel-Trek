@@ -1,3 +1,4 @@
+// src/components/hotels/hotel-form.tsx
 "use client";
 import React, { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Save } from "lucide-react";
+import { Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   useCreateHotelMutation,
@@ -134,7 +135,7 @@ export function HotelForm({ hotel, mode }: IHotelFormProps) {
         toast.success("Hotel created successfully");
       } else {
         await updateHotel({
-          id: hotel!.id.toString(),
+          id: hotel!.id,
           formData,
         }).unwrap();
         toast.success("Hotel updated successfully");
@@ -152,18 +153,6 @@ export function HotelForm({ hotel, mode }: IHotelFormProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => router.push("/dashboard/hotels")}
-          disabled={isLoading}
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
-      </div>
-
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle>

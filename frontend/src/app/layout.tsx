@@ -40,7 +40,7 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             <Toaster
-              position="top-right"
+              position="bottom-right"
               reverseOrder={false}
               toastOptions={{
                 className: "",

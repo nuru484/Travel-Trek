@@ -1,3 +1,4 @@
+// src/components/rooms/room-fom.tsx
 "use client";
 import React, { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -23,12 +24,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Save } from "lucide-react";
+import { Save } from "lucide-react";
 import { useRouter } from "next/navigation";
-import {
-  useCreateRoomMutation,
-  useUpdateRoomMutation,
-} from "@/redux/roomApi";
+import { useCreateRoomMutation, useUpdateRoomMutation } from "@/redux/roomApi";
 import { useGetAllHotelsQuery } from "@/redux/hotelApi";
 import toast from "react-hot-toast";
 import { IRoom } from "@/types/room.types";
@@ -52,27 +50,41 @@ type RoomFormValues = z.infer<typeof roomFormSchema>;
 interface IRoomFormProps {
   room?: IRoom;
   mode: "create" | "edit";
+  hotelId?: number;
 }
 
-export function RoomForm({ room, mode }: IRoomFormProps) {
+export function RoomForm({ room, mode, hotelId }: IRoomFormProps) {
   const router = useRouter();
   const [createRoom, { isLoading: isCreating }] = useCreateRoomMutation();
   const [updateRoom, { isLoading: isUpdating }] = useUpdateRoomMutation();
-  const { data: hotelsData, isLoading: isHotelsLoading } =
-    useGetAllHotelsQuery({ limit: 100 });
+
+  const { data: hotelsData, isLoading: isHotelsLoading } = useGetAllHotelsQuery(
+    { limit: 100 }
+  );
+
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(
     room?.photo || null
   );
 
-  // Transform hotelsData.data to an array of IHotel
   const hotels: IHotel[] = React.useMemo(() => {
     return hotelsData?.data || [];
   }, [hotelsData]);
 
+  const getDefaultHotelId = () => {
+    if (room?.hotel?.id) {
+      return Number(room.hotel.id);
+    }
+
+    if (hotelId) {
+      return hotelId;
+    }
+    return 0;
+  };
+
   const form = useForm<RoomFormValues>({
     resolver: zodResolver(roomFormSchema),
     defaultValues: {
-      hotelId: room?.hotel?.id || 0,
+      hotelId: getDefaultHotelId(),
       roomType: room?.roomType || "",
       price: room?.price || 0,
       capacity: room?.capacity || 1,
@@ -82,6 +94,16 @@ export function RoomForm({ room, mode }: IRoomFormProps) {
       roomPhoto: undefined,
     },
   });
+
+  useEffect(() => {
+    if (hotelId && hotels.length > 0) {
+      const targetHotelId = hotelId;
+      const hotelExists = hotels.some((hotel) => hotel.id === targetHotelId);
+      if (hotelExists) {
+        form.setValue("hotelId", targetHotelId);
+      }
+    }
+  }, [hotelId, hotels, form]);
 
   const handleFileChange = (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -124,17 +146,20 @@ export function RoomForm({ room, mode }: IRoomFormProps) {
       if (values.roomPhoto) formData.append("roomPhoto", values.roomPhoto);
 
       if (mode === "create") {
-        await createRoom(formData).unwrap();
+        const response = await createRoom(formData).unwrap();
         toast.success("Room created successfully");
+
+        router.push(`/dashboard/rooms/${response.data.id}/detail`);
       } else {
         await updateRoom({
-          id: room!.id.toString(),
+          id: room!.id,
           formData,
         }).unwrap();
         toast.success("Room updated successfully");
-      }
 
-      router.push("/dashboard/rooms");
+        const hotelId = values.hotelId;
+        router.push(`/dashboard/rooms/${hotelId}/detail`);
+      }
     } catch (error) {
       console.error(`Failed to ${mode} room:`, error);
       const apiError = extractApiErrorMessage(error).message;
@@ -157,24 +182,22 @@ export function RoomForm({ room, mode }: IRoomFormProps) {
     "Family",
   ];
 
+  const selectedHotel = hotels.find(
+    (hotel) => hotel.id === form.watch("hotelId")
+  );
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => router.push("/dashboard/rooms")}
-          disabled={isLoading}
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
-      </div>
-
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle>
             {mode === "create" ? "Create New Room" : "Edit Room"}
+            {selectedHotel && (
+              <div className="text-sm font-normal text-muted-foreground mt-1">
+                Selected Hotel: {selectedHotel.name} ({selectedHotel.city},{" "}
+                {selectedHotel.country})
+              </div>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -191,11 +214,17 @@ export function RoomForm({ room, mode }: IRoomFormProps) {
                         onValueChange={(value) =>
                           field.onChange(parseInt(value))
                         }
-                        defaultValue={field.value?.toString()}
+                        value={field.value?.toString() || ""}
                         disabled={isHotelsLoading}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Select hotel" />
+                          <SelectValue
+                            placeholder={
+                              isHotelsLoading
+                                ? "Loading hotels..."
+                                : "Select hotel"
+                            }
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           {hotels.map((hotel) => (
@@ -223,7 +252,7 @@ export function RoomForm({ room, mode }: IRoomFormProps) {
                     <FormControl>
                       <Select
                         onValueChange={field.onChange}
-                        defaultValue={field.value}
+                        value={field.value}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select room type" />

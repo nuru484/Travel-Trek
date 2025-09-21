@@ -20,7 +20,7 @@ export default function DashboardLayout({ children }: AgriLayoutProps) {
       <SidebarProvider>
         <DashboardSidebar />
         <SidebarInset>
-          <header className="flex h-16 px-5 items-center justify-between border-b">
+          <header className="flex h-16 px-5 items-center justify-between border-b sticky top-0 bg-background">
             <SidebarTrigger className="mr-2" />
 
             <div className="flex gap-2">

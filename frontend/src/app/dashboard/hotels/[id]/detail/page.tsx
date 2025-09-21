@@ -21,7 +21,7 @@ export default function HotelDetailPage() {
     isError,
     isLoading,
     refetch,
-  } = useGetHotelQuery(hotelId.toString());
+  } = useGetHotelQuery(hotelId);
 
   const hotel = hotelData?.data;
   const errorMessage = extractApiErrorMessage(error).message;

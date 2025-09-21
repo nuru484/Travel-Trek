@@ -30,6 +30,7 @@ import {
   Bed,
   MousePointer,
   MoreHorizontal,
+  Plus,
 } from "lucide-react";
 import { ConfirmationDialog } from "../ui/confirmation-dialog";
 import toast from "react-hot-toast";
@@ -53,7 +54,7 @@ export function HotelDetail({ hotel }: IHotelDetailProps) {
 
   const handleDelete = async () => {
     try {
-      await deleteHotel(hotel.id.toString()).unwrap();
+      await deleteHotel(hotel.id).unwrap();
       toast.success("Hotel deleted successfully");
       setShowDeleteDialog(false);
       router.push(
@@ -69,6 +70,10 @@ export function HotelDetail({ hotel }: IHotelDetailProps) {
 
   const handleRoomClick = (roomId: number) => {
     router.push(`/dashboard/rooms/${roomId}/detail`);
+  };
+
+  const handleCreateRoom = () => {
+    router.push(`/dashboard/hotels/${hotel.id}/create-room`);
   };
 
   const truncatedHotelName =
@@ -98,7 +103,7 @@ export function HotelDetail({ hotel }: IHotelDetailProps) {
                       <Button
                         variant="secondary"
                         size="sm"
-                        className="bg-white/90 hover:bg-white text-black shadow-sm hover:cursor-pointer"
+                        className="bg-white/90 hover:bg-white text-black shadow-sm cursor-pointer"
                         disabled={isDeleting}
                       >
                         <MoreHorizontal className="h-4 w-4" />
@@ -108,7 +113,7 @@ export function HotelDetail({ hotel }: IHotelDetailProps) {
                       <DropdownMenuItem
                         onClick={handleEdit}
                         disabled={isDeleting}
-                        className="hover:cursor-pointer"
+                        className="cursor-pointer"
                       >
                         <Edit className="mr-2 h-4 w-4" />
                         Edit Hotel
@@ -116,7 +121,7 @@ export function HotelDetail({ hotel }: IHotelDetailProps) {
                       <DropdownMenuItem
                         onClick={() => setShowDeleteDialog(true)}
                         disabled={isDeleting}
-                        className="text-destructive focus:text-destructive hover:cursor-pointer"
+                        className="text-destructive focus:text-destructive cursor-pointer"
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete Hotel
@@ -252,10 +257,30 @@ export function HotelDetail({ hotel }: IHotelDetailProps) {
               </div>
 
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                  <Bed className="h-5 w-5" />
-                  Available Rooms
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                    <Bed className="h-5 w-5" />
+                    Available Rooms
+                  </h3>
+                  {isAdmin && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          onClick={handleCreateRoom}
+                          size="sm"
+                          className="cursor-pointer"
+                          disabled={isDeleting}
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Room
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Create new room for this hotel</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
 
                 <div className="space-y-4 pl-7">
                   <div>
@@ -295,7 +320,7 @@ export function HotelDetail({ hotel }: IHotelDetailProps) {
                               </div>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>Book Room</p>
+                              <p>View room details</p>
                             </TooltipContent>
                           </Tooltip>
                         ))}
@@ -304,9 +329,23 @@ export function HotelDetail({ hotel }: IHotelDetailProps) {
                   )}
 
                   {(!hotel.rooms || hotel.rooms.length === 0) && (
-                    <p className="text-sm text-muted-foreground">
-                      No rooms currently available
-                    </p>
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground">
+                        No rooms currently available
+                      </p>
+                      {isAdmin && (
+                        <Button
+                          onClick={handleCreateRoom}
+                          variant="outline"
+                          size="sm"
+                          className="cursor-pointer"
+                          disabled={isDeleting}
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Create First Room
+                        </Button>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>

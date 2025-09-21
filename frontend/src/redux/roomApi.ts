@@ -10,7 +10,7 @@ import { IApiResponse } from "@/types/api";
 export const roomApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
     // Create a new room
-    createRoom: builder.mutation<IApiResponse<IRoomResponse>, FormData>({
+    createRoom: builder.mutation<IRoomResponse, FormData>({
       query: (formData) => ({
         url: "/rooms",
         method: "POST",
@@ -50,7 +50,7 @@ export const roomApi = apiSlice.injectEndpoints({
     }),
 
     // Get a single room
-    getRoom: builder.query<IRoomResponse, string>({
+    getRoom: builder.query<IRoomResponse, number>({
       query: (id) => ({
         url: `/rooms/${id}`,
         method: "GET",
@@ -61,7 +61,7 @@ export const roomApi = apiSlice.injectEndpoints({
     // Update a room
     updateRoom: builder.mutation<
       IApiResponse<IRoomResponse>,
-      { id: string; formData: FormData }
+      { id: number; formData: FormData }
     >({
       query: ({ id, formData }) => ({
         url: `/rooms/${id}`,
@@ -77,7 +77,7 @@ export const roomApi = apiSlice.injectEndpoints({
     }),
 
     // Delete a single room
-    deleteRoom: builder.mutation<{ message: string }, string>({
+    deleteRoom: builder.mutation<{ message: string }, number>({
       query: (id) => ({
         url: `/rooms/${id}`,
         method: "DELETE",

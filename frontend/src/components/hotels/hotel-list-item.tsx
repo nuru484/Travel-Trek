@@ -1,3 +1,4 @@
+// src/components/hotels/hotel-list-item.tsx
 "use client";
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
@@ -53,7 +54,6 @@ export function HotelListItem({ hotel }: IHotelListItemProps) {
   const [selectedRoomId, setSelectedRoomId] = useState("");
   const [selectedRoom, setSelectedRoom] = useState(null);
 
-  // Fetch user's bookings to check if rooms are already booked
   const { data: bookingsData } = useGetAllUserBookingsQuery(
     { userId: user?.id, params: { page: 1, limit: 1000 } },
     { skip: !user }
@@ -91,7 +91,7 @@ export function HotelListItem({ hotel }: IHotelListItemProps) {
     setShowDeleteDialog(false);
     const toastId = toast.loading("Deleting Hotel...");
     try {
-      await deleteHotel(hotel.id.toString()).unwrap();
+      await deleteHotel(hotel.id).unwrap();
       toast.dismiss(toastId);
       toast.success("Hotel deleted successfully");
     } catch (error) {

@@ -68,7 +68,7 @@ export function RoomDetail({ room }: IRoomDetailProps) {
   );
 
   const handleEdit = () => {
-    router.push(`/admin-dashboard/rooms/${room.id}/edit`);
+    router.push(`/dashboard/rooms/${room.id}/edit`);
   };
 
   const handleBooking = () => {
@@ -101,7 +101,7 @@ export function RoomDetail({ room }: IRoomDetailProps) {
 
   const handleDelete = async () => {
     try {
-      await deleteRoom(room.id.toString()).unwrap();
+      await deleteRoom(room.id).unwrap();
       toast.success("Room deleted successfully");
       setShowDeleteDialog(false);
       router.push("/dashboard/rooms");
