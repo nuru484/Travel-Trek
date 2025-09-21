@@ -1,3 +1,4 @@
+// src/components/destinations/DestinationDetail.tsx
 "use client";
 import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
@@ -8,7 +9,13 @@ import { useDeleteDestinationMutation } from "@/redux/destinationApi";
 import { IDestination } from "@/types/destination.types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { MapPin, Edit, Trash2, ArrowLeft } from "lucide-react";
+import { MapPin, Edit, Trash2, MoreHorizontal } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ConfirmationDialog } from "../ui/confirmation-dialog";
 import toast from "react-hot-toast";
 import Image from "next/image";
@@ -34,7 +41,7 @@ export default function DestinationDetail({
 
   const handleDelete = async () => {
     try {
-      await deleteDestination(destination.id.toString()).unwrap();
+      await deleteDestination(destination.id).unwrap();
       toast.success("Destination deleted successfully");
       setShowDeleteDialog(false);
       router.push(
@@ -57,49 +64,8 @@ export default function DestinationDetail({
       ? `${destination?.name.slice(0, 47)}...`
       : destination?.name;
 
-  const backRoute = pathname.startsWith("/admin-dashboard")
-    ? "/admin-dashboard/destinations"
-    : "/dashboard/destinations";
-
-  const showEditDeleteButtons = isAdmin && !pathname.startsWith("/dashboard");
-
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => router.push(backRoute)}
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
-        {showEditDeleteButtons && (
-          <div className="flex gap-2 ml-auto">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleEdit}
-              disabled={isDeleting}
-              className="min-w-[100px]"
-            >
-              <Edit className="mr-2 h-4 w-4" />
-              Edit
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowDeleteDialog(true)}
-              disabled={isDeleting}
-              className="text-destructive hover:text-destructive min-w-[100px]"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </Button>
-          </div>
-        )}
-      </div>
-
       <Card className="overflow-hidden shadow-sm">
         {destination.photo && (
           <div className="relative w-full h-64 md:h-80 lg:h-96">
@@ -111,6 +77,42 @@ export default function DestinationDetail({
               priority
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+
+            {isAdmin && (
+              <div className="absolute top-4 right-4">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="bg-white/90 hover:bg-white text-black shadow-sm cursor-pointer"
+                      disabled={isDeleting}
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-40">
+                    <DropdownMenuItem
+                      onClick={handleEdit}
+                      disabled={isDeleting}
+                      className="cursor-pointer"
+                    >
+                      <Edit className="mr-2 h-4 w-4" />
+                      Edit Destination
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setShowDeleteDialog(true)}
+                      disabled={isDeleting}
+                      className="text-destructive focus:text-destructive cursor-pointer"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete Destination
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
+
             <div className="absolute bottom-6 left-6">
               <div className="space-y-2">
                 <h1 className="text-2xl md:text-3xl font-bold text-white">

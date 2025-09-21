@@ -46,7 +46,7 @@ export const destinationApi = apiSlice.injectEndpoints({
       providesTags: ["Destination"],
     }),
 
-    getDestination: builder.query<IDestinationApiResponse, string>({
+    getDestination: builder.query<IDestinationApiResponse, number>({
       query: (id) => ({
         url: `/destinations/${id}`,
         method: "GET",
@@ -65,7 +65,7 @@ export const destinationApi = apiSlice.injectEndpoints({
 
     updateDestination: builder.mutation<
       IDestinationApiResponse,
-      { id: string; formData: FormData }
+      { id: number; formData: FormData }
     >({
       query: ({ id, formData }) => ({
         url: `/destinations/${id}`,
@@ -78,7 +78,7 @@ export const destinationApi = apiSlice.injectEndpoints({
       ],
     }),
 
-    deleteDestination: builder.mutation<IApiResponse<null>, string>({
+    deleteDestination: builder.mutation<IApiResponse<null>, number>({
       query: (id) => ({
         url: `/destinations/${id}`,
         method: "DELETE",

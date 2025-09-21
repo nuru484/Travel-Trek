@@ -9,6 +9,7 @@ import { useParams } from "next/navigation";
 import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 import { UserProfileBookings } from "@/components/bookings/UserProfileBookings";
+import { UserProfilePayments } from "@/components/payments/UserProfilePayments";
 
 const UserProfilePage = () => {
   const params = useParams<{ id: string }>();
@@ -35,9 +36,14 @@ const UserProfilePage = () => {
   const user = userData?.data;
 
   return (
-    <div className="container mx-auto space-y-6">
+    <div className="container mx-auto max-w-6xl space-y-8 py-6">
       <UserProfileHeader user={user} currentUser={currentUser} />
-      <UserProfileBookings userId={user.id} />
+
+      {/* Recent Activity Section */}
+      <div className="space-y-6">
+        <UserProfileBookings userId={user.id} />
+        <UserProfilePayments userId={user.id} />
+      </div>
     </div>
   );
 };

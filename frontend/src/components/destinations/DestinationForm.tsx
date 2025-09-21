@@ -1,10 +1,11 @@
+// src/components/destinations/DestinationForm.tsx
 "use client";
 import React, { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -14,14 +15,14 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Save } from "lucide-react";
+import { Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   useCreateDestinationMutation,
   useUpdateDestinationMutation,
 } from "@/redux/destinationApi";
 import toast from "react-hot-toast";
-import { IDestinationApiResponse } from "@/types/destination.types";
+import { IDestination } from "@/types/destination.types";
 import Image from "next/image";
 import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
 
@@ -36,7 +37,7 @@ const destinationFormSchema = z.object({
 type DestinationFormValues = z.infer<typeof destinationFormSchema>;
 
 interface IDestinationFormProps {
-  destination?: IDestinationApiResponse;
+  destination?: IDestination;
   mode: "create" | "edit";
 }
 
@@ -50,16 +51,16 @@ export default function DestinationForm({
   const [updateDestination, { isLoading: isUpdating }] =
     useUpdateDestinationMutation();
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(
-    destination?.data.photo || null
+    destination?.photo || null
   );
 
   const form = useForm<DestinationFormValues>({
     resolver: zodResolver(destinationFormSchema),
     defaultValues: {
-      name: destination?.data.name || "",
-      description: destination?.data.description || "",
-      country: destination?.data.country || "",
-      city: destination?.data.city || "",
+      name: destination?.name || "",
+      description: destination?.description || "",
+      country: destination?.country || "",
+      city: destination?.city || "",
       destinationPhoto: undefined,
     },
   });
@@ -81,11 +82,11 @@ export default function DestinationForm({
 
   useEffect(() => {
     return () => {
-      if (previewUrl && !destination?.data.photo) {
+      if (previewUrl && !destination?.photo) {
         URL.revokeObjectURL(previewUrl);
       }
     };
-  }, [previewUrl, destination?.data.photo]);
+  }, [previewUrl, destination?.photo]);
 
   const onSubmit = async (values: DestinationFormValues) => {
     try {
@@ -103,7 +104,7 @@ export default function DestinationForm({
         toast.success("Destination created successfully");
       } else {
         await updateDestination({
-          id: destination!.data.id.toString(),
+          id: destination!.id,
           formData,
         }).unwrap();
         toast.success("Destination updated successfully");
@@ -121,24 +122,7 @@ export default function DestinationForm({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => router.push("/dashboard/destinations")}
-          disabled={isLoading}
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
-      </div>
-
       <Card className="max-w-2xl mx-auto">
-        <CardHeader>
-          <CardTitle>
-            {mode === "create" ? "Create New Destination" : "Edit Destination"}
-          </CardTitle>
-        </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -214,10 +198,10 @@ export default function DestinationForm({
                           onChange={(e) => handleFileChange(e, onChange)}
                           {...fieldProps}
                         />
-                        {(previewUrl || destination?.data.photo) && (
+                        {(previewUrl || destination?.photo) && (
                           <div className="mt-2">
                             <Image
-                              src={previewUrl || destination?.data.photo || ""}
+                              src={previewUrl || destination?.photo || ""}
                               alt="Destination photo preview"
                               className="h-24 w-24 object-cover rounded-md border border-input"
                               width={96}
@@ -236,7 +220,7 @@ export default function DestinationForm({
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => router.push("/admin-dashboard/destinations")}
+                  onClick={() => router.push("/dashboard/destinations")}
                   disabled={isLoading}
                   className="flex-1"
                 >

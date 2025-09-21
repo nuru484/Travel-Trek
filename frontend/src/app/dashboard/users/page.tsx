@@ -1,3 +1,4 @@
+// src/app/dashboard/users/page.tsx
 "use client";
 import React, { useState, useCallback } from "react";
 import { UsersDataTable } from "@/components/users/table/UsersDataTable";
@@ -79,7 +80,18 @@ const UsersManagePage = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto">
+      <div className="container mx-auto py-6">
+        {/* Header Section */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold">Users Management</h1>
+            <p className="text-muted-foreground">
+              Manage all registered users and their roles
+            </p>
+          </div>
+        </div>
+
+        {/* Users Data Table */}
         <UsersDataTable
           data={users || []}
           loading={isLoading}

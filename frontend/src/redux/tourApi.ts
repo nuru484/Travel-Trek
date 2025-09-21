@@ -28,7 +28,7 @@ export const tourApi = apiSlice.injectEndpoints({
       providesTags: ["Tour"],
     }),
 
-    getTour: builder.query<ITourResponse, string>({
+    getTour: builder.query<ITourResponse, number>({
       query: (id) => ({
         url: `/tours/${id}`,
         method: "GET",
@@ -50,7 +50,7 @@ export const tourApi = apiSlice.injectEndpoints({
 
     updateTour: builder.mutation<
       IApiResponse<ITourResponse>,
-      { id: string; tourData: ITourPayload }
+      { id: number; tourData: ITourPayload }
     >({
       query: ({ id, tourData }) => ({
         url: `/tours/${id}`,
@@ -66,7 +66,7 @@ export const tourApi = apiSlice.injectEndpoints({
       ],
     }),
 
-    deleteTour: builder.mutation<void, string>({
+    deleteTour: builder.mutation<void, number>({
       query: (id) => ({
         url: `/tours/${id}`,
         method: "DELETE",

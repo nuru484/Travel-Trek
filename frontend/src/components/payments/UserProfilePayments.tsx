@@ -1,25 +1,25 @@
-// src/components/bookings/UserProfileBookings.tsx
+// src/components/payments/UserProfilePayments.tsx
 "use client";
 import * as React from "react";
-import { BookingsDataTable } from "@/components/bookings/table/BookingsDataTable";
-import { useGetAllUserBookingsQuery } from "@/redux/bookingApi";
+import { PaymentsDataTable } from "@/components/payments/table/PaymentsDataTable";
+import { useGetAllUserPaymentsQuery } from "@/redux/paymentApi";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
 
-interface UserProfileBookingsProps {
+interface UserProfilePaymentsProps {
   userId: number;
 }
 
-export function UserProfileBookings({ userId }: UserProfileBookingsProps) {
+export function UserProfilePayments({ userId }: UserProfilePaymentsProps) {
   const router = useRouter();
 
   const {
-    data: bookingsData,
+    data: paymentsData,
     isLoading,
     refetch,
-  } = useGetAllUserBookingsQuery({
+  } = useGetAllUserPaymentsQuery({
     userId,
     params: {
       limit: 5,
@@ -27,11 +27,11 @@ export function UserProfileBookings({ userId }: UserProfileBookingsProps) {
     },
   });
 
-  const bookings = bookingsData?.data || [];
-  const totalCount = bookingsData?.meta.total || 0;
+  const payments = paymentsData?.data || [];
+  const totalCount = paymentsData?.meta.total || 0;
 
-  const handleViewAllBookings = () => {
-    router.push(`/bookings?userId=${userId}`);
+  const handleViewAllPayments = () => {
+    router.push(`/payments?userId=${userId}`);
   };
 
   // Loading state
@@ -48,7 +48,7 @@ export function UserProfileBookings({ userId }: UserProfileBookingsProps) {
           </div>
         </CardHeader>
         <CardContent className="pt-0">
-          <BookingsDataTable
+          <PaymentsDataTable
             data={[]}
             loading={true}
             totalCount={0}
@@ -61,7 +61,8 @@ export function UserProfileBookings({ userId }: UserProfileBookingsProps) {
             showActions={true}
             showPagination={false}
             showSelection={false}
-            showCustomer={false}
+            showUser={false}
+            showBooking={true}
             isRecentsView={true}
           />
         </CardContent>
@@ -75,22 +76,22 @@ export function UserProfileBookings({ userId }: UserProfileBookingsProps) {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <CardTitle className="text-lg sm:text-xl">
-              Recent Bookings
+              Recent Payments
             </CardTitle>
             <p className="text-sm text-muted-foreground mt-1">
               {totalCount > 0
                 ? `Showing latest ${Math.min(
                     5,
                     totalCount
-                  )} of ${totalCount} bookings`
-                : "No bookings found"}
+                  )} of ${totalCount} payments`
+                : "No payments found"}
             </p>
           </div>
           {totalCount > 0 && (
             <Button
               variant="outline"
               size="sm"
-              onClick={handleViewAllBookings}
+              onClick={handleViewAllPayments}
               className="w-full sm:w-auto hover:cursor-pointer"
             >
               View All ({totalCount})
@@ -100,8 +101,8 @@ export function UserProfileBookings({ userId }: UserProfileBookingsProps) {
       </CardHeader>
 
       <CardContent className="pt-0">
-        <BookingsDataTable
-          data={bookings}
+        <PaymentsDataTable
+          data={payments}
           loading={false}
           totalCount={totalCount}
           page={1}
@@ -113,7 +114,8 @@ export function UserProfileBookings({ userId }: UserProfileBookingsProps) {
           showActions={true}
           showPagination={false}
           showSelection={false}
-          showCustomer={false}
+          showUser={false}
+          showBooking={true}
           isRecentsView={true}
         />
       </CardContent>

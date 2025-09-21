@@ -34,7 +34,7 @@ export default function AdminToursPage() {
   };
 
   return (
-    <div className="container mx-auto py-6 px-4 space-y-6">
+    <div className="container mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <CardTitle>Tours</CardTitle>
         {isAdmin && (

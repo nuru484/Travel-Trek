@@ -12,7 +12,7 @@ import { useDeleteAllFlightsMutation } from "@/redux/flightApi";
 import toast from "react-hot-toast";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 
-export default function AdminFlightsPage() {
+export default function FlightsPage() {
   const router = useRouter();
   const user = useSelector((state: RootState) => state.auth.user);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -35,7 +35,7 @@ export default function AdminFlightsPage() {
   };
 
   return (
-    <div className="container mx-auto py-6 px-4 space-y-6">
+    <div className="container mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <CardTitle>Flights</CardTitle>
         {isAdmin && (

@@ -9,7 +9,7 @@ import {
   useGetAllUserBookingsQuery,
   useCreateBookingMutation,
 } from "@/redux/bookingApi";
-import { IHotel } from "@/types/hotel.types";
+import { IHotel, IHotelRoom } from "@/types/hotel.types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -52,7 +52,7 @@ export function HotelListItem({ hotel }: IHotelListItemProps) {
   const [showRooms, setShowRooms] = useState(false);
   const [roomSearch, setRoomSearch] = useState("");
   const [selectedRoomId, setSelectedRoomId] = useState("");
-  const [selectedRoom, setSelectedRoom] = useState(null);
+  const [selectedRoom, setSelectedRoom] = useState<IHotelRoom | null>(null);
 
   const { data: bookingsData } = useGetAllUserBookingsQuery(
     { userId: user?.id, params: { page: 1, limit: 1000 } },
@@ -61,408 +61,323 @@ export function HotelListItem({ hotel }: IHotelListItemProps) {
 
   // Filter and search rooms
   const filteredRooms = useMemo(() => {
-    if (!hotel.rooms || hotel.rooms.length === 0) return [];
-
+    if (!hotel.rooms?.length) return [];
     return hotel.rooms.filter(
       (room) =>
         room.roomType.toLowerCase().includes(roomSearch.toLowerCase()) ||
-        (room.description &&
-          room.description.toLowerCase().includes(roomSearch.toLowerCase()))
+        room.description?.toLowerCase().includes(roomSearch.toLowerCase())
     );
   }, [hotel.rooms, roomSearch]);
 
-  // Get displayed rooms based on selection
+  // Displayed rooms (selected or filtered)
   const displayedRooms = useMemo(() => {
-    if (selectedRoomId && selectedRoom) {
-      return [selectedRoom];
-    }
+    if (selectedRoomId && selectedRoom) return [selectedRoom];
     return filteredRooms;
   }, [selectedRoomId, selectedRoom, filteredRooms]);
 
-  const handleView = () => {
-    router.push(`/dashboard/hotels/${hotel.id}/detail`);
-  };
-
-  const handleEdit = () => {
-    router.push(`/dashboard/hotels/${hotel.id}/edit`);
-  };
+  const handleView = () => router.push(`/dashboard/hotels/${hotel.id}/detail`);
+  const handleEdit = () => router.push(`/dashboard/hotels/${hotel.id}/edit`);
 
   const handleDelete = async () => {
-    setShowDeleteDialog(false);
-    const toastId = toast.loading("Deleting Hotel...");
     try {
       await deleteHotel(hotel.id).unwrap();
-      toast.dismiss(toastId);
       toast.success("Hotel deleted successfully");
+      setShowDeleteDialog(false);
     } catch (error) {
       console.error("Failed to delete hotel:", error);
       toast.error("Failed to delete hotel");
     }
   };
 
-  const handleRoomBook = async (roomId: number) => {
+  const handleRoomBook = (roomId: number) => {
     const isRoomBooked = bookingsData?.data.some(
-      (booking) =>
-        booking?.room?.id === roomId &&
-        booking.userId === parseInt(user?.id || "0")
+      (b) => b?.room?.id === roomId && b.userId === parseInt(user?.id || "0")
     );
-
     if (isRoomBooked) {
       toast.error("You have already booked this room");
       return;
     }
-
-    setSelectedRoom(hotel.rooms?.find((room) => room.id === roomId));
+    setSelectedRoom(hotel.rooms?.find((r) => r.id === roomId) || null);
     setShowBookDialog(true);
   };
 
   const handleBookConfirm = async () => {
     if (!selectedRoom) return;
-    setShowBookDialog(false);
-    const toastId = toast.loading("Booking Room...");
-
     try {
       await createBooking({
         userId: parseInt(user.id),
         roomId: selectedRoom.id,
         totalPrice: selectedRoom.price || 100,
       }).unwrap();
-      toast.dismiss(toastId);
       toast.success("Room booked successfully");
       setSelectedRoom(null);
+      setShowBookDialog(false);
     } catch (error) {
       console.error("Failed to book room:", error);
       toast.error("Failed to book room");
     }
   };
 
-  const handleRoomView = (roomId: number) => {
+  const handleRoomView = (roomId: number) =>
     router.push(`/dashboard/rooms/${roomId}/detail`);
-  };
 
-  const getDestinationName = () => {
-    if (hotel.destination) {
-      return `${hotel.destination.name}, ${hotel.destination.country}`;
-    }
+  const getDestinationName = () =>
+    hotel.destination
+      ? `${hotel.destination.name}, ${hotel.destination.country}`
+      : "Unknown destination";
 
-    return "Unknown destination";
-  };
-
-  const toggleRoomsView = () => {
-    setShowRooms(!showRooms);
-    if (!showRooms) {
-      setRoomSearch("");
-      setSelectedRoomId("");
-      setSelectedRoom(null);
-    }
-  };
-
-  const handleRoomSelect = (roomId: string) => {
-    setSelectedRoomId(roomId);
-    const room = hotel.rooms?.find((r) => r.id.toString() === roomId);
-    setSelectedRoom(room || null);
-  };
-
-  const clearRoomSelection = () => {
-    setSelectedRoomId("");
-    setSelectedRoom(null);
-  };
-
-  const isRoomBooked = (roomId: number) => {
-    return bookingsData?.data.some(
-      (booking) =>
-        booking?.room?.id === roomId &&
-        booking.userId === parseInt(user?.id || "0")
+  const isRoomBooked = (roomId: number) =>
+    bookingsData?.data.some(
+      (b) => b?.room?.id === roomId && b.userId === parseInt(user?.id || "0")
     );
-  };
 
   return (
     <>
       <Card className="w-full hover:shadow-lg transition-all duration-300 hover:scale-[1.02] group overflow-hidden">
         <CardContent className="p-0">
-          <div className="flex flex-col">
-            {/* Main Hotel Info */}
-            <div className="flex">
-              {/* Hotel Image */}
-              <div className="relative w-32 h-28 sm:w-40 sm:h-32 flex-shrink-0">
-                {hotel.photo ? (
-                  <Image
-                    src={hotel.photo}
-                    alt={hotel.name}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 640px) 128px, 160px"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
-                    <Home className="h-8 w-8 text-muted-foreground" />
+          <div className="flex flex-col md:flex-row h-full">
+            {/* Hotel Image */}
+            <div className="relative w-full md:w-1/4 h-40 md:h-auto flex-shrink-0">
+              {hotel.photo ? (
+                <Image
+                  src={hotel.photo}
+                  alt={hotel.name}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 25vw"
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
+                  <Home className="h-8 w-8 text-muted-foreground" />
+                </div>
+              )}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/10" />
+            </div>
+
+            {/* Hotel Information */}
+            <div className="flex-1 p-4 sm:p-6 flex flex-col">
+              {/* Header */}
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-semibold text-foreground text-sm sm:text-base truncate">
+                      {hotel.name}
+                    </h3>
+                    <Badge variant="secondary" className="text-xs">
+                      {hotel.starRating}★
+                    </Badge>
                   </div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/10" />
+                  <p className="text-xs text-muted-foreground truncate">
+                    {hotel.address}
+                  </p>
+                </div>
+                {hotel.rooms?.length ? (
+                  <div className="text-right flex-shrink-0 ml-4">
+                    <p className="text-lg sm:text-xl font-bold text-primary">
+                      From ${Math.min(...hotel.rooms.map((r) => r.price || 0))}
+                    </p>
+                    <p className="text-xs text-muted-foreground">per night</p>
+                  </div>
+                ) : null}
               </div>
 
-              {/* Hotel Information */}
-              <div className="flex-1 p-4 sm:p-6">
-                <div className="flex flex-col h-full">
-                  {/* Header */}
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-foreground text-sm sm:text-base truncate">
-                          {hotel.name}
-                        </h3>
-                        <Badge variant="secondary" className="text-xs">
-                          {hotel.starRating} Star
-                          {hotel.starRating > 1 ? "s" : ""}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {hotel.address}
-                      </p>
-                    </div>
-                  </div>
+              {/* Location */}
+              <div className="flex items-center justify-between mb-3 py-2 px-3 bg-muted/30 rounded-lg">
+                <div className="text-center flex-1">
+                  <p className="text-xs text-muted-foreground">Location</p>
+                  <p className="font-semibold text-sm">
+                    {hotel.city}, {hotel.country}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {getDestinationName()}
+                  </p>
+                </div>
+              </div>
 
-                  {/* Location Information */}
-                  <div className="flex items-center justify-between mb-3 py-2 px-3 bg-muted/30 rounded-lg">
-                    <div className="text-center flex-1">
-                      <p className="text-xs text-muted-foreground">Location</p>
-                      <p className="font-semibold text-sm">
-                        {hotel.city}, {hotel.country}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {getDestinationName()}
-                      </p>
-                    </div>
-                  </div>
+              {/* Details */}
+              <div className="flex flex-wrap justify-between text-xs text-muted-foreground mb-4 gap-2">
+                <div className="flex items-center gap-1">
+                  <Star className="h-3 w-3" />
+                  <span>{hotel.starRating} Star Rating</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <MapPin className="h-3 w-3" />
+                  <span>{hotel.amenities?.length || 0} Amenities</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Bed className="h-3 w-3" />
+                  <span>{hotel.rooms?.length || 0} Rooms</span>
+                </div>
+              </div>
 
-                  {/* Hotel Details */}
-                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-4">
-                    <div className="flex items-center gap-1">
-                      <Star className="h-3 w-3" />
-                      <span>{hotel.starRating} Star Rating</span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        <span>{hotel.amenities?.length || 0} Amenities</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Bed className="h-3 w-3" />
-                        <span>{hotel.rooms?.length || 0} Rooms</span>
-                      </div>
-                    </div>
-                  </div>
+              {/* Actions */}
+              <div className="flex gap-2 mt-auto flex-wrap">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleView}
+                  className="flex-1 sm:flex-none sm:min-w-[80px] group-hover:border-primary/50 transition-colors cursor-pointer"
+                  disabled={isDeleting}
+                >
+                  <Eye className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">View</span>
+                  <span className="sm:hidden">Details</span>
+                </Button>
 
-                  {/* Rooms Toggle Button */}
-                  {hotel.rooms && hotel.rooms.length > 0 && (
-                    <div className="mb-4">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={toggleRoomsView}
-                        className="w-full justify-between hover:bg-muted/50 cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Bed className="h-4 w-4" />
-                          <span>View Rooms ({hotel.rooms.length})</span>
-                        </div>
-                        <span className="text-xs">
-                          {showRooms ? "Hide" : "Show"}
-                        </span>
-                      </Button>
-                    </div>
-                  )}
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-2 mt-auto">
+                {isAdmin ? (
+                  <>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={handleView}
-                      className="flex-1 sm:flex-none sm:min-w-[80px] group-hover:border-primary/50 transition-colors cursor-pointer"
+                      onClick={handleEdit}
+                      className="flex-1 sm:flex-none sm:min-w-[80px] cursor-pointer"
                       disabled={isDeleting}
                     >
-                      <Eye className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                      <span className="hidden sm:inline">View</span>
-                      <span className="sm:hidden">Details</span>
+                      <Edit className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">Edit</span>
+                      <span className="sm:hidden">Edit</span>
                     </Button>
-
-                    {isAdmin && (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleEdit}
-                          className="flex-1 sm:flex-none sm:min-w-[80px] cursor-pointer"
-                          disabled={isDeleting}
-                        >
-                          <Edit className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                          <span className="hidden sm:inline">Edit</span>
-                          <span className="sm:hidden">Edit</span>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowDeleteDialog(true)}
-                          className="text-destructive hover:text-destructive hover:border-destructive/50 flex-1 sm:flex-none sm:min-w-[80px] cursor-pointer"
-                          disabled={isDeleting}
-                        >
-                          <Trash2 className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                          <span className="hidden sm:inline">Delete</span>
-                          <span className="sm:hidden">Del</span>
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowDeleteDialog(true)}
+                      className="text-destructive hover:text-destructive hover:border-destructive/50 flex-1 sm:flex-none sm:min-w-[80px] cursor-pointer"
+                      disabled={isDeleting}
+                    >
+                      <Trash2 className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">Delete</span>
+                      <span className="sm:hidden">Del</span>
+                    </Button>
+                  </>
+                ) : (
+                  hotel.rooms?.length > 0 && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => setShowRooms(!showRooms)}
+                      className="flex-1 sm:flex-none sm:min-w-[80px] cursor-pointer"
+                    >
+                      <Bed className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                      {showRooms ? "Hide Rooms" : "View Rooms"}
+                    </Button>
+                  )
+                )}
               </div>
             </div>
+          </div>
 
-            {/* Expandable Rooms Section */}
-            {showRooms && hotel.rooms && hotel.rooms.length > 0 && (
-              <div className="border-t bg-muted/20 p-4">
-                <div className="space-y-3">
-                  {/* Search and Select Row */}
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                      <Input
-                        placeholder="Search rooms..."
-                        value={roomSearch}
-                        onChange={(e) => setRoomSearch(e.target.value)}
-                        className="pl-9 h-9"
-                      />
-                    </div>
-                    <Select
-                      value={selectedRoomId}
-                      onValueChange={handleRoomSelect}
-                    >
-                      <SelectTrigger className="w-[200px] h-9 cursor-pointer">
-                        <SelectValue placeholder="Select a room" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {filteredRooms.map((room) => (
-                          <SelectItem
-                            key={room.id}
-                            value={room.id.toString()}
+          {/* Expandable Rooms */}
+          {showRooms && hotel.rooms?.length ? (
+            <div className="border-t bg-muted/20 p-4">
+              <div className="space-y-3">
+                {/* Search & Select */}
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                    <Input
+                      placeholder="Search rooms..."
+                      value={roomSearch}
+                      onChange={(e) => setRoomSearch(e.target.value)}
+                      className="pl-9 h-9"
+                    />
+                  </div>
+                  <Select
+                    value={selectedRoomId}
+                    onValueChange={(v) => {
+                      setSelectedRoomId(v);
+                      const room = hotel.rooms?.find(
+                        (r) => r.id.toString() === v
+                      );
+                      setSelectedRoom(room || null);
+                    }}
+                  >
+                    <SelectTrigger className="w-full sm:w-[200px] h-9 cursor-pointer">
+                      <SelectValue placeholder="Select a room" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredRooms.map((room) => (
+                        <SelectItem key={room.id} value={room.id.toString()}>
+                          <div className="flex items-center gap-2">
+                            <Bed className="h-4 w-4" />
+                            <span>{room.roomType}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Rooms List */}
+                <div className="grid gap-2 max-h-48 overflow-y-auto">
+                  {displayedRooms.length > 0 ? (
+                    displayedRooms.map((room) => (
+                      <div
+                        key={room.id}
+                        className="flex items-center justify-between p-3 rounded-lg border bg-background hover:bg-muted/50 transition-all"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Bed className="h-4 w-4 text-muted-foreground" />
+                            <h4 className="font-medium text-sm truncate">
+                              {room.roomType}
+                            </h4>
+                            {room.price && (
+                              <Badge variant="outline" className="text-xs">
+                                ${room.price}
+                              </Badge>
+                            )}
+                          </div>
+                          {room.description && (
+                            <p className="text-xs text-muted-foreground line-clamp-2">
+                              {room.description}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex gap-2 ml-3 flex-shrink-0">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleRoomView(room.id)}
                             className="cursor-pointer"
                           >
-                            <div className="flex items-center gap-2">
-                              <Bed className="h-4 w-4" />
-                              <span>{room.roomType}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Rooms List */}
-                  <div className="grid gap-2 max-h-48 overflow-y-auto">
-                    {displayedRooms.length > 0 ? (
-                      displayedRooms.map((room) => (
-                        <div
-                          key={room.id}
-                          className="flex items-center justify-between p-3 rounded-lg border bg-background hover:bg-muted/50 transition-all"
-                        >
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Bed className="h-4 w-4 text-muted-foreground" />
-                              <h4 className="font-medium text-sm truncate">
-                                {room.roomType}
-                              </h4>
-                              {room.price && (
-                                <Badge variant="outline" className="text-xs">
-                                  ${room.price}
-                                </Badge>
-                              )}
-                            </div>
-                            {room.description && (
-                              <p className="text-xs text-muted-foreground line-clamp-2">
-                                {room.description}
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex gap-2 ml-3 flex-shrink-0">
+                            <Eye className="h-3 w-3 mr-1" />
+                            View
+                          </Button>
+                          {!isAdmin && (
                             <Button
                               size="sm"
-                              variant="outline"
-                              onClick={() => handleRoomView(room.id)}
+                              variant={
+                                isRoomBooked(room.id) ? "secondary" : "default"
+                              }
+                              onClick={() => handleRoomBook(room.id)}
+                              disabled={isBooking || isRoomBooked(room.id)}
                               className="cursor-pointer"
                             >
-                              <Eye className="h-3 w-3 mr-1" />
-                              View
+                              <Calendar className="h-3 w-3 mr-1" />
+                              {isRoomBooked(room.id) ? "Booked" : "Book"}
                             </Button>
-
-                            {!isAdmin && (
-                              <Button
-                                size="sm"
-                                variant={
-                                  isRoomBooked(room.id)
-                                    ? "secondary"
-                                    : "default"
-                                }
-                                onClick={() => handleRoomBook(room.id)}
-                                disabled={isBooking || isRoomBooked(room.id)}
-                                className="cursor-pointer"
-                              >
-                                <Calendar className="h-3 w-3 mr-1" />
-                                {isRoomBooked(room.id) ? "Booked" : "Book"}
-                              </Button>
-                            )}
-                          </div>
+                          )}
                         </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-4 text-muted-foreground">
-                        <Bed className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">
-                          {roomSearch
-                            ? "No rooms found matching your search"
-                            : "No rooms available"}
-                        </p>
                       </div>
-                    )}
-                  </div>
-
-                  {/* Quick Stats and Controls */}
-                  {filteredRooms.length > 0 && (
-                    <div className="flex justify-between text-xs text-muted-foreground pt-2 border-t">
-                      <span>
-                        Showing {displayedRooms.length} of {hotel.rooms.length}{" "}
-                        rooms
-                      </span>
-                      <div className="flex gap-2">
-                        {roomSearch && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setRoomSearch("")}
-                            className="h-auto p-0 text-xs text-primary hover:text-primary/80 cursor-pointer"
-                          >
-                            Clear search
-                          </Button>
-                        )}
-                        {selectedRoomId && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={clearRoomSelection}
-                            className="h-auto p-0 text-xs text-primary hover:text-primary/80 cursor-pointer"
-                          >
-                            Show all rooms
-                          </Button>
-                        )}
-                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4 text-muted-foreground">
+                      <Bed className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">
+                        {roomSearch
+                          ? "No rooms found matching your search"
+                          : "No rooms available"}
+                      </p>
                     </div>
                   )}
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 
+      {/* Confirmations */}
       <ConfirmationDialog
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}

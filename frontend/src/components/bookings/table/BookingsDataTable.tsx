@@ -13,6 +13,7 @@ import {
   VisibilityState,
 } from "@tanstack/react-table";
 import toast from "react-hot-toast";
+import { CalendarIcon } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -183,13 +184,19 @@ export function BookingsDataTable({
   const hasData = !loading && table.getRowModel().rows?.length > 0;
   const isEmpty = !loading && table.getRowModel().rows?.length === 0;
 
+  // Enhanced empty state for recents view
   if (isRecentsView && isEmpty) {
     return (
-      <div className="w-full max-w-full space-y-6">
-        <div className="flex flex-col items-center justify-center py-12 space-y-2">
-          <div className="text-muted-foreground">No recent bookings found</div>
-          <div className="text-sm text-muted-foreground">
-            Your recent bookings will appear here
+      <div className="w-full max-w-full">
+        <div className="flex flex-col items-center justify-center py-8 px-4 text-center border rounded-lg bg-muted/20">
+          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
+            <CalendarIcon className="w-6 h-6 text-muted-foreground" />
+          </div>
+          <div className="text-muted-foreground font-medium">
+            No recent bookings
+          </div>
+          <div className="text-sm text-muted-foreground mt-1">
+            This user hasn&apos;t made any bookings yet
           </div>
         </div>
       </div>

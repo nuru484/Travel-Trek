@@ -1,44 +1,100 @@
+// src/components/destinations/DestinationList.tsx
 "use client";
 import { useGetAllDestinationsQuery } from "@/redux/destinationApi";
 import DestinationListItem from "./DestinationListItem";
 import { IDestination } from "@/types/destination.types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { MapPin, Search } from "lucide-react";
+import ErrorMessage from "../ui/ErrorMessage";
+import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
 
 export default function DestinationList() {
-  const { data, error, isLoading, isFetching } = useGetAllDestinationsQuery({});
+  const { data, isError, error, isLoading, refetch } =
+    useGetAllDestinationsQuery({});
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-20 w-full rounded-lg" />
-        ))}
-      </div>
-    );
-  }
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-6 w-24" />
+        </div>
 
-  if (error || !data?.data || !data.data.length) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-muted-foreground mb-4">
-          {error
-            ? "Failed to load destinations. Please try again."
-            : "No destinations found."}
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="container m-auto space-y-4">
-      {data.data.map((destination: IDestination) => (
-        <DestinationListItem key={destination.id} destination={destination} />
-      ))}
-      {isFetching && (
+        {/* Destination List Skeletons */}
         <div className="space-y-4">
-          {Array.from({ length: 2 }).map((_, i) => (
+          {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-20 w-full rounded-lg" />
           ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    const errorMessage = extractApiErrorMessage(error).message;
+    return <ErrorMessage error={errorMessage} onRetry={refetch} />;
+  }
+
+  if (!data?.data || !data.data.length) {
+    return (
+      <div className="text-center py-16">
+        <div className="max-w-md mx-auto">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
+            <Search className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-lg font-semibold text-foreground mb-2">
+            No Destinations Found
+          </h3>
+          <p className="text-muted-foreground mb-4">
+            There are currently no destinations available. Please check back
+            later or adjust your search criteria.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const destinationCount = data.data.length;
+
+  return (
+    <div className="space-y-6">
+      {/* Header Section */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+            <MapPin className="h-4 w-4 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold text-foreground">
+              Available Destinations
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Explore our range of destinations
+            </p>
+          </div>
+        </div>
+        <Badge variant="secondary" className="font-medium">
+          {destinationCount} destination{destinationCount !== 1 ? "s" : ""}{" "}
+          found
+        </Badge>
+      </div>
+
+      {/* Destination List */}
+      <div className="space-y-4">
+        {data.data.map((destination: IDestination) => (
+          <DestinationListItem key={destination.id} destination={destination} />
+        ))}
+      </div>
+
+      {/* Footer Info */}
+      {destinationCount > 0 && (
+        <div className="text-center pt-4 border-t border-border/40">
+          <p className="text-sm text-muted-foreground">
+            Showing all {destinationCount} available destination
+            {destinationCount !== 1 ? "s" : ""}
+          </p>
         </div>
       )}
     </div>

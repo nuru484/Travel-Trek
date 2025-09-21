@@ -4,10 +4,12 @@ import { HotelListItem } from "./hotel-list-item";
 import { IHotel } from "@/types/hotel.types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Home, AlertCircle, Search } from "lucide-react";
+import { Home, Search } from "lucide-react";
+import ErrorMessage from "../ui/ErrorMessage";
+import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
 
 export function HotelList() {
-  const { data, error, isLoading, isFetching } = useGetAllHotelsQuery({});
+  const { data, isError, error, isLoading, refetch } = useGetAllHotelsQuery({});
 
   if (isLoading) {
     return (
@@ -28,23 +30,9 @@ export function HotelList() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="text-center py-16">
-        <div className="max-w-md mx-auto">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-destructive/10 flex items-center justify-center">
-            <AlertCircle className="h-8 w-8 text-destructive" />
-          </div>
-          <h3 className="text-lg font-semibold text-foreground mb-2">
-            Failed to Load Hotels
-          </h3>
-          <p className="text-muted-foreground mb-4">
-            We couldn&apos;t load the hotel information. Please check your
-            connection and try again.
-          </p>
-        </div>
-      </div>
-    );
+  if (isError) {
+    const errorMessage = extractApiErrorMessage(error).message;
+    return <ErrorMessage error={errorMessage} onRetry={refetch} />;
   }
 
   if (!data?.data || !data.data.length) {
@@ -95,18 +83,6 @@ export function HotelList() {
         {data.data.map((hotel: IHotel) => (
           <HotelListItem key={hotel.id} hotel={hotel} />
         ))}
-
-        {/* Loading indicator for additional hotels */}
-        {isFetching && (
-          <div className="space-y-4">
-            {Array.from({ length: 2 }).map((_, i) => (
-              <Skeleton
-                key={`loading-${i}`}
-                className="h-36 w-full rounded-lg"
-              />
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Footer Info */}

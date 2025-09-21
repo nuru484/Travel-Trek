@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -154,11 +154,6 @@ export function HotelForm({ hotel, mode }: IHotelFormProps) {
   return (
     <div className="space-y-6">
       <Card className="max-w-2xl mx-auto">
-        <CardHeader>
-          <CardTitle>
-            {mode === "create" ? "Create New Hotel" : "Edit Hotel"}
-          </CardTitle>
-        </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">

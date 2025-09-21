@@ -1,14 +1,17 @@
-// src/components/flights/flight-list.tsx
 "use client";
 import { useGetAllFlightsQuery } from "@/redux/flightApi";
 import { FlightListItem } from "./flight-list-item";
 import { IFlight } from "@/types/flight.types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Plane, AlertCircle, Search } from "lucide-react";
+import { Plane, Search } from "lucide-react";
+import ErrorMessage from "../ui/ErrorMessage";
+import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
 
 export function FlightList() {
-  const { data, error, isLoading, isFetching } = useGetAllFlightsQuery({});
+  const { data, isError, error, isLoading, refetch } = useGetAllFlightsQuery(
+    {}
+  );
 
   if (isLoading) {
     return (
@@ -29,23 +32,9 @@ export function FlightList() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="text-center py-16">
-        <div className="max-w-md mx-auto">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-destructive/10 flex items-center justify-center">
-            <AlertCircle className="h-8 w-8 text-destructive" />
-          </div>
-          <h3 className="text-lg font-semibold text-foreground mb-2">
-            Failed to Load Flights
-          </h3>
-          <p className="text-muted-foreground mb-4">
-            We couldn&apos;t load the flight information. Please check your
-            connection and try again.
-          </p>
-        </div>
-      </div>
-    );
+  if (isError) {
+    const errorMessage = extractApiErrorMessage(error).message;
+    return <ErrorMessage error={errorMessage} onRetry={refetch} />;
   }
 
   if (!data?.data || !data.data.length) {
@@ -96,18 +85,6 @@ export function FlightList() {
         {data.data.map((flight: IFlight) => (
           <FlightListItem key={flight.id} flight={flight} />
         ))}
-
-        {/* Loading indicator for additional flights */}
-        {isFetching && (
-          <div className="space-y-4">
-            {Array.from({ length: 2 }).map((_, i) => (
-              <Skeleton
-                key={`loading-${i}`}
-                className="h-36 w-full rounded-lg"
-              />
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Footer Info */}

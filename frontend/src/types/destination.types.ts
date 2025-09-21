@@ -4,10 +4,10 @@
 export interface IDestination {
   id: number;
   name: string;
-  description: string | null; // Required field, can be null
+  description: string | null; 
   country: string;
-  city: string | null; // Required field, can be null
-  photo: string | null; // Required field, can be null
+  city: string | null; 
+  photo: string | null; 
   createdAt: Date;
   updatedAt: Date;
 }

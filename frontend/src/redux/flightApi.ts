@@ -19,7 +19,7 @@ export const flightApi = apiSlice.injectEndpoints({
       providesTags: ["Flight"],
     }),
 
-    getFlight: builder.query<IFlightResponse, string>({
+    getFlight: builder.query<IFlightResponse, number>({
       query: (id) => ({
         url: `/flights/${id}`,
         method: "GET",
@@ -35,10 +35,9 @@ export const flightApi = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ["Flight"],
     }),
-
     updateFlight: builder.mutation<
       IApiResponse<IFlightResponse>,
-      { id: string; formData: FormData }
+      { id: number; formData: FormData }
     >({
       query: ({ id, formData }) => ({
         url: `/flights/${id}`,
@@ -51,7 +50,7 @@ export const flightApi = apiSlice.injectEndpoints({
       ],
     }),
 
-    deleteFlight: builder.mutation<void, string>({
+    deleteFlight: builder.mutation<void, number>({
       query: (id) => ({
         url: `/flights/${id}`,
         method: "DELETE",

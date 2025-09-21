@@ -1,6 +1,7 @@
+// src/components/tours/tour-list-item.tsx
 "use client";
 import { useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 import { useDeleteTourMutation } from "@/redux/tourApi";
@@ -34,7 +35,6 @@ interface ITourListItemProps {
 
 export function TourListItem({ tour }: ITourListItemProps) {
   const router = useRouter();
-  const pathname = usePathname();
   const user = useSelector((state: RootState) => state.auth.user);
   const isAdmin = user?.role === "ADMIN" || user?.role === "AGENT";
   const [deleteTour, { isLoading: isDeleting }] = useDeleteTourMutation();
@@ -42,7 +42,6 @@ export function TourListItem({ tour }: ITourListItemProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBookDialog, setShowBookDialog] = useState(false);
 
-  // Fetch user's bookings to check if this tour is already booked
   const { data: bookingsData } = useGetAllUserBookingsQuery(
     { userId: user.id, params: { page: 1, limit: 1000 } },
     { skip: !user }
@@ -55,11 +54,7 @@ export function TourListItem({ tour }: ITourListItemProps) {
   );
 
   const handleView = () => {
-    if (pathname.startsWith("/dashboard")) {
-      router.push(`/dashboard/tours/${tour.id}/detail`);
-    } else {
-      router.push(`/dashboard/tours/${tour.id}/detail`);
-    }
+    router.push(`/dashboard/tours/${tour.id}/detail`);
   };
 
   const handleEdit = () => {
@@ -68,7 +63,7 @@ export function TourListItem({ tour }: ITourListItemProps) {
 
   const handleDelete = async () => {
     try {
-      await deleteTour(tour.id.toString()).unwrap();
+      await deleteTour(tour.id).unwrap();
       toast.success("Tour deleted successfully");
       setShowDeleteDialog(false);
     } catch (error) {
@@ -78,12 +73,6 @@ export function TourListItem({ tour }: ITourListItemProps) {
   };
 
   const handleBook = async () => {
-    if (!user) {
-      toast.error("Please log in to book a tour");
-      router.push("/login");
-      return;
-    }
-
     try {
       await createBooking({
         userId: parseInt(user.id),
@@ -121,14 +110,16 @@ export function TourListItem({ tour }: ITourListItemProps) {
 
   return (
     <>
-      <Card className="w-full hover:shadow-lg transition-all duration-300 hover:scale-[1.01] group border border-border/50 hover:border-border">
+      <Card className="w-full hover:shadow-lg transition-all duration-300 hover:scale-[1.02] group border border-border/50 hover:border-border overflow-hidden">
         <CardHeader className="pb-3">
-          <div className="flex items-start justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            {/* Title & Status */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-2">
-                <h3 className="font-semibold text-foreground text-lg truncate">
-                  {tour.name}
-                </h3>
+              <h3 className="font-semibold text-foreground text-base sm:text-lg truncate">
+                {tour.name}
+              </h3>
+              {/* Status under name on small screens, inline on sm+ */}
+              <div className="mt-1 flex sm:inline-flex">
                 <Badge
                   variant={getStatusColor(tour.status)}
                   className="text-xs font-medium"
@@ -136,14 +127,16 @@ export function TourListItem({ tour }: ITourListItemProps) {
                   {tour.status}
                 </Badge>
               </div>
-              <p className="text-sm text-muted-foreground line-clamp-2">
+              <p className="text-sm text-muted-foreground line-clamp-2 mt-2 sm:mt-1">
                 {tour.description || "No description available"}
               </p>
             </div>
-            <div className="ml-4 text-right">
-              <div className="flex items-center gap-1 text-primary font-semibold text-lg">
+
+            {/* Price */}
+            <div className="sm:ml-4 text-left sm:text-right flex-shrink-0">
+              <div className="flex items-center gap-1 text-primary font-bold text-lg sm:text-xl">
                 <DollarSign className="h-4 w-4" />
-                <span>${tour.price}</span>
+                <span>${tour.price.toLocaleString()}</span>
               </div>
               <Badge variant="secondary" className="text-xs mt-1">
                 {tour.type}
@@ -154,8 +147,8 @@ export function TourListItem({ tour }: ITourListItemProps) {
 
         <CardContent className="pt-0">
           {/* Tour Details Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-            <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-lg">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4">
+            <div className="flex items-center gap-2 p-2 sm:p-3 bg-muted/30 rounded-lg">
               <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
               <div className="min-w-0">
                 <p className="text-xs text-muted-foreground">Location</p>
@@ -165,7 +158,7 @@ export function TourListItem({ tour }: ITourListItemProps) {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-lg">
+            <div className="flex items-center gap-2 p-2 sm:p-3 bg-muted/30 rounded-lg">
               <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
               <div className="min-w-0">
                 <p className="text-xs text-muted-foreground">Duration</p>
@@ -173,7 +166,7 @@ export function TourListItem({ tour }: ITourListItemProps) {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-lg">
+            <div className="flex items-center gap-2 p-2 sm:p-3 bg-muted/30 rounded-lg">
               <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
               <div className="min-w-0">
                 <p className="text-xs text-muted-foreground">Max Guests</p>
@@ -181,7 +174,7 @@ export function TourListItem({ tour }: ITourListItemProps) {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-lg">
+            <div className="flex items-center gap-2 p-2 sm:p-3 bg-muted/30 rounded-lg">
               <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
               <div className="min-w-0">
                 <p className="text-xs text-muted-foreground">Created</p>
@@ -193,7 +186,7 @@ export function TourListItem({ tour }: ITourListItemProps) {
           </div>
 
           {/* Date Range */}
-          <div className="flex items-center justify-between p-3 bg-accent/50 rounded-lg mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 bg-accent/50 rounded-lg mb-4 gap-3">
             <div className="flex items-center gap-2">
               <CalendarDays className="h-4 w-4 text-muted-foreground" />
               <div>
@@ -203,7 +196,7 @@ export function TourListItem({ tour }: ITourListItemProps) {
                 </p>
               </div>
             </div>
-            <div className="text-right">
+            <div className="text-left sm:text-right">
               <p className="text-xs text-muted-foreground">Last Updated</p>
               <p className="font-medium text-sm">
                 {formatDate(tour.updatedAt)}
@@ -212,16 +205,16 @@ export function TourListItem({ tour }: ITourListItemProps) {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={handleView}
-              className="flex-1 group-hover:border-primary/50 transition-colors"
+              className="flex-1 sm:flex-none sm:min-w-[100px] group-hover:border-primary/50 transition-colors cursor-pointer"
               disabled={isDeleting || isBooking}
             >
               <Eye className="mr-2 h-4 w-4" />
-              View Details
+              View
             </Button>
 
             {isAdmin ? (
@@ -230,7 +223,7 @@ export function TourListItem({ tour }: ITourListItemProps) {
                   variant="outline"
                   size="sm"
                   onClick={handleEdit}
-                  className="flex-1"
+                  className="flex-1 sm:flex-none sm:min-w-[100px] cursor-pointer"
                   disabled={isDeleting || isBooking}
                 >
                   <Edit className="mr-2 h-4 w-4" />
@@ -240,7 +233,7 @@ export function TourListItem({ tour }: ITourListItemProps) {
                   variant="outline"
                   size="sm"
                   onClick={() => setShowDeleteDialog(true)}
-                  className="flex-1 text-destructive hover:text-destructive hover:border-destructive/50"
+                  className="flex-1 sm:flex-none sm:min-w-[100px] text-destructive hover:text-destructive hover:border-destructive/50 cursor-pointer"
                   disabled={isDeleting || isBooking}
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
@@ -252,7 +245,7 @@ export function TourListItem({ tour }: ITourListItemProps) {
                 variant={isTourBooked ? "secondary" : "default"}
                 size="sm"
                 onClick={() => setShowBookDialog(true)}
-                className="flex-1"
+                className="flex-1 sm:flex-none sm:min-w-[100px] cursor-pointer"
                 disabled={isBooking || isTourBooked}
               >
                 <Bookmark className="mr-2 h-4 w-4" />
@@ -263,6 +256,7 @@ export function TourListItem({ tour }: ITourListItemProps) {
         </CardContent>
       </Card>
 
+      {/* Dialogs */}
       <ConfirmationDialog
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
@@ -281,7 +275,7 @@ export function TourListItem({ tour }: ITourListItemProps) {
         title="Confirm Booking"
         description={`Are you sure you want to book "${truncateText(
           tour.name
-        )}" in ${tour.location} for $${tour.price}?`}
+        )}" in ${tour.location} for $${tour.price.toLocaleString()}?`}
         onConfirm={handleBook}
         confirmText="Book Now"
       />

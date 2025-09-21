@@ -48,9 +48,6 @@ const BookingsPage = () => {
     }
   );
 
-  console.log("User bookings Data:", userBookingsData);
-  console.log("Admin bookings Data:", adminBookingsData);
-
   // Determine which data to use
   const bookingsData = isAdmin ? adminBookingsData : userBookingsData;
   const error = isAdmin ? adminError : userError;

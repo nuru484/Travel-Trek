@@ -1,3 +1,4 @@
+// src/components/tours/tour-list.tsx
 "use client";
 import { useGetAllToursQuery } from "@/redux/tourApi";
 import { TourListItem } from "./tour-list-item";

@@ -1,10 +1,11 @@
+// src/components/tours/tour-form.tsx
 "use client";
 import React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -21,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Save } from "lucide-react";
+import { Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   useCreateTourMutation,
@@ -112,7 +113,7 @@ export function TourForm({ tour, mode }: ITourFormProps) {
         toast.success("Tour created successfully");
       } else {
         await updateTour({
-          id: tour!.id.toString(),
+          id: tour!.id,
           tourData,
         }).unwrap();
         toast.success("Tour updated successfully");
@@ -130,24 +131,7 @@ export function TourForm({ tour, mode }: ITourFormProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => router.push("/dashboard/tours")}
-          disabled={isLoading}
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
-      </div>
-
       <Card className="max-w-2xl mx-auto">
-        <CardHeader>
-          <CardTitle>
-            {mode === "create" ? "Create New Tour" : "Edit Tour"}
-          </CardTitle>
-        </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -329,11 +313,15 @@ export function TourForm({ tour, mode }: ITourFormProps) {
                   variant="outline"
                   onClick={() => router.push("/dashboard/tours")}
                   disabled={isLoading}
-                  className="flex-1"
+                  className="flex-1 hover:cursor-pointer"
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isLoading} className="flex-1">
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="flex-1 hover:cursor-pointer"
+                >
                   <Save className="mr-2 h-4 w-4" />
                   {isLoading
                     ? "Saving..."

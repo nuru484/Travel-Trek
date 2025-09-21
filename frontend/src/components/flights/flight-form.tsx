@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Save } from "lucide-react";
+import { Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   useCreateFlightMutation,
@@ -73,13 +73,13 @@ export function FlightForm({ flight, mode }: IFlightFormProps) {
   const router = useRouter();
   const [createFlight, { isLoading: isCreating }] = useCreateFlightMutation();
   const [updateFlight, { isLoading: isUpdating }] = useUpdateFlightMutation();
+
   const { data: destinationsData, isLoading: isDestinationsLoading } =
     useGetAllDestinationsQuery({ limit: 100 });
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(
     flight?.photo || null
   );
 
-  // Transform destinationsData.data to an array of IDestination
   const destinations: IDestination[] = React.useMemo(() => {
     return destinationsData?.data || [];
   }, [destinationsData]);
@@ -156,7 +156,7 @@ export function FlightForm({ flight, mode }: IFlightFormProps) {
         toast.success("Flight created successfully");
       } else {
         await updateFlight({
-          id: flight!.id.toString(),
+          id: flight!.id,
           formData,
         }).unwrap();
         toast.success("Flight updated successfully");
@@ -174,24 +174,7 @@ export function FlightForm({ flight, mode }: IFlightFormProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => router.push("/dashboard/flights")}
-          disabled={isLoading}
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
-      </div>
-
       <Card className="max-w-2xl mx-auto">
-        <CardHeader>
-          <CardTitle>
-            {mode === "create" ? "Create New Flight" : "Edit Flight"}
-          </CardTitle>
-        </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -475,13 +458,17 @@ export function FlightForm({ flight, mode }: IFlightFormProps) {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => router.push("/admin-dashboard/flights")}
+                  onClick={() => router.push("/dashboard/flights")}
                   disabled={isLoading}
-                  className="flex-1"
+                  className="flex-1 hover:cursor-pointer"
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isLoading} className="flex-1">
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="flex-1 hover:cursor-pointer"
+                >
                   <Save className="mr-2 h-4 w-4" />
                   {isLoading
                     ? "Saving..."
