@@ -1,17 +1,19 @@
 // src/components/ui/confirmation-dialog.tsx
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import clsx from "clsx";
 
 interface ConfirmationDialogProps {
   open: boolean;
@@ -38,23 +40,29 @@ export function ConfirmationDialog({
 }: ConfirmationDialogProps) {
   const [inputValue, setInputValue] = useState("");
 
+  useEffect(() => {
+    if (!open) {
+      setInputValue("");
+    }
+  }, [open]);
+
   const handleConfirm = () => {
     onConfirm();
-    setInputValue("");
   };
 
-  const isConfirmDisabled =
-    requireExactMatch && inputValue !== requireExactMatch;
+  const isConfirmDisabled = requireExactMatch
+    ? inputValue !== requireExactMatch
+    : false;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription className="text-left">
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription className="text-left">
             {description}
-          </DialogDescription>
-        </DialogHeader>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
 
         {requireExactMatch && (
           <div className="space-y-2">
@@ -73,27 +81,22 @@ export function ConfirmationDialog({
           </div>
         )}
 
-        <DialogFooter>
-          <Button
-            className="hover:cursor-pointer"
-            variant="outline"
-            onClick={() => {
-              onOpenChange(false);
-              setInputValue("");
-            }}
-          >
+        <AlertDialogFooter>
+          <AlertDialogCancel className="hover:cursor-pointer">
             {cancelText}
-          </Button>
-          <Button
-            className="hover:cursor-pointer"
-            variant={isDestructive ? "destructive" : "default"}
+          </AlertDialogCancel>
+          <AlertDialogAction
             onClick={handleConfirm}
             disabled={isConfirmDisabled}
+            className={clsx(
+              "hover:cursor-pointer",
+              isDestructive && "bg-red-600 hover:bg-red-700"
+            )}
           >
             {confirmText}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

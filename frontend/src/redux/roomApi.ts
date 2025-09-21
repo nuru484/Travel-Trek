@@ -16,7 +16,7 @@ export const roomApi = apiSlice.injectEndpoints({
         method: "POST",
         body: formData,
       }),
-      invalidatesTags: ["Rooms", "Room"],
+      invalidatesTags: ["Rooms", "Room", "Hotels", "Hotel"],
     }),
 
     // Get all rooms (paginated + filters)
@@ -71,6 +71,8 @@ export const roomApi = apiSlice.injectEndpoints({
       invalidatesTags: (result, error, { id }) => [
         { type: "Room", id },
         "Rooms",
+        "Hotels",
+        "Hotel",
       ],
     }),
 
@@ -80,7 +82,12 @@ export const roomApi = apiSlice.injectEndpoints({
         url: `/rooms/${id}`,
         method: "DELETE",
       }),
-      invalidatesTags: (result, error, id) => [{ type: "Room", id }, "Rooms"],
+      invalidatesTags: (result, error, id) => [
+        { type: "Room", id },
+        "Rooms",
+        "Hotels",
+        "Hotel",
+      ],
     }),
 
     // Delete all rooms
@@ -89,7 +96,7 @@ export const roomApi = apiSlice.injectEndpoints({
         url: "/rooms",
         method: "DELETE",
       }),
-      invalidatesTags: ["Rooms", "Room"],
+      invalidatesTags: ["Rooms", "Room", "Hotels", "Hotel"],
     }),
   }),
 });

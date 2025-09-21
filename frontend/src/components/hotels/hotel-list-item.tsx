@@ -1,6 +1,6 @@
 "use client";
 import { useState, useMemo } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 import { useDeleteHotelMutation } from "@/redux/hotelApi";
@@ -42,7 +42,6 @@ interface IHotelListItemProps {
 
 export function HotelListItem({ hotel }: IHotelListItemProps) {
   const router = useRouter();
-  const pathname = usePathname();
   const user = useSelector((state: RootState) => state.auth.user);
   const isAdmin = user?.role === "ADMIN" || user?.role === "AGENT";
   const [deleteHotel, { isLoading: isDeleting }] = useDeleteHotelMutation();
@@ -81,11 +80,7 @@ export function HotelListItem({ hotel }: IHotelListItemProps) {
   }, [selectedRoomId, selectedRoom, filteredRooms]);
 
   const handleView = () => {
-    if (pathname.startsWith("/dashboard")) {
-      router.push(`/dashboard/hotels/${hotel.id}/detail`);
-    } else {
-      router.push(`/dashboard/hotels/${hotel.id}/detail`);
-    }
+    router.push(`/dashboard/hotels/${hotel.id}/detail`);
   };
 
   const handleEdit = () => {
@@ -93,10 +88,12 @@ export function HotelListItem({ hotel }: IHotelListItemProps) {
   };
 
   const handleDelete = async () => {
+    setShowDeleteDialog(false);
+    const toastId = toast.loading("Deleting Hotel...");
     try {
       await deleteHotel(hotel.id.toString()).unwrap();
+      toast.dismiss(toastId);
       toast.success("Hotel deleted successfully");
-      setShowDeleteDialog(false);
     } catch (error) {
       console.error("Failed to delete hotel:", error);
       toast.error("Failed to delete hotel");
@@ -121,6 +118,8 @@ export function HotelListItem({ hotel }: IHotelListItemProps) {
 
   const handleBookConfirm = async () => {
     if (!selectedRoom) return;
+    setShowBookDialog(false);
+    const toastId = toast.loading("Booking Room...");
 
     try {
       await createBooking({
@@ -128,8 +127,8 @@ export function HotelListItem({ hotel }: IHotelListItemProps) {
         roomId: selectedRoom.id,
         totalPrice: selectedRoom.price || 100,
       }).unwrap();
+      toast.dismiss(toastId);
       toast.success("Room booked successfully");
-      setShowBookDialog(false);
       setSelectedRoom(null);
     } catch (error) {
       console.error("Failed to book room:", error);
@@ -138,11 +137,7 @@ export function HotelListItem({ hotel }: IHotelListItemProps) {
   };
 
   const handleRoomView = (roomId: number) => {
-    if (pathname.startsWith("/dashboard")) {
-      router.push(`/dashboard/hotels/${hotel.id}/rooms/${roomId}`);
-    } else {
-      router.push(`/hotels/${hotel.id}/rooms/${roomId}`);
-    }
+    router.push(`/dashboard/rooms/${roomId}/detail`);
   };
 
   const getDestinationName = () => {

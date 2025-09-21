@@ -1,44 +1,48 @@
-// src/app/dashboard/hotels/[id]/detail/page.tsx
+// src/app/dashboard/rooms/[id]/detail/page.tsx
 "use client";
-import { useGetHotelQuery } from "@/redux/hotelApi";
-import { HotelDetail } from "@/components/hotels/hotel-detail";
+import { useGetRoomQuery } from "@/redux/roomApi";
+import { RoomDetail } from "@/components/rooms/room-detail";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Hotel } from "lucide-react";
+import { ArrowLeft, Bed } from "lucide-react";
 
-export default function HotelDetailPage() {
+export default function RoomDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const hotelId = parseInt(params.id, 10);
+  const roomId = parseInt(params.id, 10);
 
   const {
-    data: hotelData,
+    data: roomData,
     error,
     isError,
     isLoading,
     refetch,
-  } = useGetHotelQuery(hotelId.toString());
+  } = useGetRoomQuery(roomId.toString());
 
-  const hotel = hotelData?.data;
+  const room = roomData?.data;
   const errorMessage = extractApiErrorMessage(error).message;
 
   const handleGoBack = () => {
-    router.push("/dashboard/hotels");
+    router.back();
   };
 
   if (isLoading)
     return (
-      <div className="container mx-auto py-6">
+      <div className="container mx-auto py-6 px-4">
         <Card className="shadow-sm">
           <CardHeader>
             <Skeleton className="h-8 w-48" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <Skeleton className="h-64 w-full" />
+            <div className="grid gap-4 md:grid-cols-2">
+              <Skeleton className="h-32 w-full" />
+              <Skeleton className="h-32 w-full" />
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -46,12 +50,12 @@ export default function HotelDetailPage() {
 
   if (isError) return <ErrorMessage error={errorMessage} onRetry={refetch} />;
 
-  if (!hotel) {
-    return <ErrorMessage error="Hotel not found" onRetry={refetch} />;
+  if (!room) {
+    return <ErrorMessage error="Room not found" onRetry={refetch} />;
   }
 
   return (
-    <div className="container mx-auto py-6 px-4">
+    <div className="container mx-auto py-4 sm:py-6 px-4">
       <div>
         <div className="border-b border-border pb-4 sm:pb-6">
           {/* Mobile Layout - Stacked */}
@@ -67,10 +71,10 @@ export default function HotelDetailPage() {
             </Button>
             <div>
               <h1 className="text-xl font-bold text-foreground">
-                Hotel Detail View
+                Room Detail View
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
-                View Hotel information details
+                View room information and book your stay
               </p>
             </div>
           </div>
@@ -80,14 +84,14 @@ export default function HotelDetailPage() {
             <div className="flex items-center gap-3">
               {/* Hide icon on smaller screens, show on md+ */}
               <div className="hidden md:flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
-                <Hotel className="h-5 w-5 text-primary" />
+                <Bed className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-foreground">
-                  Hotel Detail View
+                <h1 className="text-xl lg:text-2xl font-bold text-foreground">
+                  Room Detail View
                 </h1>
                 <p className="text-sm text-muted-foreground">
-                  View comprehensive hotel information details
+                  View comprehensive room details and make your reservation
                 </p>
               </div>
             </div>
@@ -99,13 +103,15 @@ export default function HotelDetailPage() {
               className="flex items-center gap-2 shrink-0 ml-4 hover:cursor-pointer"
             >
               <ArrowLeft className="h-4 w-4" />
-              <span className="hidden sm:inline">Back to Hotels</span>
+              <span className="hidden sm:inline">Back to Rooms</span>
               <span className="sm:hidden">Back</span>
             </Button>
           </div>
         </div>
 
-        <HotelDetail hotel={hotel} />
+        <div className="mt-6">
+          <RoomDetail room={room} />
+        </div>
       </div>
     </div>
   );

@@ -7,7 +7,7 @@ import { RootState } from "@/redux/store";
 import { useDeleteHotelMutation } from "@/redux/hotelApi";
 import { IHotel } from "@/types/hotel.types";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Tooltip,
@@ -16,14 +16,20 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Home,
   MapPin,
   Edit,
   Trash2,
-  ArrowLeft,
   Star,
   Bed,
   MousePointer,
+  MoreHorizontal,
 } from "lucide-react";
 import { ConfirmationDialog } from "../ui/confirmation-dialog";
 import toast from "react-hot-toast";
@@ -68,53 +74,11 @@ export function HotelDetail({ hotel }: IHotelDetailProps) {
   const truncatedHotelName =
     hotel.name.length > 50 ? `${hotel.name.slice(0, 47)}...` : hotel.name;
 
-  const backRoute = pathname.startsWith("/admin-dashboard")
-    ? "/admin-dashboard/hotels"
-    : "/dashboard/hotels";
-
-  const showEditDeleteButtons = isAdmin && !pathname.startsWith("/dashboard");
   const availableRooms = hotel.rooms?.length || 0;
 
   return (
     <TooltipProvider>
       <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => router.push(backRoute)}
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
-          <div className="flex gap-2 ml-auto">
-            {showEditDeleteButtons && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleEdit}
-                  disabled={isDeleting}
-                  className="min-w-[100px]"
-                >
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowDeleteDialog(true)}
-                  disabled={isDeleting}
-                  className="text-destructive hover:text-destructive min-w-[100px]"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
-
         <Card className="overflow-hidden shadow-sm">
           {hotel.photo && (
             <div className="relative w-full h-64 md:h-80 lg:h-96">
@@ -126,6 +90,42 @@ export function HotelDetail({ hotel }: IHotelDetailProps) {
                 priority
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+
+              {isAdmin && (
+                <div className="absolute top-4 right-4">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="bg-white/90 hover:bg-white text-black shadow-sm hover:cursor-pointer"
+                        disabled={isDeleting}
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40">
+                      <DropdownMenuItem
+                        onClick={handleEdit}
+                        disabled={isDeleting}
+                        className="hover:cursor-pointer"
+                      >
+                        <Edit className="mr-2 h-4 w-4" />
+                        Edit Hotel
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setShowDeleteDialog(true)}
+                        disabled={isDeleting}
+                        className="text-destructive focus:text-destructive hover:cursor-pointer"
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete Hotel
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              )}
+
               <div className="absolute bottom-6 left-6">
                 <div className="space-y-2">
                   <div className="flex gap-2">
@@ -153,28 +153,6 @@ export function HotelDetail({ hotel }: IHotelDetailProps) {
               </div>
             </div>
           )}
-
-          <CardHeader className={hotel.photo ? "pb-4" : "pb-6"}>
-            {!hotel.photo && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary">
-                    {hotel.starRating} Star{hotel.starRating > 1 ? "s" : ""}
-                  </Badge>
-                  <Badge variant="outline">
-                    {availableRooms} Room{availableRooms !== 1 ? "s" : ""}{" "}
-                    Available
-                  </Badge>
-                </div>
-                <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-                  {hotel.name}
-                </h1>
-                <p className="text-lg text-muted-foreground">
-                  {hotel.city}, {hotel.country}
-                </p>
-              </div>
-            )}
-          </CardHeader>
 
           <CardContent className="space-y-8">
             {/* Location Information */}
