@@ -58,7 +58,7 @@ const getBookingTypeIcon = (type: string) => {
       return <MapPin className="h-5 w-5 text-primary" />;
     case "FLIGHT":
       return <Plane className="h-5 w-5 text-primary" />;
-    case "HOTEL":
+    case "ROOM":
       return <Building2 className="h-5 w-5 text-primary" />;
     default:
       return <Calendar className="h-5 w-5 text-primary" />;
@@ -178,22 +178,23 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({
                 </div>
               </div>
             )}
-
-            {booking.type === "HOTEL" && booking.hotel && booking.room && (
+            {booking.type === "ROOM" && booking.room && (
               <>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">
-                    Hotel
-                  </label>
-                  <div>
-                    <p className="font-medium">{booking.hotel.name}</p>
-                    {booking.hotel.description && (
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {booking.hotel.description}
-                      </p>
-                    )}
+                {booking.room.hotel && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Hotel
+                    </label>
+                    <div>
+                      <p className="font-medium">{booking.room.hotel.name}</p>
+                      {booking.room.hotel.description && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {booking.room.hotel.description}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-muted-foreground">
                     Room

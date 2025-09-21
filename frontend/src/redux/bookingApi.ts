@@ -94,7 +94,16 @@ export const bookingApi = apiSlice.injectEndpoints({
         method: "POST",
         body: data,
       }),
-      invalidatesTags: ["Bookings"],
+      invalidatesTags: [
+        "Bookings",
+        "Hotels",
+        "Flight",
+        "Flights",
+        "Tours",
+        "Tour",
+        "UserBooking",
+        "UserBookings",
+      ],
     }),
 
     // Update booking
@@ -110,6 +119,13 @@ export const bookingApi = apiSlice.injectEndpoints({
       invalidatesTags: (result, error, { bookingId }) => [
         { type: "Booking", id: bookingId },
         "Bookings",
+        "Hotels",
+        "Flight",
+        "Flights",
+        "Tours",
+        "Tour",
+        "UserBooking",
+        "UserBookings",
       ],
     }),
 
@@ -122,6 +138,13 @@ export const bookingApi = apiSlice.injectEndpoints({
       invalidatesTags: (result, error, bookingId) => [
         { type: "Booking", id: bookingId },
         "Bookings",
+        "Hotels",
+        "Flight",
+        "Flights",
+        "Tours",
+        "Tour",
+        "UserBooking",
+        "UserBookings",
       ],
     }),
 
@@ -135,7 +158,16 @@ export const bookingApi = apiSlice.injectEndpoints({
         method: "DELETE",
         body,
       }),
-      invalidatesTags: ["Bookings"],
+      invalidatesTags: [
+        "Bookings",
+        "Hotels",
+        "Flight",
+        "Flights",
+        "Tours",
+        "Tour",
+        "UserBooking",
+        "UserBookings",
+      ],
     }),
 
     // Search bookings

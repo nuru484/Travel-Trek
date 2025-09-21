@@ -1,5 +1,3 @@
-// src/types/booking.types.ts
-
 export interface IBookingUser {
   id: number;
   name: string;
@@ -12,16 +10,15 @@ export interface IBookingTour {
   description: string | null;
 }
 
-export interface IBookingHotel {
-  id: number;
-  name: string;
-  description: string | null;
-}
-
 export interface IBookingRoom {
   id: number;
   roomType: string;
   description: string | null;
+  hotel?: {
+    id: number;
+    name: string;
+    description: string | null;
+  };
 }
 
 export interface IBookingFlight {
@@ -48,7 +45,7 @@ export interface IBookingBase {
   userId: number;
   user: IBookingUser;
   payment: IBookingPayment | null;
-  status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED";
+  status: BookingStatus;
   totalPrice: number;
   bookingDate: string;
   createdAt: string;
@@ -59,14 +56,12 @@ export interface IBookingBase {
 export interface ITourBooking extends IBookingBase {
   type: "TOUR";
   tour: IBookingTour;
-  hotel: null;
   room: null;
   flight: null;
 }
 
-export interface IHotelBooking extends IBookingBase {
-  type: "HOTEL";
-  hotel: IBookingHotel;
+export interface IRoomBooking extends IBookingBase {
+  type: "ROOM";
   room: IBookingRoom | null;
   tour: null;
   flight: null;
@@ -76,11 +71,10 @@ export interface IFlightBooking extends IBookingBase {
   type: "FLIGHT";
   flight: IBookingFlight;
   tour: null;
-  hotel: null;
   room: null;
 }
 
-export type IBooking = ITourBooking | IHotelBooking | IFlightBooking;
+export type IBooking = ITourBooking | IRoomBooking | IFlightBooking;
 
 export interface IBookingResponse {
   message: string;
@@ -101,11 +95,10 @@ export interface IBookingsPaginatedResponse {
 export interface IBookingInput {
   userId: number;
   tourId?: number | null;
-  hotelId?: number | null;
   roomId?: number | null;
   flightId?: number | null;
   totalPrice: number;
-  status?: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED";
+  status?: BookingStatus;
 }
 
 export type IUpdateBookingInput = Partial<IBookingInput>;
@@ -118,8 +111,14 @@ export interface IDeleteBookingsResponse {
 export interface IBookingsQueryParams {
   page?: number;
   limit?: number;
-  status?: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED";
+  status?: BookingStatus;
   search?: string;
+  type?: "TOUR" | "ROOM" | "FLIGHT";
+  tourId?: number;
+  roomId?: number;
+  flightId?: number;
+  fromDate?: string;
+  toDate?: string;
 }
 
 export interface IBookingsDataTableProps {

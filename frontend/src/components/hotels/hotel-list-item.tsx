@@ -132,7 +132,6 @@ export function HotelListItem({ hotel }: IHotelListItemProps) {
     try {
       await createBooking({
         userId: parseInt(user.id),
-        hotelId: hotel.id,
         roomId: selectedRoom.id,
         totalPrice: selectedRoom.price || 0,
       }).unwrap();
@@ -406,6 +405,7 @@ export function HotelListItem({ hotel }: IHotelListItemProps) {
                               <Eye className="h-3 w-3 mr-1" />
                               View
                             </Button>
+
                             {!isAdmin && (
                               <Button
                                 size="sm"

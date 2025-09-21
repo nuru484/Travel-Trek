@@ -14,7 +14,7 @@ const getBookingTypeIcon = (type: IBooking["type"]) => {
   switch (type) {
     case "TOUR":
       return <Package className="w-4 h-4" />;
-    case "HOTEL":
+    case "ROOM":
       return <Hotel className="w-4 h-4" />;
     case "FLIGHT":
       return <Plane className="w-4 h-4" />;
@@ -138,8 +138,10 @@ export const createBookingColumns = (
           case "TOUR":
             serviceName = booking.tour.name;
             break;
-          case "HOTEL":
-            serviceName = `${booking.hotel.name} - ${booking?.room?.roomType}`;
+          case "ROOM":
+            serviceName = `${booking.room.roomType} - ${
+              booking?.room?.hotel?.name ?? ""
+            }`;
             break;
           case "FLIGHT":
             serviceName = `${booking.flight.airline} ${booking.flight.flightNumber}`;
