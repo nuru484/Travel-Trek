@@ -26,3 +26,4 @@ __exportStar(require("./flightController"), exports);
 __exportStar(require("./hotelController"), exports);
 __exportStar(require("./destinationController"), exports);
 __exportStar(require("./tourController"), exports);
+__exportStar(require("./reportsController"), exports);

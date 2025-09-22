@@ -12,6 +12,7 @@ import itineraryRoutes from './itinerary';
 import tourInclusionRoutes from './tourInclusion';
 import userRoutes from './user';
 import dashboardRoutes from './dashboard';
+import reportsRoutes from './reports';
 
 const routes = express.Router();
 
@@ -52,5 +53,8 @@ routes.use(userRoutes);
 
 // Dashboard routes
 routes.use(dashboardRoutes);
+
+// Reports routes
+routes.use(reportsRoutes);
 
 export default routes;

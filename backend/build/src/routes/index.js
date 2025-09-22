@@ -17,6 +17,7 @@ const itinerary_1 = __importDefault(require("./itinerary"));
 const tourInclusion_1 = __importDefault(require("./tourInclusion"));
 const user_1 = __importDefault(require("./user"));
 const dashboard_1 = __importDefault(require("./dashboard"));
+const reports_1 = __importDefault(require("./reports"));
 const routes = express_1.default.Router();
 // Authentication routes
 routes.use('/', authentication_1.authenticationRouter);
@@ -43,4 +44,6 @@ routes.use(tourInclusion_1.default);
 routes.use(user_1.default);
 // Dashboard routes
 routes.use(dashboard_1.default);
+// Reports routes
+routes.use(reports_1.default);
 exports.default = routes;

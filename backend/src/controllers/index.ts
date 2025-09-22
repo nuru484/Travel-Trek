@@ -10,3 +10,4 @@ export * from './flightController';
 export * from './hotelController';
 export * from './destinationController';
 export * from './tourController';
+export * from './reportsController';
