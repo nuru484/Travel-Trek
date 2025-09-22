@@ -16,28 +16,17 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import Image from "next/image";
 import toast from "react-hot-toast";
-import { useUpdateUserProfileMutation } from "@/redux/userApi";
+import {
+  useUpdateUserProfileMutation,
+  useCreateUserMutation,
+} from "@/redux/userApi";
 import { IUserResponse } from "@/types/user.types";
 import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
-import { useCreateUserMutation } from "@/redux/userApi";
-
-const UserRole = {
-  ADMIN: "ADMIN",
-  CUSTOMER: "CUSTOMER",
-  AGENT: "AGENT",
-} as const;
-
-type UserRole = (typeof UserRole)[keyof typeof UserRole];
+import { useSelector } from "react-redux";
+import { RootState } from "@/redux/store";
 
 const userFormSchema = z.object({
   name: z.string().min(1, "Full name is required"),
@@ -45,9 +34,6 @@ const userFormSchema = z.object({
   phone: z.string().optional().nullable(),
   address: z.string().optional().nullable(),
   password: z.string().optional(),
-  role: z.enum(["ADMIN", "CUSTOMER", "AGENT"], {
-    message: "Select a role",
-  }),
   profilePicture: z.any().optional(),
 });
 
@@ -60,6 +46,8 @@ interface IUserFormProps {
 
 export default function UserForm({ mode, user }: IUserFormProps) {
   const router = useRouter();
+  const authUser = useSelector((state: RootState) => state.auth.user);
+
   const [previewUrl, setPreviewUrl] = useState<string | null>(
     user?.profilePicture || null
   );
@@ -74,8 +62,6 @@ export default function UserForm({ mode, user }: IUserFormProps) {
       email: user?.email || "",
       phone: user?.phone || "",
       address: user?.address || "",
-      password: "",
-      role: user?.role as UserRole,
       profilePicture: undefined,
     }),
     [user]
@@ -123,22 +109,34 @@ export default function UserForm({ mode, user }: IUserFormProps) {
       if (values.phone) formData.append("phone", values.phone);
       if (values.address) formData.append("address", values.address);
       if (values.password) formData.append("password", values.password);
-      formData.append("role", values.role);
       if (values.profilePicture)
         formData.append("profilePicture", values.profilePicture);
 
+      let resultUser: IUserResponse["data"];
+
       if (mode === "create") {
-        await registerUser(formData).unwrap();
+        const res = await registerUser(formData).unwrap();
+        resultUser = res.data;
         toast.success("User created successfully");
       } else {
-        await updateUser({
+        const res = await updateUser({
           userId: user!.id,
-          data: values,
+          data: formData,
         }).unwrap();
+        resultUser = res.data;
         toast.success("User updated successfully");
       }
 
-      router.push("/dashboard/users");
+      if (resultUser.role === "CUSTOMER") {
+        router.push(`/dashboard/users/${resultUser.id}/user-profile`);
+      } else if (
+        (resultUser.role === "ADMIN" || resultUser.role === "AGENT") &&
+        resultUser.id !== authUser?.id
+      ) {
+        router.push("/dashboard/users");
+      } else {
+        router.push(`/dashboard/users/${resultUser.id}/user-profile`);
+      }
     } catch (error) {
       console.error(error);
       toast.error(extractApiErrorMessage(error).message || "Operation failed");
@@ -235,34 +233,6 @@ export default function UserForm({ mode, user }: IUserFormProps) {
                   )}
                 />
               )}
-
-              <FormField
-                control={form.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>User Role</FormLabel>
-                    <FormControl>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.values(UserRole).map((r) => (
-                            <SelectItem key={r} value={r}>
-                              {r}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
 
               <FormField
                 control={form.control}

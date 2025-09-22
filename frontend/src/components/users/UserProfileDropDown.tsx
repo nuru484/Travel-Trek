@@ -74,7 +74,7 @@ export function UserProfileDropdown() {
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link
-            href={`/dashboard/users/${user.id}/edit-profile`}
+            href={`/dashboard/users/${user.id}/edit-profile?userId=${user.id}`}
             className="cursor-pointer"
           >
             <Edit className="mr-2 h-4 w-4" />

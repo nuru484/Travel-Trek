@@ -2,7 +2,7 @@
 "use client";
 import * as React from "react";
 import Link from "next/link";
-import { MoreHorizontal, Trash2, Shield, User } from "lucide-react";
+import { MoreHorizontal, Trash2, Shield, User, Pencil } from "lucide-react";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -90,6 +90,17 @@ export function UserActionsDropdown({ user }: UserActionsDropdownProps) {
             >
               <User className="mr-2 h-4 w-4" />
               View Details
+            </Link>
+          </DropdownMenuItem>
+
+          {/* Edit User Details */}
+          <DropdownMenuItem asChild>
+            <Link
+              href={`/dashboard/users/${user.id}/edit-profile`}
+              className="hover:cursor-pointer"
+            >
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit Details
             </Link>
           </DropdownMenuItem>
 

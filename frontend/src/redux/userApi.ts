@@ -6,7 +6,6 @@ import {
   IUsersQueryParams,
   IDeleteUsersResponse,
   UserRole,
-  IUserUpdateInput,
 } from "../types/user.types";
 
 export const userApi = apiSlice.injectEndpoints({
@@ -56,10 +55,10 @@ export const userApi = apiSlice.injectEndpoints({
       invalidatesTags: ["Users"],
     }),
 
-    // Update user role
+    // Update user profile (now sends FormData)
     updateUserProfile: builder.mutation<
       IUserResponse,
-      { userId: number; data: IUserUpdateInput }
+      { userId: number; data: FormData }
     >({
       query: ({ userId, data }) => ({
         url: `/users/${userId}`,
