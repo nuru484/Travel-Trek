@@ -13,16 +13,6 @@ export const updateUserProfileValidation: ValidationChain[] = [
     required: false,
     maxLength: 255,
   }),
-  validator.password('password', {
-    required: false,
-    minLength: 5,
-    // maxLength: 255,
-    // requireUppercase: true,
-    // requireLowercase: true,
-    // requireNumbers: true,
-    // requireSpecialChars: true,
-    customMessage: 'Password must be a strong password',
-  }),
   validator.enum('role', ['ADMIN', 'CUSTOMER', 'AGENT'], {
     required: false,
   }),

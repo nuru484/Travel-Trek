@@ -20,9 +20,6 @@ export const registerUserValidation: ValidationChain[] = [
     customMessage: 'Password must be a strong password',
   }),
 
-  validator.enum('role', ['ADMIN', 'CUSTOMER', 'AGENT'], {
-    required: true,
-  }),
   validator.string('address', {
     required: true,
     maxLength: 100,

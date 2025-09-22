@@ -63,7 +63,7 @@ export interface IUserUpdateData {
   password?: string;
   phone?: string;
   address?: string;
-  profilePicture?: string; // Only string after middleware processing
+  profilePicture?: string;
 }
 
 // Interfaces for responses

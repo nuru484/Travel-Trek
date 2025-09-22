@@ -9,7 +9,7 @@ const user_profile_types_1 = require("../../types/user-profile.types");
 const userRoutes = (0, express_1.Router)();
 userRoutes.post('/users', (0, authorize_roles_1.authorizeRole)([user_profile_types_1.UserRole.ADMIN, user_profile_types_1.UserRole.AGENT]), ...index_2.registerUser);
 // Update user profile
-userRoutes.put('/users/:userId', (0, authorize_roles_1.authorizeRole)([user_profile_types_1.UserRole.ADMIN, user_profile_types_1.UserRole.AGENT, user_profile_types_1.UserRole.CUSTOMER]), index_1.updateUserProfile);
+userRoutes.put('/users/:userId', (0, authorize_roles_1.authorizeRole)([user_profile_types_1.UserRole.ADMIN, user_profile_types_1.UserRole.AGENT, user_profile_types_1.UserRole.CUSTOMER]), ...index_1.updateUserProfile);
 // Get all users with pagination
 userRoutes.get('/users', (0, authorize_roles_1.authorizeRole)([user_profile_types_1.UserRole.ADMIN, user_profile_types_1.UserRole.AGENT]), index_1.getAllUsers);
 userRoutes.get('/users/:userId', (0, authorize_roles_1.authorizeRole)([user_profile_types_1.UserRole.ADMIN, user_profile_types_1.UserRole.AGENT, user_profile_types_1.UserRole.CUSTOMER]), index_1.getUserById);

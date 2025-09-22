@@ -23,6 +23,7 @@ const handleUpdateUserProfile = (0, error_handler_1.asyncHandler)(async (req, re
     const currentUserId = req.user?.id;
     const currentUserRole = req.user?.role;
     const userDetails = req.body;
+    console.log('Update User Profile Request Body:', req.body);
     if (!userId || isNaN(parseInt(userId))) {
         res.status(constants_1.HTTP_STATUS_CODES.BAD_REQUEST);
         throw new Error('Valid user ID is required');
@@ -115,8 +116,8 @@ const handleUpdateUserProfile = (0, error_handler_1.asyncHandler)(async (req, re
  * Middleware array for user profile update
  */
 exports.updateUserProfile = [
-    ...validation_1.default.create(user_validations_1.updateUserProfileValidation),
     multer_1.default.single('profilePicture'),
+    validation_1.default.create(user_validations_1.updateUserProfileValidation),
     (0, conditional_cloudinary_upload_1.default)(constants_2.CLOUDINARY_UPLOAD_OPTIONS, 'profilePicture'),
     handleUpdateUserProfile,
 ];

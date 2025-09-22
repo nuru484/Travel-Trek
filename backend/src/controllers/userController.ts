@@ -38,7 +38,8 @@ const handleUpdateUserProfile = asyncHandler(
     // Authorization check
     if (
       targetUserId !== parseInt(currentUserId?.toString() || '0') &&
-      currentUserRole !== UserRole.ADMIN
+      currentUserRole !== UserRole.ADMIN &&
+      currentUserRole !== UserRole.AGENT
     ) {
       res.status(HTTP_STATUS_CODES.FORBIDDEN);
       throw new Error('You are not authorized to update this user');
@@ -141,12 +142,13 @@ const handleUpdateUserProfile = asyncHandler(
 /**
  * Middleware array for user profile update
  */
-export const updateUserProfile: RequestHandler[] = [
-  ...validationMiddleware.create(updateUserProfileValidation),
+
+export const updateUserProfile = [
   multerUpload.single('profilePicture'),
+  validationMiddleware.create(updateUserProfileValidation),
   conditionalCloudinaryUpload(CLOUDINARY_UPLOAD_OPTIONS, 'profilePicture'),
   handleUpdateUserProfile,
-];
+] as const;
 
 /**
  * Get single user by ID
@@ -167,7 +169,8 @@ export const getUserById = asyncHandler(
     // Authorization check - users can view their own profile, admins can view any profile
     if (
       targetUserId !== parseInt(currentUserId?.toString() || '0') &&
-      currentUserRole !== UserRole.ADMIN
+      currentUserRole !== UserRole.ADMIN &&
+      currentUserRole !== UserRole.AGENT
     ) {
       res.status(HTTP_STATUS_CODES.FORBIDDEN);
       throw new Error('You are not authorized to view this user profile');

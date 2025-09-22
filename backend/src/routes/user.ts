@@ -24,7 +24,7 @@ userRoutes.post(
 userRoutes.put(
   '/users/:userId',
   authorizeRole([UserRole.ADMIN, UserRole.AGENT, UserRole.CUSTOMER]),
-  updateUserProfile,
+  ...updateUserProfile,
 );
 
 // Get all users with pagination
