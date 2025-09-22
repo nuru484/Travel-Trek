@@ -31,7 +31,7 @@ export function UserProfileBookings({ userId }: UserProfileBookingsProps) {
   const totalCount = bookingsData?.meta.total || 0;
 
   const handleViewAllBookings = () => {
-    router.push(`/bookings?userId=${userId}`);
+    router.push(`/dashboard/bookings?userId=${userId}`);
   };
 
   // Loading state

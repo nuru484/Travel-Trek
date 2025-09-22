@@ -31,7 +31,7 @@ export function UserProfilePayments({ userId }: UserProfilePaymentsProps) {
   const totalCount = paymentsData?.meta.total || 0;
 
   const handleViewAllPayments = () => {
-    router.push(`/payments?userId=${userId}`);
+    router.push(`/dashboard/payments?userId=${userId}`);
   };
 
   // Loading state

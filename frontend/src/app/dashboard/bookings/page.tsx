@@ -1,6 +1,7 @@
 // src/app/dashboard/bookings/page.tsx
 "use client";
 import * as React from "react";
+import { useSearchParams } from "next/navigation";
 import { BookingsDataTable } from "@/components/bookings/table/BookingsDataTable";
 import {
   useGetAllBookingsQuery,
@@ -13,15 +14,18 @@ import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 
 const BookingsPage = () => {
+  const searchParams = useSearchParams();
   const user = useSelector((state: RootState) => state.auth.user);
   const isAdmin = user?.role === "ADMIN";
+
+  const urlUserId = Number(searchParams.get("userId"));
 
   const [params, setParams] = React.useState<IBookingsQueryParams>({
     page: 1,
     limit: 10,
   });
 
-  // Admin query
+  // Queries
   const {
     data: adminBookingsData,
     error: adminError,
@@ -29,7 +33,7 @@ const BookingsPage = () => {
     isLoading: isAdminLoading,
     refetch: adminRefetch,
   } = useGetAllBookingsQuery(params, {
-    skip: !isAdmin,
+    skip: !isAdmin || !!urlUserId,
   });
 
   const {
@@ -40,20 +44,36 @@ const BookingsPage = () => {
     refetch: userRefetch,
   } = useGetAllUserBookingsQuery(
     {
-      userId: user?.id || 0,
+      userId: urlUserId || user?.id || 0,
       params,
     },
     {
-      skip: isAdmin || !user?.id,
+      skip: (!urlUserId && !user?.id) || (!isAdmin && !user?.id),
     }
   );
 
-  // Determine which data to use
-  const bookingsData = isAdmin ? adminBookingsData : userBookingsData;
-  const error = isAdmin ? adminError : userError;
-  const isError = isAdmin ? isAdminError : isUserError;
-  const isLoading = isAdmin ? isAdminLoading : isUserLoading;
-  const refetch = isAdmin ? adminRefetch : userRefetch;
+  // Decide which data to show
+  let bookingsData, error, isError, isLoading, refetch;
+
+  if (urlUserId) {
+    bookingsData = userBookingsData;
+    error = userError;
+    isError = isUserError;
+    isLoading = isUserLoading;
+    refetch = userRefetch;
+  } else if (user && !isAdmin) {
+    bookingsData = userBookingsData;
+    error = userError;
+    isError = isUserError;
+    isLoading = isUserLoading;
+    refetch = userRefetch;
+  } else if (isAdmin) {
+    bookingsData = adminBookingsData;
+    error = adminError;
+    isError = isAdminError;
+    isLoading = isAdminLoading;
+    refetch = adminRefetch;
+  }
 
   // Memoize all callback functions
   const handlePageChange = React.useCallback((page: number) => {
@@ -71,7 +91,6 @@ const BookingsPage = () => {
     []
   );
 
-  // Memoize the filters object
   const filters = React.useMemo(
     () => ({
       search: params.search,
@@ -94,10 +113,16 @@ const BookingsPage = () => {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold">
-            {isAdmin ? "Bookings" : "My Bookings"}
+            {urlUserId && isAdmin
+              ? `All Bookings for User #${urlUserId}`
+              : isAdmin && !urlUserId
+              ? "All Bookings"
+              : "My Bookings"}
           </h1>
           <p className="text-muted-foreground">
-            {isAdmin
+            {urlUserId
+              ? "Manage bookings for the selected user"
+              : isAdmin
               ? "Manage all customer bookings"
               : "View and manage your bookings"}
           </p>

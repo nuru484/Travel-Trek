@@ -1,6 +1,7 @@
 // src/app/dashboard/payments/page.tsx
 "use client";
 import * as React from "react";
+import { useSearchParams } from "next/navigation";
 import { PaymentsDataTable } from "@/components/payments/table/PaymentsDataTable";
 import {
   useGetAllPaymentsQuery,
@@ -13,8 +14,11 @@ import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 
 const PaymentsPage = () => {
+  const searchParams = useSearchParams();
   const user = useSelector((state: RootState) => state.auth.user);
   const isAdmin = user?.role === "ADMIN";
+
+  const urlUserId = Number(searchParams.get("userId"));
 
   const [params, setParams] = React.useState<IPaymentsQueryParams>({
     page: 1,
@@ -29,7 +33,7 @@ const PaymentsPage = () => {
     isLoading: isAdminLoading,
     refetch: adminRefetch,
   } = useGetAllPaymentsQuery(params, {
-    skip: !isAdmin,
+    skip: !isAdmin || !!urlUserId,
   });
 
   // User query
@@ -41,20 +45,36 @@ const PaymentsPage = () => {
     refetch: userRefetch,
   } = useGetAllUserPaymentsQuery(
     {
-      userId: user?.id || 0,
+      userId: urlUserId || user?.id || 0,
       params,
     },
     {
-      skip: isAdmin || !user?.id,
+      skip: (!urlUserId && !user?.id) || (!isAdmin && !user?.id),
     }
   );
 
-  // Determine which data to use
-  const paymentsData = isAdmin ? adminPaymentsData : userPaymentsData;
-  const error = isAdmin ? adminError : userError;
-  const isError = isAdmin ? isAdminError : isUserError;
-  const isLoading = isAdmin ? isAdminLoading : isUserLoading;
-  const refetch = isAdmin ? adminRefetch : userRefetch;
+  // Decide which data to show
+  let paymentsData, error, isError, isLoading, refetch;
+
+  if (urlUserId) {
+    paymentsData = userPaymentsData;
+    error = userError;
+    isError = isUserError;
+    isLoading = isUserLoading;
+    refetch = userRefetch;
+  } else if (user && !isAdmin) {
+    paymentsData = userPaymentsData;
+    error = userError;
+    isError = isUserError;
+    isLoading = isUserLoading;
+    refetch = userRefetch;
+  } else if (isAdmin) {
+    paymentsData = adminPaymentsData;
+    error = adminError;
+    isError = isAdminError;
+    isLoading = isAdminLoading;
+    refetch = adminRefetch;
+  }
 
   // Memoize all callback functions
   const handlePageChange = React.useCallback((page: number) => {
@@ -72,7 +92,6 @@ const PaymentsPage = () => {
     []
   );
 
-  // Memoize the filters object
   const filters = React.useMemo(
     () => ({
       search: params.search,
@@ -104,10 +123,16 @@ const PaymentsPage = () => {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold">
-            {isAdmin ? "Payments" : "My Payments"}
+            {urlUserId && isAdmin
+              ? `All Payments for User #${urlUserId}`
+              : isAdmin && !urlUserId
+              ? "All Payments"
+              : "My Payments"}
           </h1>
           <p className="text-muted-foreground">
-            {isAdmin
+            {urlUserId
+              ? "Manage payments for the selected user"
+              : isAdmin
               ? "Manage all customer payments"
               : "View and manage your payments"}
           </p>

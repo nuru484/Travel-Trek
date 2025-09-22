@@ -21,6 +21,10 @@ export const apiSliceTags = [
   "Dashboard",
   "Rooms",
   "Room",
+  "DashboardOverview",
+  "ToursReport",
+  "PaymentsReport",
+  "BookingsReport",
 ] as const;
 
 export interface IApiResponse<T> {
