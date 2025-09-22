@@ -191,7 +191,6 @@ export function RoomForm({ room, mode, hotelId }: IRoomFormProps) {
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle>
-            {mode === "create" ? "Create New Room" : "Edit Room"}
             {selectedHotel && (
               <div className="text-sm font-normal text-muted-foreground mt-1">
                 Selected Hotel: {selectedHotel.name} ({selectedHotel.city},{" "}
@@ -416,13 +415,17 @@ export function RoomForm({ room, mode, hotelId }: IRoomFormProps) {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => router.push("/dashboard/rooms")}
+                  onClick={() => router.push("/dashboard/hotels")}
                   disabled={isLoading}
-                  className="flex-1"
+                  className="flex-1 hover:cursor-pointer"
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isLoading} className="flex-1">
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="flex-1 hover:cursor-pointer"
+                >
                   <Save className="mr-2 h-4 w-4" />
                   {isLoading
                     ? "Saving..."
