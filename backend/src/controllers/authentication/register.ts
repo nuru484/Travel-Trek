@@ -1,3 +1,4 @@
+// src/controllers/authentication/register.ts
 import { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcrypt';
 import prisma from '../../config/prismaClient';
@@ -23,20 +24,23 @@ const handleRegisterUser = async (
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
-  console.log('Before Cloudinary middleware:', {
-    file: req.file,
-    profilePicture: req.body.profilePicture,
-  });
-
   const userDetails = req.body;
   let uploadedImageUrl: string | undefined;
 
   try {
-    // Check if any user exists
     const existingUser = await prisma.user.findFirst();
-    // Set role to ADMIN if no users exist, otherwise use provided role or default
-    const userRole = existingUser ? userDetails.role : UserRole.ADMIN;
 
+    // Determine role logic
+    let userRole: UserRole;
+    if (!existingUser) {
+      userRole = UserRole.ADMIN;
+    } else if (req.user && req.user.role === UserRole.ADMIN) {
+      userRole = userDetails.role ?? UserRole.CUSTOMER;
+    } else {
+      userRole = UserRole.CUSTOMER;
+    }
+
+    // Hash password
     const hashedPassword = await bcrypt.hash(
       userDetails.password,
       BCRYPT_SALT_ROUNDS,
@@ -50,7 +54,6 @@ const handleRegisterUser = async (
     }
     uploadedImageUrl = profilePicture;
 
-    // Prepare user creation data
     const userCreationData: IUserRegistrationInput = {
       ...userDetails,
       password: hashedPassword,
@@ -86,8 +89,8 @@ const handleRegisterUser = async (
  * Middleware array for user registration
  */
 const registerUser = [
-  multerUpload.single('profilePicture'), // Parse FormData (file and text fields)
-  validationMiddleware.create(registerUserValidation), // Validate the parsed req.body
+  multerUpload.single('profilePicture'),
+  validationMiddleware.create(registerUserValidation),
   conditionalCloudinaryUpload(CLOUDINARY_UPLOAD_OPTIONS, 'profilePicture'),
   handleRegisterUser,
 ] as const;

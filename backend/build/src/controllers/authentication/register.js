@@ -19,17 +19,22 @@ const constants_3 = require("../../config/constants");
  * Controller function for user registration
  */
 const handleRegisterUser = async (req, res, next) => {
-    console.log('Before Cloudinary middleware:', {
-        file: req.file,
-        profilePicture: req.body.profilePicture,
-    });
     const userDetails = req.body;
     let uploadedImageUrl;
     try {
-        // Check if any user exists
         const existingUser = await prismaClient_1.default.user.findFirst();
-        // Set role to ADMIN if no users exist, otherwise use provided role or default
-        const userRole = existingUser ? userDetails.role : user_profile_types_1.UserRole.ADMIN;
+        // Determine role logic
+        let userRole;
+        if (!existingUser) {
+            userRole = user_profile_types_1.UserRole.ADMIN;
+        }
+        else if (req.user && req.user.role === user_profile_types_1.UserRole.ADMIN) {
+            userRole = userDetails.role ?? user_profile_types_1.UserRole.CUSTOMER;
+        }
+        else {
+            userRole = user_profile_types_1.UserRole.CUSTOMER;
+        }
+        // Hash password
         const hashedPassword = await bcrypt_1.default.hash(userDetails.password, constants_3.BCRYPT_SALT_ROUNDS);
         // Validate profilePicture
         const profilePicture = req.body.profilePicture;
@@ -38,7 +43,6 @@ const handleRegisterUser = async (req, res, next) => {
             throw new Error('Invalid profile picture format. Expected a string URL.');
         }
         uploadedImageUrl = profilePicture;
-        // Prepare user creation data
         const userCreationData = {
             ...userDetails,
             password: hashedPassword,
@@ -72,8 +76,8 @@ const handleRegisterUser = async (req, res, next) => {
  * Middleware array for user registration
  */
 const registerUser = [
-    multer_1.default.single('profilePicture'), // Parse FormData (file and text fields)
-    validation_1.default.create(auth_validations_1.registerUserValidation), // Validate the parsed req.body
+    multer_1.default.single('profilePicture'),
+    validation_1.default.create(auth_validations_1.registerUserValidation),
     (0, conditional_cloudinary_upload_1.default)(constants_1.CLOUDINARY_UPLOAD_OPTIONS, 'profilePicture'),
     handleRegisterUser,
 ];
