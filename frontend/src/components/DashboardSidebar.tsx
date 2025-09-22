@@ -12,6 +12,7 @@ import {
   CreditCard,
   LayoutDashboard,
   Home,
+  BarChart3,
 } from "lucide-react";
 import {
   Sidebar,
@@ -65,6 +66,11 @@ const adminNavigationItems = [
     name: "Payments",
     path: "/dashboard/payments",
     icon: CreditCard,
+  },
+  {
+    name: "Reports",
+    path: "/dashboard/reports",
+    icon: BarChart3,
   },
 ];
 
