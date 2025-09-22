@@ -51,5 +51,5 @@ export interface IDestinationUpdateInput {
   description?: string;
   country?: string;
   city?: string;
-  destinationPhoto?: File; // Frontend uses File object for uploads
+  destinationPhoto?: File; 
 }

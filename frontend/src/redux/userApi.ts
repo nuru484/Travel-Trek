@@ -47,15 +47,24 @@ export const userApi = apiSlice.injectEndpoints({
       ],
     }),
 
+    createUser: builder.mutation<IUserResponse, FormData>({
+      query: (formData) => ({
+        url: "/users",
+        method: "POST",
+        body: formData,
+      }),
+      invalidatesTags: ["Users"],
+    }),
+
     // Update user role
     updateUserProfile: builder.mutation<
       IUserResponse,
-      { userId: string; data: IUserUpdateInput }
+      { userId: number; data: IUserUpdateInput }
     >({
       query: ({ userId, data }) => ({
         url: `/users/${userId}`,
         method: "PUT",
-        body: { data },
+        body: data,
       }),
       invalidatesTags: (result, error, { userId }) => [
         { type: "User", id: userId },
@@ -131,6 +140,8 @@ export const userApi = apiSlice.injectEndpoints({
 export const {
   useGetAllUsersQuery,
   useGetUserQuery,
+  useCreateUserMutation,
+  useUpdateUserProfileMutation,
   useUpdateUserRoleMutation,
   useDeleteUserMutation,
   useDeleteAllUsersMutation,

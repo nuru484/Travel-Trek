@@ -133,7 +133,7 @@ const ReportsPage = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Container with proper spacing */}
-      <div className="container mx-auto py-4 sm:py-6">
+      <div className="container mx-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div className="flex-1 min-w-0">
