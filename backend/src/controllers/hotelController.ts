@@ -7,6 +7,7 @@ import {
   asyncHandler,
   NotFoundError,
   UnauthorizedError,
+  BadRequestError,
 } from '../middlewares/error-handler';
 import { HTTP_STATUS_CODES } from '../config/constants';
 import {
@@ -398,13 +399,29 @@ const handleDeleteHotel = asyncHandler(
 
     const hotel = await prisma.hotel.findUnique({
       where: { id: parseInt(id) },
+      include: {
+        rooms: true,
+        destination: true,
+      },
     });
 
     if (!hotel) {
       throw new NotFoundError('Hotel not found');
     }
 
-    // Delete from database first
+    if (hotel.rooms.length > 0) {
+      throw new BadRequestError(
+        'Cannot delete hotel with existing rooms. Please remove rooms first.',
+      );
+    }
+
+    if (hotel.destination) {
+      throw new BadRequestError(
+        `Cannot delete hotel while it is linked to destination "${hotel.destination.name}". Remove association first.`,
+      );
+    }
+
+    // Delete hotel from database
     await prisma.hotel.delete({
       where: { id: parseInt(id) },
     });
@@ -645,17 +662,34 @@ const handleGetHotelsByDestination = asyncHandler(
  */
 const handleDeleteAllHotels = asyncHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    // Get all hotels with photos before deleting
+    // Get all hotels with related rooms + destination + photo
     const hotels = await prisma.hotel.findMany({
-      select: { photo: true },
-      where: { photo: { not: null } },
+      include: {
+        rooms: true,
+        destination: true,
+      },
     });
 
-    // Delete from database first
-    await prisma.hotel.deleteMany({});
+    // Filter deletable hotels (no rooms, no destination)
+    const deletableHotels = hotels.filter(
+      (hotel) => hotel.rooms.length === 0 && !hotel.destination,
+    );
 
-    // Clean up photos from Cloudinary
-    const cleanupPromises = hotels
+    if (deletableHotels.length === 0) {
+      throw new BadRequestError(
+        'No hotels can be deleted. Hotels with rooms or linked to destinations must be cleaned up first.',
+      );
+    }
+
+    // Delete safe hotels from DB
+    await prisma.hotel.deleteMany({
+      where: {
+        id: { in: deletableHotels.map((h) => h.id) },
+      },
+    });
+
+    // Clean up Cloudinary photos
+    const cleanupPromises = deletableHotels
       .filter((hotel) => hotel.photo)
       .map(async (hotel) => {
         try {
@@ -668,11 +702,11 @@ const handleDeleteAllHotels = asyncHandler(
         }
       });
 
-    // Wait for all cleanup operations
     await Promise.allSettled(cleanupPromises);
 
     res.status(HTTP_STATUS_CODES.OK).json({
-      message: 'All hotels deleted successfully',
+      message: `Deleted ${deletableHotels.length} hotel(s) successfully`,
+      skipped: hotels.length - deletableHotels.length,
     });
   },
 );

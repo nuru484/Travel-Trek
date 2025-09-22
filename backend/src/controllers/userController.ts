@@ -397,7 +397,7 @@ export const deleteUser = asyncHandler(
       }
     }
 
-    // Check if user exists and get profile picture for cleanup
+    // Check if user exists and get related counts
     const existingUser = await prisma.user.findUnique({
       where: { id: targetUserId },
       select: {
@@ -409,7 +409,6 @@ export const deleteUser = asyncHandler(
         _count: {
           select: {
             bookings: true,
-            payments: true,
             reviews: true,
             inquiries: true,
           },
@@ -422,22 +421,26 @@ export const deleteUser = asyncHandler(
       throw new Error('User not found');
     }
 
-    // Check for related data that might prevent deletion
-    const hasRelatedData =
-      existingUser._count.bookings > 0 ||
-      existingUser._count.payments > 0 ||
-      existingUser._count.reviews > 0 ||
-      existingUser._count.inquiries > 0;
+    // Check for non-refunded payments
+    const activePayments = await prisma.payment.count({
+      where: {
+        userId: targetUserId,
+        status: {
+          not: 'REFUNDED',
+        },
+      },
+    });
 
-    if (hasRelatedData) {
+    // If user has active payments (not refunded), prevent deletion
+    if (activePayments > 0) {
       res.status(HTTP_STATUS_CODES.CONFLICT);
       throw new Error(
-        'Cannot delete user with existing bookings, payments, reviews, or inquiries. ' +
-          'Please handle related data first or consider deactivating the user instead.',
+        'Cannot delete user with active (non-refunded) payments. ' +
+          'Please handle or refund payments first.',
       );
     }
 
-    // Delete user (related wishlist and notifications will be cascade deleted)
+    // Delete user (cascade deletes Wishlist and Notifications)
     await prisma.user.delete({
       where: { id: targetUserId },
     });
@@ -487,14 +490,6 @@ export const deleteAllUsers = asyncHandler(
         name: true,
         email: true,
         profilePicture: true,
-        _count: {
-          select: {
-            bookings: true,
-            payments: true,
-            reviews: true,
-            inquiries: true,
-          },
-        },
       },
     });
 
@@ -506,20 +501,28 @@ export const deleteAllUsers = asyncHandler(
       return;
     }
 
-    // Check if any users have related data
-    const usersWithRelatedData = usersToDelete.filter(
-      (user) =>
-        user._count.bookings > 0 ||
-        user._count.payments > 0 ||
-        user._count.reviews > 0 ||
-        user._count.inquiries > 0,
+    // Find users with non-refunded payments
+    const usersWithActivePayments = await prisma.payment.findMany({
+      where: {
+        userId: {
+          in: usersToDelete.map((u) => u.id),
+        },
+        status: {
+          not: 'REFUNDED',
+        },
+      },
+      select: { userId: true },
+    });
+
+    const blockedUserIds = new Set(
+      usersWithActivePayments.map((p) => p.userId),
     );
 
-    if (usersWithRelatedData.length > 0) {
+    if (blockedUserIds.size > 0) {
       res.status(HTTP_STATUS_CODES.CONFLICT);
       throw new Error(
-        `Cannot delete ${usersWithRelatedData.length} users with existing related data. ` +
-          'Please handle related data first or consider bulk deactivation instead.',
+        `Cannot delete ${blockedUserIds.size} users with active (non-refunded) payments. ` +
+          'Please handle or refund payments first.',
       );
     }
 

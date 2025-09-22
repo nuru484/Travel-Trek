@@ -6,6 +6,7 @@ import {
   asyncHandler,
   NotFoundError,
   UnauthorizedError,
+  BadRequestError,
 } from '../middlewares/error-handler';
 import { HTTP_STATUS_CODES } from '../config/constants';
 import { IBookingInput, IBooking } from 'types/booking.types';
@@ -472,10 +473,21 @@ const handleDeleteBooking = asyncHandler(
 
     const booking = await prisma.booking.findUnique({
       where: { id: parseInt(id) },
+      include: { payment: true },
     });
 
     if (!booking) {
       throw new NotFoundError('Booking not found');
+    }
+
+    if (booking.status === 'COMPLETED') {
+      throw new BadRequestError('Completed bookings cannot be deleted');
+    }
+
+    if (booking.payment && booking.payment.status !== 'REFUNDED') {
+      throw new BadRequestError(
+        `Cannot delete booking with payment status "${booking.payment.status}". Refund required first.`,
+      );
     }
 
     await prisma.booking.delete({
@@ -1022,10 +1034,34 @@ const handleDeleteAllBookings = asyncHandler(
       throw new UnauthorizedError('Only admins can delete all bookings');
     }
 
-    await prisma.booking.deleteMany({});
+    // Get all bookings with payment details
+    const bookings = await prisma.booking.findMany({
+      include: { payment: true },
+    });
+
+    // Filter out bookings that are safe to delete
+    const deletableBookings = bookings.filter(
+      (booking) =>
+        booking.status !== 'COMPLETED' &&
+        (!booking.payment || booking.payment.status === 'REFUNDED'),
+    );
+
+    if (deletableBookings.length === 0) {
+      throw new BadRequestError(
+        'No bookings can be deleted. Completed or paid bookings must be refunded first.',
+      );
+    }
+
+    // Delete only the safe bookings
+    await prisma.booking.deleteMany({
+      where: {
+        id: { in: deletableBookings.map((b) => b.id) },
+      },
+    });
 
     res.status(HTTP_STATUS_CODES.OK).json({
-      message: 'All bookings deleted successfully',
+      message: `Deleted ${deletableBookings.length} booking(s) successfully`,
+      skipped: bookings.length - deletableBookings.length,
     });
   },
 );

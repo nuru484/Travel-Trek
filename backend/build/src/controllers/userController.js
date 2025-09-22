@@ -330,7 +330,7 @@ exports.deleteUser = (0, error_handler_1.asyncHandler)(async (req, res, next) =>
             throw new Error('You are not authorized to delete other users');
         }
     }
-    // Check if user exists and get profile picture for cleanup
+    // Check if user exists and get related counts
     const existingUser = await prismaClient_1.default.user.findUnique({
         where: { id: targetUserId },
         select: {
@@ -342,7 +342,6 @@ exports.deleteUser = (0, error_handler_1.asyncHandler)(async (req, res, next) =>
             _count: {
                 select: {
                     bookings: true,
-                    payments: true,
                     reviews: true,
                     inquiries: true,
                 },
@@ -353,17 +352,22 @@ exports.deleteUser = (0, error_handler_1.asyncHandler)(async (req, res, next) =>
         res.status(constants_1.HTTP_STATUS_CODES.NOT_FOUND);
         throw new Error('User not found');
     }
-    // Check for related data that might prevent deletion
-    const hasRelatedData = existingUser._count.bookings > 0 ||
-        existingUser._count.payments > 0 ||
-        existingUser._count.reviews > 0 ||
-        existingUser._count.inquiries > 0;
-    if (hasRelatedData) {
+    // Check for non-refunded payments
+    const activePayments = await prismaClient_1.default.payment.count({
+        where: {
+            userId: targetUserId,
+            status: {
+                not: 'REFUNDED',
+            },
+        },
+    });
+    // If user has active payments (not refunded), prevent deletion
+    if (activePayments > 0) {
         res.status(constants_1.HTTP_STATUS_CODES.CONFLICT);
-        throw new Error('Cannot delete user with existing bookings, payments, reviews, or inquiries. ' +
-            'Please handle related data first or consider deactivating the user instead.');
+        throw new Error('Cannot delete user with active (non-refunded) payments. ' +
+            'Please handle or refund payments first.');
     }
-    // Delete user (related wishlist and notifications will be cascade deleted)
+    // Delete user (cascade deletes Wishlist and Notifications)
     await prismaClient_1.default.user.delete({
         where: { id: targetUserId },
     });
@@ -402,14 +406,6 @@ exports.deleteAllUsers = (0, error_handler_1.asyncHandler)(async (req, res, next
             name: true,
             email: true,
             profilePicture: true,
-            _count: {
-                select: {
-                    bookings: true,
-                    payments: true,
-                    reviews: true,
-                    inquiries: true,
-                },
-            },
         },
     });
     if (usersToDelete.length === 0) {
@@ -419,15 +415,23 @@ exports.deleteAllUsers = (0, error_handler_1.asyncHandler)(async (req, res, next
         });
         return;
     }
-    // Check if any users have related data
-    const usersWithRelatedData = usersToDelete.filter((user) => user._count.bookings > 0 ||
-        user._count.payments > 0 ||
-        user._count.reviews > 0 ||
-        user._count.inquiries > 0);
-    if (usersWithRelatedData.length > 0) {
+    // Find users with non-refunded payments
+    const usersWithActivePayments = await prismaClient_1.default.payment.findMany({
+        where: {
+            userId: {
+                in: usersToDelete.map((u) => u.id),
+            },
+            status: {
+                not: 'REFUNDED',
+            },
+        },
+        select: { userId: true },
+    });
+    const blockedUserIds = new Set(usersWithActivePayments.map((p) => p.userId));
+    if (blockedUserIds.size > 0) {
         res.status(constants_1.HTTP_STATUS_CODES.CONFLICT);
-        throw new Error(`Cannot delete ${usersWithRelatedData.length} users with existing related data. ` +
-            'Please handle related data first or consider bulk deactivation instead.');
+        throw new Error(`Cannot delete ${blockedUserIds.size} users with active (non-refunded) payments. ` +
+            'Please handle or refund payments first.');
     }
     // Collect profile pictures for cleanup
     const profilePicturesToDelete = usersToDelete

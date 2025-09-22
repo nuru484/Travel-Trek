@@ -268,11 +268,15 @@ const deleteRoom = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     }
     const room = await prismaClient_1.default.room.findUnique({
         where: { id: parseInt(id) },
+        include: { bookings: true },
     });
     if (!room) {
         throw new error_handler_1.NotFoundError('Room not found');
     }
-    // Delete from database first
+    if (room.bookings.length > 0) {
+        throw new error_handler_1.BadRequestError('Cannot delete room with existing bookings. Please cancel or reassign bookings first.');
+    }
+    // Delete from database
     await prismaClient_1.default.room.delete({
         where: { id: parseInt(id) },
     });
@@ -392,15 +396,25 @@ const deleteAllRooms = (0, error_handler_1.asyncHandler)(async (req, res, next) 
     if (user.role !== 'ADMIN') {
         throw new error_handler_1.UnauthorizedError('Only admins can delete all rooms');
     }
-    // Get all rooms with photos before deleting
+    // Get all rooms with bookings + photos
     const rooms = await prismaClient_1.default.room.findMany({
-        select: { photo: true },
-        where: { photo: { not: null } },
+        include: {
+            bookings: true,
+        },
     });
-    // Delete from database first
-    await prismaClient_1.default.room.deleteMany({});
-    // Clean up photos from Cloudinary
-    const cleanupPromises = rooms
+    // Filter out rooms that are safe to delete (no bookings)
+    const deletableRooms = rooms.filter((room) => room.bookings.length === 0);
+    if (deletableRooms.length === 0) {
+        throw new error_handler_1.BadRequestError('No rooms can be deleted. All rooms are currently booked.');
+    }
+    // Delete safe rooms
+    await prismaClient_1.default.room.deleteMany({
+        where: {
+            id: { in: deletableRooms.map((r) => r.id) },
+        },
+    });
+    // Clean up Cloudinary photos for deletable rooms
+    const cleanupPromises = deletableRooms
         .filter((room) => room.photo)
         .map(async (room) => {
         try {
@@ -410,10 +424,10 @@ const deleteAllRooms = (0, error_handler_1.asyncHandler)(async (req, res, next) 
             console.warn(`Failed to clean up photo ${room.photo}:`, cleanupError);
         }
     });
-    // Wait for all cleanup operations
     await Promise.allSettled(cleanupPromises);
     res.status(constants_1.HTTP_STATUS_CODES.OK).json({
-        message: 'All rooms deleted successfully',
+        message: `Deleted ${deletableRooms.length} room(s) successfully`,
+        skipped: rooms.length - deletableRooms.length,
     });
 });
 exports.deleteAllRooms = deleteAllRooms;

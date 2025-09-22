@@ -3,7 +3,7 @@ import prisma from '../config/prismaClient';
 import {
   asyncHandler,
   NotFoundError,
-  UnauthorizedError,
+  BadRequestError,
 } from '../middlewares/error-handler';
 import { HTTP_STATUS_CODES } from '../config/constants';
 import { ITourInput, ITourResponse } from 'types/tour.types';
@@ -29,14 +29,6 @@ const createTour = asyncHandler(
       location,
     } = req.body;
     const user = req.user;
-
-    if (!user) {
-      throw new UnauthorizedError('Unauthorized, no user provided');
-    }
-
-    if (user.role !== 'ADMIN' && user.role !== 'AGENT') {
-      throw new UnauthorizedError('Only admins and agents can create tours');
-    }
 
     const tour = await prisma.tour.create({
       data: {
@@ -138,15 +130,6 @@ const updateTour = asyncHandler(
       endDate,
       location,
     } = req.body;
-    const user = req.user;
-
-    if (!user) {
-      throw new UnauthorizedError('Unauthorized, no user provided');
-    }
-
-    if (user.role !== 'ADMIN' && user.role !== 'AGENT') {
-      throw new UnauthorizedError('Only admins and agents can update tours');
-    }
 
     const tour = await prisma.tour.findUnique({
       where: { id: parseInt(id) },
@@ -204,28 +187,33 @@ const deleteTour = asyncHandler(
     next: NextFunction,
   ): Promise<void> => {
     const { id } = req.params;
-    const user = req.user;
 
     if (!id) {
       throw new NotFoundError('Tour ID is required');
     }
 
-    if (!user) {
-      throw new UnauthorizedError('Unauthorized, no user provided');
-    }
-
-    if (user.role !== 'ADMIN' && user.role !== 'AGENT') {
-      throw new UnauthorizedError('Only admins and agents can delete tours');
-    }
-
     const tour = await prisma.tour.findUnique({
       where: { id: parseInt(id) },
+      include: { bookings: true },
     });
 
     if (!tour) {
       throw new NotFoundError('Tour not found');
     }
 
+    if (tour.bookings.length > 0) {
+      throw new BadRequestError(
+        'Cannot delete tour with existing bookings. Please cancel or reassign bookings first.',
+      );
+    }
+
+    if (tour.status === 'ONGOING' || tour.status === 'COMPLETED') {
+      throw new BadRequestError(
+        `Cannot delete tour with status "${tour.status}".`,
+      );
+    }
+
+    // Delete tour
     await prisma.tour.delete({
       where: { id: parseInt(id) },
     });
@@ -288,20 +276,35 @@ const getAllTours = asyncHandler(
  */
 const deleteAllTours = asyncHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const user = req.user;
+    // Get all tours with bookings
+    const tours = await prisma.tour.findMany({
+      include: { bookings: true },
+    });
 
-    if (!user) {
-      throw new UnauthorizedError('Unauthorized, no user provided');
+    // Filter out safe tours
+    const deletableTours = tours.filter(
+      (tour) =>
+        tour.bookings.length === 0 &&
+        tour.status !== 'ONGOING' &&
+        tour.status !== 'COMPLETED',
+    );
+
+    if (deletableTours.length === 0) {
+      throw new BadRequestError(
+        'No tours can be deleted. All tours are either booked, ongoing, or completed.',
+      );
     }
 
-    if (user.role !== 'ADMIN') {
-      throw new UnauthorizedError('Only admins can delete all tours');
-    }
-
-    await prisma.tour.deleteMany({});
+    // Delete safe tours
+    await prisma.tour.deleteMany({
+      where: {
+        id: { in: deletableTours.map((t) => t.id) },
+      },
+    });
 
     res.status(HTTP_STATUS_CODES.OK).json({
-      message: 'All tours deleted successfully',
+      message: `Deleted ${deletableTours.length} tour(s) successfully`,
+      skipped: tours.length - deletableTours.length,
     });
   },
 );

@@ -313,15 +313,21 @@ const handleDeleteFlight = (0, error_handler_1.asyncHandler)(async (req, res, ne
     if (!id) {
         throw new error_handler_1.NotFoundError('Flight ID is required');
     }
+    const flightId = parseInt(id);
     const flight = await prismaClient_1.default.flight.findUnique({
-        where: { id: parseInt(id) },
+        where: { id: flightId },
+        include: { bookings: true },
     });
     if (!flight) {
         throw new error_handler_1.NotFoundError('Flight not found');
     }
-    // Delete from database first
+    // Check if flight has bookings
+    if (flight.bookings.length > 0) {
+        throw new error_handler_1.BadRequestError(`This flight cannot be deleted because it has ${flight.bookings.length} associated booking(s). Please cancel or reassign those bookings first.`);
+    }
+    // Delete from database
     await prismaClient_1.default.flight.delete({
-        where: { id: parseInt(id) },
+        where: { id: flightId },
     });
     // Clean up photo from Cloudinary if it exists
     if (flight.photo) {
@@ -330,6 +336,7 @@ const handleDeleteFlight = (0, error_handler_1.asyncHandler)(async (req, res, ne
         }
         catch (cleanupError) {
             console.warn('Failed to clean up flight photo from Cloudinary:', cleanupError);
+            // Not throwing here since deletion succeeded
         }
     }
     res.status(constants_1.HTTP_STATUS_CODES.OK).json({
@@ -483,25 +490,48 @@ const handleDeleteAllFlights = (0, error_handler_1.asyncHandler)(async (req, res
     if (user.role !== 'ADMIN') {
         throw new error_handler_1.UnauthorizedError('Only admins can delete all flights');
     }
-    // Get all flights with photos before deleting
+    // Fetch all flights with bookings
     const flights = await prismaClient_1.default.flight.findMany({
-        select: { photo: true },
-        where: { photo: { not: null } },
+        include: { bookings: true },
     });
-    // Delete from database first
+    if (flights.length === 0) {
+        res.status(constants_1.HTTP_STATUS_CODES.OK).json({
+            message: 'No flights found to delete',
+        });
+        return;
+    }
+    // Identify flights with bookings
+    const blocked = [];
+    for (const flight of flights) {
+        if (flight.bookings.length > 0) {
+            blocked.push({
+                id: flight.id,
+                flightNumber: flight.flightNumber,
+                bookingCount: flight.bookings.length,
+            });
+        }
+    }
+    if (blocked.length > 0) {
+        const details = blocked
+            .map((b) => `Flight "${b.flightNumber}" (ID: ${b.id}) has ${b.bookingCount} booking(s)`)
+            .join('; ');
+        throw new error_handler_1.BadRequestError(`Some flights cannot be deleted because they have active bookings. ${details}`);
+    }
+    // Collect photos before deleting
+    const photos = flights
+        .map((flight) => flight.photo)
+        .filter((photo) => Boolean(photo));
+    // Delete all flights
     await prismaClient_1.default.flight.deleteMany({});
     // Clean up photos from Cloudinary
-    const cleanupPromises = flights
-        .filter((flight) => flight.photo)
-        .map(async (flight) => {
+    const cleanupPromises = photos.map(async (photo) => {
         try {
-            await claudinary_1.cloudinaryService.deleteImage(flight.photo);
+            await claudinary_1.cloudinaryService.deleteImage(photo);
         }
         catch (cleanupError) {
-            console.warn(`Failed to clean up photo ${flight.photo}:`, cleanupError);
+            console.warn(`Failed to clean up photo ${photo}:`, cleanupError);
         }
     });
-    // Wait for all cleanup operations
     await Promise.allSettled(cleanupPromises);
     res.status(constants_1.HTTP_STATUS_CODES.OK).json({
         message: 'All flights deleted successfully',

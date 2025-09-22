@@ -4,6 +4,7 @@ import {
   asyncHandler,
   NotFoundError,
   UnauthorizedError,
+  BadRequestError,
 } from '../middlewares/error-handler';
 import { HTTP_STATUS_CODES } from '../config/constants';
 import { IRoomInput, IRoom, IRoomQueryParams } from 'types/room.types';
@@ -335,13 +336,20 @@ const deleteRoom = asyncHandler(
 
     const room = await prisma.room.findUnique({
       where: { id: parseInt(id) },
+      include: { bookings: true },
     });
 
     if (!room) {
       throw new NotFoundError('Room not found');
     }
 
-    // Delete from database first
+    if (room.bookings.length > 0) {
+      throw new BadRequestError(
+        'Cannot delete room with existing bookings. Please cancel or reassign bookings first.',
+      );
+    }
+
+    // Delete from database
     await prisma.room.delete({
       where: { id: parseInt(id) },
     });
@@ -492,17 +500,31 @@ const deleteAllRooms = asyncHandler(
       throw new UnauthorizedError('Only admins can delete all rooms');
     }
 
-    // Get all rooms with photos before deleting
+    // Get all rooms with bookings + photos
     const rooms = await prisma.room.findMany({
-      select: { photo: true },
-      where: { photo: { not: null } },
+      include: {
+        bookings: true,
+      },
     });
 
-    // Delete from database first
-    await prisma.room.deleteMany({});
+    // Filter out rooms that are safe to delete (no bookings)
+    const deletableRooms = rooms.filter((room) => room.bookings.length === 0);
 
-    // Clean up photos from Cloudinary
-    const cleanupPromises = rooms
+    if (deletableRooms.length === 0) {
+      throw new BadRequestError(
+        'No rooms can be deleted. All rooms are currently booked.',
+      );
+    }
+
+    // Delete safe rooms
+    await prisma.room.deleteMany({
+      where: {
+        id: { in: deletableRooms.map((r) => r.id) },
+      },
+    });
+
+    // Clean up Cloudinary photos for deletable rooms
+    const cleanupPromises = deletableRooms
       .filter((room) => room.photo)
       .map(async (room) => {
         try {
@@ -512,11 +534,11 @@ const deleteAllRooms = asyncHandler(
         }
       });
 
-    // Wait for all cleanup operations
     await Promise.allSettled(cleanupPromises);
 
     res.status(HTTP_STATUS_CODES.OK).json({
-      message: 'All rooms deleted successfully',
+      message: `Deleted ${deletableRooms.length} room(s) successfully`,
+      skipped: rooms.length - deletableRooms.length,
     });
   },
 );

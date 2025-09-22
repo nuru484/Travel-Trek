@@ -13,12 +13,6 @@ const constants_1 = require("../config/constants");
 const createTour = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const { name, description, type, duration, price, maxGuests, startDate, endDate, location, } = req.body;
     const user = req.user;
-    if (!user) {
-        throw new error_handler_1.UnauthorizedError('Unauthorized, no user provided');
-    }
-    if (user.role !== 'ADMIN' && user.role !== 'AGENT') {
-        throw new error_handler_1.UnauthorizedError('Only admins and agents can create tours');
-    }
     const tour = await prismaClient_1.default.tour.create({
         data: {
             name,
@@ -94,13 +88,6 @@ const updateTour = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
         throw new error_handler_1.NotFoundError('Tour ID is required');
     }
     const { name, description, type, duration, price, maxGuests, startDate, endDate, location, } = req.body;
-    const user = req.user;
-    if (!user) {
-        throw new error_handler_1.UnauthorizedError('Unauthorized, no user provided');
-    }
-    if (user.role !== 'ADMIN' && user.role !== 'AGENT') {
-        throw new error_handler_1.UnauthorizedError('Only admins and agents can update tours');
-    }
     const tour = await prismaClient_1.default.tour.findUnique({
         where: { id: parseInt(id) },
     });
@@ -147,22 +134,23 @@ exports.updateTour = updateTour;
  */
 const deleteTour = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const { id } = req.params;
-    const user = req.user;
     if (!id) {
         throw new error_handler_1.NotFoundError('Tour ID is required');
     }
-    if (!user) {
-        throw new error_handler_1.UnauthorizedError('Unauthorized, no user provided');
-    }
-    if (user.role !== 'ADMIN' && user.role !== 'AGENT') {
-        throw new error_handler_1.UnauthorizedError('Only admins and agents can delete tours');
-    }
     const tour = await prismaClient_1.default.tour.findUnique({
         where: { id: parseInt(id) },
+        include: { bookings: true },
     });
     if (!tour) {
         throw new error_handler_1.NotFoundError('Tour not found');
     }
+    if (tour.bookings.length > 0) {
+        throw new error_handler_1.BadRequestError('Cannot delete tour with existing bookings. Please cancel or reassign bookings first.');
+    }
+    if (tour.status === 'ONGOING' || tour.status === 'COMPLETED') {
+        throw new error_handler_1.BadRequestError(`Cannot delete tour with status "${tour.status}".`);
+    }
+    // Delete tour
     await prismaClient_1.default.tour.delete({
         where: { id: parseInt(id) },
     });
@@ -217,16 +205,26 @@ exports.getAllTours = getAllTours;
  * Delete all tours
  */
 const deleteAllTours = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
-    const user = req.user;
-    if (!user) {
-        throw new error_handler_1.UnauthorizedError('Unauthorized, no user provided');
+    // Get all tours with bookings
+    const tours = await prismaClient_1.default.tour.findMany({
+        include: { bookings: true },
+    });
+    // Filter out safe tours
+    const deletableTours = tours.filter((tour) => tour.bookings.length === 0 &&
+        tour.status !== 'ONGOING' &&
+        tour.status !== 'COMPLETED');
+    if (deletableTours.length === 0) {
+        throw new error_handler_1.BadRequestError('No tours can be deleted. All tours are either booked, ongoing, or completed.');
     }
-    if (user.role !== 'ADMIN') {
-        throw new error_handler_1.UnauthorizedError('Only admins can delete all tours');
-    }
-    await prismaClient_1.default.tour.deleteMany({});
+    // Delete safe tours
+    await prismaClient_1.default.tour.deleteMany({
+        where: {
+            id: { in: deletableTours.map((t) => t.id) },
+        },
+    });
     res.status(constants_1.HTTP_STATUS_CODES.OK).json({
-        message: 'All tours deleted successfully',
+        message: `Deleted ${deletableTours.length} tour(s) successfully`,
+        skipped: tours.length - deletableTours.length,
     });
 });
 exports.deleteAllTours = deleteAllTours;

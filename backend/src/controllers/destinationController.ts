@@ -7,6 +7,7 @@ import {
   asyncHandler,
   NotFoundError,
   UnauthorizedError,
+  BadRequestError,
 } from '../middlewares/error-handler';
 import { HTTP_STATUS_CODES } from '../config/constants';
 import {
@@ -255,17 +256,43 @@ const handleDeleteDestination = asyncHandler(
       throw new NotFoundError('Destination ID is required');
     }
 
+    const destinationId = parseInt(id);
+
     const destination = await prisma.destination.findUnique({
-      where: { id: parseInt(id) },
+      where: { id: destinationId },
+      include: {
+        hotels: true,
+        tours: true,
+        originFlights: true,
+        destinationFlights: true,
+      },
     });
 
     if (!destination) {
       throw new NotFoundError('Destination not found');
     }
 
-    // Delete from database first
+    // Check dependencies
+    const dependentItems: string[] = [];
+    if (destination.hotels.length > 0) dependentItems.push('Hotels');
+    if (destination.tours.length > 0) dependentItems.push('Tours');
+    if (
+      destination.originFlights.length > 0 ||
+      destination.destinationFlights.length > 0
+    )
+      dependentItems.push('Flights');
+
+    if (dependentItems.length > 0) {
+      throw new BadRequestError(
+        `This destination cannot be deleted because it has associated: ${dependentItems.join(
+          ', ',
+        )}. Please remove or reassign them before deleting the destination.`,
+      );
+    }
+
+    // Delete from database
     await prisma.destination.delete({
-      where: { id: parseInt(id) },
+      where: { id: destinationId },
     });
 
     // Clean up photo from Cloudinary if it exists
@@ -385,27 +412,70 @@ const handleDeleteAllDestinations = asyncHandler(
       throw new UnauthorizedError('Only admins can delete all destinations');
     }
 
-    // Get all destinations with photos before deleting
+    // Fetch all destinations with relations
     const destinations = await prisma.destination.findMany({
-      select: { photo: true },
-      where: { photo: { not: null } },
+      include: {
+        hotels: true,
+        tours: true,
+        originFlights: true,
+        destinationFlights: true,
+      },
     });
 
-    // Delete from database first
+    if (destinations.length === 0) {
+      res.status(HTTP_STATUS_CODES.OK).json({
+        message: 'No destinations found to delete',
+      });
+      return;
+    }
+
+    // Check dependencies
+    const blocked: { name: string; id: number; deps: string[] }[] = [];
+
+    for (const dest of destinations) {
+      const deps: string[] = [];
+      if (dest.hotels.length > 0) deps.push('Hotels');
+      if (dest.tours.length > 0) deps.push('Tours');
+      if (dest.originFlights.length > 0 || dest.destinationFlights.length > 0) {
+        deps.push('Flights');
+      }
+      if (deps.length > 0) {
+        blocked.push({ name: dest.name, id: dest.id, deps });
+      }
+    }
+
+    if (blocked.length > 0) {
+      const details = blocked
+        .map(
+          (b) =>
+            `Destination "${b.name}" (ID: ${b.id}) has associated: ${b.deps.join(
+              ', ',
+            )}`,
+        )
+        .join('; ');
+
+      throw new BadRequestError(
+        `Some destinations cannot be deleted because they have dependencies. ${details}`,
+      );
+    }
+
+    // Get all photos before deleting
+    const photos = destinations
+      .map((dest) => dest.photo)
+      .filter((photo): photo is string => Boolean(photo));
+
+    // Delete all destinations
     await prisma.destination.deleteMany({});
 
     // Clean up photos from Cloudinary
-    const cleanupPromises = destinations
-      .filter((dest) => dest.photo)
-      .map(async (dest) => {
-        try {
-          await cloudinaryService.deleteImage(dest.photo!);
-        } catch (cleanupError) {
-          console.warn(`Failed to clean up photo ${dest.photo}:`, cleanupError);
-        }
-      });
+    const cleanupPromises = photos.map(async (photo) => {
+      try {
+        await cloudinaryService.deleteImage(photo);
+      } catch (cleanupError) {
+        console.warn(`Failed to clean up photo ${photo}:`, cleanupError);
+      }
+    });
 
-    // Wait for all cleanup operations (but don't fail if some cleanup fails)
     await Promise.allSettled(cleanupPromises);
 
     res.status(HTTP_STATUS_CODES.OK).json({

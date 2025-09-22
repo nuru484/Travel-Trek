@@ -430,9 +430,16 @@ const handleDeleteBooking = (0, error_handler_1.asyncHandler)(async (req, res, n
     }
     const booking = await prismaClient_1.default.booking.findUnique({
         where: { id: parseInt(id) },
+        include: { payment: true },
     });
     if (!booking) {
         throw new error_handler_1.NotFoundError('Booking not found');
+    }
+    if (booking.status === 'COMPLETED') {
+        throw new error_handler_1.BadRequestError('Completed bookings cannot be deleted');
+    }
+    if (booking.payment && booking.payment.status !== 'REFUNDED') {
+        throw new error_handler_1.BadRequestError(`Cannot delete booking with payment status "${booking.payment.status}". Refund required first.`);
     }
     await prismaClient_1.default.booking.delete({
         where: { id: parseInt(id) },
@@ -942,9 +949,25 @@ const handleDeleteAllBookings = (0, error_handler_1.asyncHandler)(async (req, re
     if (user.role !== 'ADMIN') {
         throw new error_handler_1.UnauthorizedError('Only admins can delete all bookings');
     }
-    await prismaClient_1.default.booking.deleteMany({});
+    // Get all bookings with payment details
+    const bookings = await prismaClient_1.default.booking.findMany({
+        include: { payment: true },
+    });
+    // Filter out bookings that are safe to delete
+    const deletableBookings = bookings.filter((booking) => booking.status !== 'COMPLETED' &&
+        (!booking.payment || booking.payment.status === 'REFUNDED'));
+    if (deletableBookings.length === 0) {
+        throw new error_handler_1.BadRequestError('No bookings can be deleted. Completed or paid bookings must be refunded first.');
+    }
+    // Delete only the safe bookings
+    await prismaClient_1.default.booking.deleteMany({
+        where: {
+            id: { in: deletableBookings.map((b) => b.id) },
+        },
+    });
     res.status(constants_1.HTTP_STATUS_CODES.OK).json({
-        message: 'All bookings deleted successfully',
+        message: `Deleted ${deletableBookings.length} booking(s) successfully`,
+        skipped: bookings.length - deletableBookings.length,
     });
 });
 exports.deleteAllBookings = [handleDeleteAllBookings];

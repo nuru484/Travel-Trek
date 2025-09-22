@@ -405,17 +405,27 @@ const handleDeleteFlight = asyncHandler(
       throw new NotFoundError('Flight ID is required');
     }
 
+    const flightId = parseInt(id);
+
     const flight = await prisma.flight.findUnique({
-      where: { id: parseInt(id) },
+      where: { id: flightId },
+      include: { bookings: true },
     });
 
     if (!flight) {
       throw new NotFoundError('Flight not found');
     }
 
-    // Delete from database first
+    // Check if flight has bookings
+    if (flight.bookings.length > 0) {
+      throw new BadRequestError(
+        `This flight cannot be deleted because it has ${flight.bookings.length} associated booking(s). Please cancel or reassign those bookings first.`,
+      );
+    }
+
+    // Delete from database
     await prisma.flight.delete({
-      where: { id: parseInt(id) },
+      where: { id: flightId },
     });
 
     // Clean up photo from Cloudinary if it exists
@@ -427,6 +437,7 @@ const handleDeleteFlight = asyncHandler(
           'Failed to clean up flight photo from Cloudinary:',
           cleanupError,
         );
+        // Not throwing here since deletion succeeded
       }
     }
 
@@ -622,30 +633,65 @@ const handleDeleteAllFlights = asyncHandler(
       throw new UnauthorizedError('Only admins can delete all flights');
     }
 
-    // Get all flights with photos before deleting
+    // Fetch all flights with bookings
     const flights = await prisma.flight.findMany({
-      select: { photo: true },
-      where: { photo: { not: null } },
+      include: { bookings: true },
     });
 
-    // Delete from database first
+    if (flights.length === 0) {
+      res.status(HTTP_STATUS_CODES.OK).json({
+        message: 'No flights found to delete',
+      });
+      return;
+    }
+
+    // Identify flights with bookings
+    const blocked: {
+      id: number;
+      flightNumber: string;
+      bookingCount: number;
+    }[] = [];
+
+    for (const flight of flights) {
+      if (flight.bookings.length > 0) {
+        blocked.push({
+          id: flight.id,
+          flightNumber: flight.flightNumber,
+          bookingCount: flight.bookings.length,
+        });
+      }
+    }
+
+    if (blocked.length > 0) {
+      const details = blocked
+        .map(
+          (b) =>
+            `Flight "${b.flightNumber}" (ID: ${b.id}) has ${b.bookingCount} booking(s)`,
+        )
+        .join('; ');
+
+      throw new BadRequestError(
+        `Some flights cannot be deleted because they have active bookings. ${details}`,
+      );
+    }
+
+    // Collect photos before deleting
+    const photos = flights
+      .map((flight) => flight.photo)
+      .filter((photo): photo is string => Boolean(photo));
+
+    // Delete all flights
     await prisma.flight.deleteMany({});
 
     // Clean up photos from Cloudinary
-    const cleanupPromises = flights
-      .filter((flight) => flight.photo)
-      .map(async (flight) => {
-        try {
-          await cloudinaryService.deleteImage(flight.photo!);
-        } catch (cleanupError) {
-          console.warn(
-            `Failed to clean up photo ${flight.photo}:`,
-            cleanupError,
-          );
-        }
-      });
+    const cleanupPromises = photos.map(async (photo) => {
+      try {
+        await cloudinaryService.deleteImage(photo);
+      } catch (cleanupError) {
+        console.warn(`Failed to clean up photo ${photo}:`, cleanupError);
+      }
+    });
 
-    // Wait for all cleanup operations
     await Promise.allSettled(cleanupPromises);
 
     res.status(HTTP_STATUS_CODES.OK).json({
