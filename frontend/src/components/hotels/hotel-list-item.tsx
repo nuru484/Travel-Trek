@@ -5,10 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 import { useDeleteHotelMutation } from "@/redux/hotelApi";
-import {
-  useGetAllUserBookingsQuery,
-  useCreateBookingMutation,
-} from "@/redux/bookingApi";
+import { useGetAllUserBookingsQuery } from "@/redux/bookingApi";
 import { IHotel, IHotelRoom } from "@/types/hotel.types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,6 +30,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { ConfirmationDialog } from "../ui/confirmation-dialog";
+import { BookingButton } from "../bookings/BookingButton";
 import toast from "react-hot-toast";
 import { truncateText } from "@/utils/truncateText";
 import Image from "next/image";
@@ -46,9 +44,7 @@ export function HotelListItem({ hotel }: IHotelListItemProps) {
   const user = useSelector((state: RootState) => state.auth.user);
   const isAdmin = user?.role === "ADMIN" || user?.role === "AGENT";
   const [deleteHotel, { isLoading: isDeleting }] = useDeleteHotelMutation();
-  const [createBooking, { isLoading: isBooking }] = useCreateBookingMutation();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [showBookDialog, setShowBookDialog] = useState(false);
   const [showRooms, setShowRooms] = useState(false);
   const [roomSearch, setRoomSearch] = useState("");
   const [selectedRoomId, setSelectedRoomId] = useState("");
@@ -86,35 +82,6 @@ export function HotelListItem({ hotel }: IHotelListItemProps) {
     } catch (error) {
       console.error("Failed to delete hotel:", error);
       toast.error("Failed to delete hotel");
-    }
-  };
-
-  const handleRoomBook = (roomId: number) => {
-    const isRoomBooked = bookingsData?.data.some(
-      (b) => b?.room?.id === roomId && b.userId === parseInt(user?.id || "0")
-    );
-    if (isRoomBooked) {
-      toast.error("You have already booked this room");
-      return;
-    }
-    setSelectedRoom(hotel.rooms?.find((r) => r.id === roomId) || null);
-    setShowBookDialog(true);
-  };
-
-  const handleBookConfirm = async () => {
-    if (!selectedRoom) return;
-    try {
-      await createBooking({
-        userId: parseInt(user.id),
-        roomId: selectedRoom.id,
-        totalPrice: selectedRoom.price || 100,
-      }).unwrap();
-      toast.success("Room booked successfully");
-      setSelectedRoom(null);
-      setShowBookDialog(false);
-    } catch (error) {
-      console.error("Failed to book room:", error);
-      toast.error("Failed to book room");
     }
   };
 
@@ -249,18 +216,19 @@ export function HotelListItem({ hotel }: IHotelListItemProps) {
                       <span className="sm:hidden">Del</span>
                     </Button>
                   </>
-                ) : (
-                  hotel.rooms?.length > 0 && (
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={() => setShowRooms(!showRooms)}
-                      className="flex-1 sm:flex-none sm:min-w-[80px] cursor-pointer"
-                    >
-                      <Bed className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                      {showRooms ? "Hide Rooms" : "View Rooms"}
-                    </Button>
-                  )
+                ) : null}
+
+                {/* Show rooms button for both admins and normal users */}
+                {hotel.rooms?.length > 0 && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => setShowRooms(!showRooms)}
+                    className="flex-1 sm:flex-none sm:min-w-[80px] cursor-pointer"
+                  >
+                    <Bed className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                    {showRooms ? "Hide Rooms" : "View Rooms"}
+                  </Button>
                 )}
               </div>
             </div>
@@ -343,19 +311,41 @@ export function HotelListItem({ hotel }: IHotelListItemProps) {
                             <Eye className="h-3 w-3 mr-1" />
                             View
                           </Button>
-                          {!isAdmin && (
-                            <Button
+
+                          {/* Use BookingButton for both admins and normal users */}
+                          {isAdmin ? (
+                            // Admin booking - no userId passed, opens dialog for user selection
+                            <BookingButton
+                              roomId={room.id}
+                              price={room.price || 100}
+                              variant="outline"
                               size="sm"
-                              variant={
-                                isRoomBooked(room.id) ? "secondary" : "default"
-                              }
-                              onClick={() => handleRoomBook(room.id)}
-                              disabled={isBooking || isRoomBooked(room.id)}
                               className="cursor-pointer"
-                            >
-                              <Calendar className="h-3 w-3 mr-1" />
-                              {isRoomBooked(room.id) ? "Booked" : "Book"}
-                            </Button>
+                            />
+                          ) : (
+                            // Normal user booking
+                            <>
+                              {isRoomBooked(room.id) ? (
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  disabled
+                                  className="cursor-pointer"
+                                >
+                                  <Calendar className="h-3 w-3 mr-1" />
+                                  Booked
+                                </Button>
+                              ) : (
+                                <BookingButton
+                                  roomId={room.id}
+                                  price={room.price || 100}
+                                  userId={parseInt(user?.id || "0")}
+                                  variant="default"
+                                  size="sm"
+                                  className="cursor-pointer"
+                                />
+                              )}
+                            </>
                           )}
                         </div>
                       </div>
@@ -377,7 +367,7 @@ export function HotelListItem({ hotel }: IHotelListItemProps) {
         </CardContent>
       </Card>
 
-      {/* Confirmations */}
+      {/* Delete Confirmation Dialog */}
       <ConfirmationDialog
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
@@ -389,21 +379,7 @@ export function HotelListItem({ hotel }: IHotelListItemProps) {
         confirmText="Delete"
         isDestructive
       />
-
-      <ConfirmationDialog
-        open={showBookDialog}
-        onOpenChange={setShowBookDialog}
-        title="Confirm Room Booking"
-        description={
-          selectedRoom
-            ? `Are you sure you want to book "${
-                selectedRoom.roomType
-              }" at "${truncateText(hotel.name)}" in ${getDestinationName()}?`
-            : ""
-        }
-        onConfirm={handleBookConfirm}
-        confirmText="Book Room"
-      />
     </>
   );
 }
+                  

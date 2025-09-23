@@ -5,10 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 import { useDeleteTourMutation } from "@/redux/tourApi";
-import {
-  useGetAllUserBookingsQuery,
-  useCreateBookingMutation,
-} from "@/redux/bookingApi";
+import { useGetAllUserBookingsQuery } from "@/redux/bookingApi";
 import { ITour } from "@/types/tour.types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -26,6 +23,7 @@ import {
   Bookmark,
 } from "lucide-react";
 import { ConfirmationDialog } from "../ui/confirmation-dialog";
+import { BookingButton } from "../bookings/BookingButton";
 import toast from "react-hot-toast";
 import { truncateText } from "@/utils/truncateText";
 
@@ -38,9 +36,7 @@ export function TourListItem({ tour }: ITourListItemProps) {
   const user = useSelector((state: RootState) => state.auth.user);
   const isAdmin = user?.role === "ADMIN" || user?.role === "AGENT";
   const [deleteTour, { isLoading: isDeleting }] = useDeleteTourMutation();
-  const [createBooking, { isLoading: isBooking }] = useCreateBookingMutation();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [showBookDialog, setShowBookDialog] = useState(false);
 
   const { data: bookingsData } = useGetAllUserBookingsQuery(
     { userId: user.id, params: { page: 1, limit: 1000 } },
@@ -69,21 +65,6 @@ export function TourListItem({ tour }: ITourListItemProps) {
     } catch (error) {
       console.error("Failed to delete tour:", error);
       toast.error("Failed to delete tour");
-    }
-  };
-
-  const handleBook = async () => {
-    try {
-      await createBooking({
-        userId: parseInt(user.id),
-        tourId: tour.id,
-        totalPrice: tour.price,
-      }).unwrap();
-      toast.success("Tour booked successfully");
-      setShowBookDialog(false);
-    } catch (error) {
-      console.error("Failed to book tour:", error);
-      toast.error("Failed to book tour");
     }
   };
 
@@ -211,7 +192,7 @@ export function TourListItem({ tour }: ITourListItemProps) {
               size="sm"
               onClick={handleView}
               className="flex-1 sm:flex-none sm:min-w-[100px] group-hover:border-primary/50 transition-colors cursor-pointer"
-              disabled={isDeleting || isBooking}
+              disabled={isDeleting}
             >
               <Eye className="mr-2 h-4 w-4" />
               View
@@ -224,7 +205,7 @@ export function TourListItem({ tour }: ITourListItemProps) {
                   size="sm"
                   onClick={handleEdit}
                   className="flex-1 sm:flex-none sm:min-w-[100px] cursor-pointer"
-                  disabled={isDeleting || isBooking}
+                  disabled={isDeleting}
                 >
                   <Edit className="mr-2 h-4 w-4" />
                   Edit
@@ -234,29 +215,51 @@ export function TourListItem({ tour }: ITourListItemProps) {
                   size="sm"
                   onClick={() => setShowDeleteDialog(true)}
                   className="flex-1 sm:flex-none sm:min-w-[100px] text-destructive hover:text-destructive hover:border-destructive/50 cursor-pointer"
-                  disabled={isDeleting || isBooking}
+                  disabled={isDeleting}
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete
                 </Button>
+                {/* Admin booking - no userId passed, will open dialog */}
+                <BookingButton
+                  tourId={tour.id}
+                  price={tour.price}
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 sm:flex-none sm:min-w-[100px] cursor-pointer"
+                  disabled={isDeleting}
+                />
               </>
             ) : (
-              <Button
-                variant={isTourBooked ? "secondary" : "default"}
-                size="sm"
-                onClick={() => setShowBookDialog(true)}
-                className="flex-1 sm:flex-none sm:min-w-[100px] cursor-pointer"
-                disabled={isBooking || isTourBooked}
-              >
-                <Bookmark className="mr-2 h-4 w-4" />
-                {isTourBooked ? "Booked" : "Book Now"}
-              </Button>
+              // Regular user booking
+              <>
+                {isTourBooked ? (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="flex-1 sm:flex-none sm:min-w-[100px] cursor-pointer"
+                    disabled
+                  >
+                    <Bookmark className="mr-2 h-4 w-4" />
+                    Booked
+                  </Button>
+                ) : (
+                  <BookingButton
+                    tourId={tour.id}
+                    price={tour.price}
+                    userId={parseInt(user?.id || "0")}
+                    variant="default"
+                    size="sm"
+                    className="flex-1 sm:flex-none sm:min-w-[100px] cursor-pointer"
+                  />
+                )}
+              </>
             )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Dialogs */}
+      {/* Delete Dialog */}
       <ConfirmationDialog
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
@@ -267,17 +270,6 @@ export function TourListItem({ tour }: ITourListItemProps) {
         onConfirm={handleDelete}
         confirmText="Delete"
         isDestructive
-      />
-
-      <ConfirmationDialog
-        open={showBookDialog}
-        onOpenChange={setShowBookDialog}
-        title="Confirm Booking"
-        description={`Are you sure you want to book "${truncateText(
-          tour.name
-        )}" in ${tour.location} for $${tour.price.toLocaleString()}?`}
-        onConfirm={handleBook}
-        confirmText="Book Now"
       />
     </>
   );

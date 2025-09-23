@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useSelector } from "react-redux";
 import { format } from "date-fns";
 import { RootState } from "@/redux/store";
-import { useCreateBookingMutation } from "@/redux/bookingApi";
 import { useDeleteFlightMutation } from "@/redux/flightApi";
 import { useGetAllDestinationsQuery } from "@/redux/destinationApi";
 import { useGetAllUserBookingsQuery } from "@/redux/bookingApi";
@@ -28,6 +27,7 @@ import { ConfirmationDialog } from "../ui/confirmation-dialog";
 import toast from "react-hot-toast";
 import { truncateText } from "@/utils/truncateText";
 import Image from "next/image";
+import { BookingButton } from "../bookings/BookingButton";
 
 interface IFlightListItemProps {
   flight: IFlight;
@@ -38,9 +38,7 @@ export function FlightListItem({ flight }: IFlightListItemProps) {
   const user = useSelector((state: RootState) => state.auth.user);
   const isAdmin = user?.role === "ADMIN" || user?.role === "AGENT";
   const [deleteFlight, { isLoading: isDeleting }] = useDeleteFlightMutation();
-  const [createBooking, { isLoading: isBooking }] = useCreateBookingMutation();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [showBookDialog, setShowBookDialog] = useState(false);
 
   const { data: destinationsData } = useGetAllDestinationsQuery({ limit: 100 });
   const destinations = destinationsData?.data || [];
@@ -72,27 +70,6 @@ export function FlightListItem({ flight }: IFlightListItemProps) {
     } catch (error) {
       console.error(error);
       toast.error("Failed to delete flight");
-    }
-  };
-
-  const handleBook = async () => {
-    if (!user) {
-      toast.error("Please log in to book a flight");
-      router.push("/login");
-      return;
-    }
-
-    try {
-      await createBooking({
-        userId: parseInt(user.id),
-        flightId: flight.id,
-        totalPrice: flight.price,
-      }).unwrap();
-      toast.success("Flight booked successfully");
-      setShowBookDialog(false);
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to book flight");
     }
   };
 
@@ -247,7 +224,7 @@ export function FlightListItem({ flight }: IFlightListItemProps) {
                       size="sm"
                       onClick={handleEdit}
                       className="flex-1 sm:flex-none sm:min-w-[80px] cursor-pointer"
-                      disabled={isDeleting || isBooking}
+                      disabled={isDeleting}
                     >
                       <Edit className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                       <span className="hidden sm:inline">Edit</span>
@@ -258,31 +235,46 @@ export function FlightListItem({ flight }: IFlightListItemProps) {
                       size="sm"
                       onClick={() => setShowDeleteDialog(true)}
                       className="text-destructive hover:text-destructive hover:border-destructive/50 flex-1 sm:flex-none sm:min-w-[80px] cursor-pointer"
-                      disabled={isDeleting || isBooking}
+                      disabled={isDeleting}
                     >
                       <Trash2 className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                       <span className="hidden sm:inline">Delete</span>
                       <span className="sm:hidden">Del</span>
                     </Button>
+                    {/* Admin booking - no userId passed */}
+                    <BookingButton
+                      flightId={flight.id}
+                      price={flight.price}
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 sm:flex-none sm:min-w-[80px] cursor-pointer"
+                      disabled={isDeleting || flight.seatsAvailable <= 0}
+                    />
                   </>
                 ) : (
-                  <Button
-                    variant={isFlightBooked ? "secondary" : "default"}
-                    size="sm"
-                    onClick={() => setShowBookDialog(true)}
-                    className="flex-1 sm:flex-none sm:min-w-[80px] cursor-pointer"
-                    disabled={
-                      isBooking || isFlightBooked || flight.seatsAvailable <= 0
-                    }
-                  >
-                    <Bookmark className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                    <span className="hidden sm:inline">
-                      {isFlightBooked ? "Booked" : "Book Now"}
-                    </span>
-                    <span className="sm:hidden">
-                      {isFlightBooked ? "Booked" : "Book"}
-                    </span>
-                  </Button>
+                  <>
+                    {isFlightBooked ? (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="flex-1 sm:flex-none sm:min-w-[80px] cursor-pointer"
+                        disabled
+                      >
+                        <Bookmark className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                        Booked
+                      </Button>
+                    ) : (
+                      <BookingButton
+                        flightId={flight.id}
+                        price={flight.price}
+                        userId={parseInt(user?.id || "0")}
+                        variant="default"
+                        size="sm"
+                        className="flex-1 sm:flex-none sm:min-w-[80px] cursor-pointer"
+                        disabled={flight.seatsAvailable <= 0}
+                      />
+                    )}
+                  </>
                 )}
               </div>
 
@@ -322,21 +314,6 @@ export function FlightListItem({ flight }: IFlightListItemProps) {
         onConfirm={handleDelete}
         confirmText="Delete"
         isDestructive
-      />
-
-      <ConfirmationDialog
-        open={showBookDialog}
-        onOpenChange={setShowBookDialog}
-        title="Confirm Booking"
-        description={`Are you sure you want to book flight \"${truncateText(
-          flight.flightNumber
-        )}\" from ${getDestinationName(
-          flight.originId
-        )} to ${getDestinationName(
-          flight.destinationId
-        )} for ₵${flight.price.toLocaleString()}?`}
-        onConfirm={handleBook}
-        confirmText="Book Now"
       />
     </>
   );
