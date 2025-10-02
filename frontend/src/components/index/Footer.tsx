@@ -17,7 +17,7 @@ const Footer = () => {
             className="lg:col-span-2"
           >
             <h3 className="text-2xl font-bold mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              TravelAdventure
+              Travel Trek
             </h3>
             <p className="text-muted-foreground mb-6 leading-relaxed">
               Creating extraordinary travel experiences that inspire, educate,
@@ -74,7 +74,7 @@ const Footer = () => {
             viewport={{ once: true }}
             className="text-muted-foreground text-sm mb-4 md:mb-0"
           >
-            © 2024 TravelAdventure. All rights reserved.
+            © 2025 Travel Trek. All rights reserved.
           </motion.p>
 
           <motion.div

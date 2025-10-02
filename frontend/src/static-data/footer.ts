@@ -23,7 +23,7 @@ export const socialLinks = [
 ];
 
 export const contactInfo = [
-  { icon: MapPin, text: "123 Travel Street, Adventure City, AC 12345" },
-  { icon: Phone, text: "+1 (555) 123-4567" },
-  { icon: Mail, text: "hello@traveladventure.com" },
+  { icon: MapPin, text: "123 Travel Trek, Nyohini, Tamale" },
+  { icon: Phone, text: "+(233)546488115" },
+  { icon: Mail, text: "abdulmajeednurudeen47@gmail.com" },
 ];

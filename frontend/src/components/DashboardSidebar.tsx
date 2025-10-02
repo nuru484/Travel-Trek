@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSelector } from "react-redux";
 import { RootState } from "../redux/store";
+import Image from "next/image";
 import {
   MapPin,
   Plane,
@@ -121,9 +122,14 @@ export default function DashboardSidebar() {
       collapsible="icon"
       className="border-r border-sidebar-border/20 shadow-sm"
     >
-      <SidebarHeader className="flex items-center px-6 py-5 border-b border-sidebar-border/20">
-        <SidebarMenuButton className="flex items-center gap-3 text-sidebar-foreground">
-          <MapPin className="h-7 w-7 text-sidebar-primary" />
+      <SidebarHeader className="flex items-center py-5 border-b border-sidebar-border/20">
+        <SidebarMenuButton className="flex h-10 items-center gap-3 text-sidebar-foreground">
+          <Image
+            src="/logo.png"
+            alt="Travel Trek Logo"
+            width={50}
+            height={50}
+          />
           <span className="text-xl font-bold">TravelTrek</span>
         </SidebarMenuButton>
       </SidebarHeader>
@@ -163,7 +169,12 @@ export default function DashboardSidebar() {
 
       <SidebarFooter className="mt-auto border-t border-sidebar-border/20">
         <SidebarMenuButton className="flex items-center gap-3 text-sidebar-foreground">
-          <MapPin className="h-6 w-6" />
+          <Image
+            src="/logo.png"
+            alt="Travel Trek Logo"
+            width={30}
+            height={30}
+          />
           <div className="text-[12px] text-sidebar-foreground/70">
             TravelTrek Tour System
           </div>

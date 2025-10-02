@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Phone, Mail } from "lucide-react";
+import Image from "next/image";
 
 const Header = () => {
   return (
@@ -13,10 +14,17 @@ const Header = () => {
             <Link href="/" className="flex items-center space-x-2">
               <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
                 <span className="text-primary-foreground font-bold text-lg">
-                  L
+                  <Image
+                    src="/logo.png"
+                    alt="Travel Trek Logo"
+                    width={800}
+                    height={600}
+                  />
                 </span>
               </div>
-              <span className="font-bold text-xl text-foreground">Logo</span>
+              <span className="font-bold text-xl text-foreground">
+                Travel Trek
+              </span>
             </Link>
           </div>
 
@@ -24,11 +32,11 @@ const Header = () => {
           <div className="hidden md:flex items-center space-x-6 text-sm text-muted-foreground">
             <div className="flex items-center space-x-2">
               <Phone className="h-4 w-4" />
-              <span>+1 (555) 123-4567</span>
+              <span>+(233)546488115</span>
             </div>
             <div className="flex items-center space-x-2">
               <Mail className="h-4 w-4" />
-              <span>hello@company.com</span>
+              <span>abdulmajeednurudeen47@gmail.com</span>
             </div>
           </div>
 
