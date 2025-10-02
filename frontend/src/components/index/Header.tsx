@@ -59,11 +59,11 @@ const Header = () => {
         <div className="md:hidden pb-3 flex items-center justify-center space-x-4 text-xs text-muted-foreground">
           <div className="flex items-center space-x-1">
             <Phone className="h-3 w-3" />
-            <span>+1 (555) 123-4567</span>
+            <span>+(233)546488115</span>
           </div>
           <div className="flex items-center space-x-1">
             <Mail className="h-3 w-3" />
-            <span>hello@company.com</span>
+            <span>abdulmajeednurudeen47@gmail.com</span>
           </div>
         </div>
       </div>
