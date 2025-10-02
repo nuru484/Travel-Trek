@@ -20,9 +20,6 @@ exports.registerUserValidation = [
         // requireSpecialChars: true,
         customMessage: 'Password must be a strong password',
     }),
-    validation_factory_ts_1.validator.enum('role', ['ADMIN', 'CUSTOMER', 'AGENT'], {
-        required: true,
-    }),
     validation_factory_ts_1.validator.string('address', {
         required: true,
         maxLength: 100,

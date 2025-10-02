@@ -23,7 +23,6 @@ const handleUpdateUserProfile = (0, error_handler_1.asyncHandler)(async (req, re
     const currentUserId = req.user?.id;
     const currentUserRole = req.user?.role;
     const userDetails = req.body;
-    console.log('Update User Profile Request Body:', req.body);
     if (!userId || isNaN(parseInt(userId))) {
         res.status(constants_1.HTTP_STATUS_CODES.BAD_REQUEST);
         throw new Error('Valid user ID is required');
@@ -31,7 +30,8 @@ const handleUpdateUserProfile = (0, error_handler_1.asyncHandler)(async (req, re
     const targetUserId = parseInt(userId);
     // Authorization check
     if (targetUserId !== parseInt(currentUserId?.toString() || '0') &&
-        currentUserRole !== user_profile_types_1.UserRole.ADMIN) {
+        currentUserRole !== user_profile_types_1.UserRole.ADMIN &&
+        currentUserRole !== user_profile_types_1.UserRole.AGENT) {
         res.status(constants_1.HTTP_STATUS_CODES.FORBIDDEN);
         throw new Error('You are not authorized to update this user');
     }
@@ -135,7 +135,8 @@ exports.getUserById = (0, error_handler_1.asyncHandler)(async (req, res, next) =
     const targetUserId = parseInt(userId);
     // Authorization check - users can view their own profile, admins can view any profile
     if (targetUserId !== parseInt(currentUserId?.toString() || '0') &&
-        currentUserRole !== user_profile_types_1.UserRole.ADMIN) {
+        currentUserRole !== user_profile_types_1.UserRole.ADMIN &&
+        currentUserRole !== user_profile_types_1.UserRole.AGENT) {
         res.status(constants_1.HTTP_STATUS_CODES.FORBIDDEN);
         throw new Error('You are not authorized to view this user profile');
     }

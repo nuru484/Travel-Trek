@@ -11,7 +11,6 @@ exports.cloudinaryService = exports.createCloudinaryService = exports.Cloudinary
  * This module provides utilities for interacting with Cloudinary API with
  * retry logic, Base64 image support, dynamic configuration, and robust error handling.
  */
-require('dotenv').config();
 const cloudinary_1 = require("cloudinary");
 const logger_1 = __importDefault(require("../utils/logger"));
 const env_1 = require("./env");

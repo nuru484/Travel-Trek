@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.assertEnv = assertEnv;
-require('dotenv').config();
 function assertEnv(value, name) {
     if (value === undefined) {
         throw new Error(`Missing required environment variable: ${name}`);

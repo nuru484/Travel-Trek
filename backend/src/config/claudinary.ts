@@ -6,7 +6,6 @@
  * This module provides utilities for interacting with Cloudinary API with
  * retry logic, Base64 image support, dynamic configuration, and robust error handling.
  */
-require('dotenv').config();
 import {
   v2 as cloudinaryBase,
   UploadApiResponse,
