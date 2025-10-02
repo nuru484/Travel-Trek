@@ -4,7 +4,7 @@
   "description": "Backend code for Travel Trek",
   "main": "index.js",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only --env-file .env server.ts",
+    "dev": "ts-node-dev --respawn --transpile-only server.ts",
     "build": "npx tsc --diagnostics && cp -r generated build/ && echo 'Build completed successfully!'",
     "start": "node --env-file .env build/server.js",
     "migrate": "npx prisma migrate dev --name init"
