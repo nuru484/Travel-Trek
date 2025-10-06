@@ -10,15 +10,14 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
-// update
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "Agrivaulture",
-  description: "An agricultural system for farmers",
+  title: "Travel Trek",
+  description: "Travel and Tour management system",
 };
 
 export default function RootLayout({

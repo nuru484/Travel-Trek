@@ -18,6 +18,7 @@ import {
   TrendingUp,
   Building,
   Map,
+  Sparkles,
 } from "lucide-react";
 import { Loader2 } from "lucide-react";
 
@@ -37,19 +38,33 @@ export function DashboardOverview() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="text-center space-y-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
+          <p className="text-sm text-muted-foreground">
+            Loading your dashboard...
+          </p>
+        </div>
       </div>
     );
   }
 
   if (isError) {
     return (
-      <Card>
-        <CardContent className="pt-6 text-center">
-          <p className="text-destructive mb-4">
-            Failed to load dashboard data.
-          </p>
-          <Button onClick={() => refetch()} variant="outline">
+      <Card className="border-destructive/50 bg-destructive/5">
+        <CardContent className="pt-6 text-center space-y-4">
+          <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
+            <RefreshCw className="h-6 w-6 text-destructive" />
+          </div>
+          <div>
+            <p className="text-destructive font-medium mb-2">
+              Failed to load dashboard data
+            </p>
+            <p className="text-sm text-muted-foreground">
+              We encountered an error while fetching your data
+            </p>
+          </div>
+          <Button onClick={() => refetch()} variant="outline" className="gap-2">
+            <RefreshCw className="h-4 w-4" />
             Try Again
           </Button>
         </CardContent>
@@ -60,7 +75,10 @@ export function DashboardOverview() {
   if (!stats) {
     return (
       <Card>
-        <CardContent className="pt-6 text-center">
+        <CardContent className="pt-6 text-center space-y-4">
+          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto">
+            <Building className="h-6 w-6 text-muted-foreground" />
+          </div>
           <p className="text-muted-foreground">No data available.</p>
         </CardContent>
       </Card>
@@ -68,188 +86,232 @@ export function DashboardOverview() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">
-            Welcome back, {user?.name}!
-          </h1>
-          <p className="text-muted-foreground">
-            Here&apos;s what&apos;s happening with your travel platform today.
-          </p>
+    <div className="space-y-8 pb-8">
+      {/* Header with Gradient Background */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/10 p-6 md:p-8">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -z-10" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-primary/5 rounded-full blur-3xl -z-10" />
+
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">
+                Welcome back, {user?.name}!
+              </h1>
+              <Sparkles className="h-6 w-6 text-primary animate-pulse" />
+            </div>
+            <p className="text-muted-foreground text-base">
+              Here&apos;s what&apos;s happening with your travel platform today.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="default"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="gap-2 shadow-sm hover:shadow-md transition-all"
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}
+            />
+            Refresh Data
+          </Button>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => refetch()}
-          disabled={isFetching}
-        >
-          <RefreshCw
-            className={`h-4 w-4 mr-2 ${isFetching ? "animate-spin" : ""}`}
-          />
-          Refresh
-        </Button>
       </div>
 
       {/* Main Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* Tours */}
-        <StatsCard
-          title="Tours Available"
-          value={stats.tours.total}
-          subtitle="Total tour packages"
-          icon={TrendingUp}
-          color="blue"
-          details={[
-            {
-              label: "Upcoming",
-              value: stats.tours.upcoming,
-              color: "secondary",
-            },
-            { label: "Ongoing", value: stats.tours.ongoing, color: "default" },
-          ]}
-        />
+      <div>
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold text-foreground">
+            Platform Overview
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Real-time statistics across all services
+          </p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatsCard
+            title="Tours Available"
+            value={stats.tours.total}
+            subtitle="Total tour packages"
+            icon={TrendingUp}
+            color="blue"
+            details={[
+              {
+                label: "Upcoming",
+                value: stats.tours.upcoming,
+                color: "secondary",
+              },
+              {
+                label: "Ongoing",
+                value: stats.tours.ongoing,
+                color: "default",
+              },
+            ]}
+          />
 
-        {/* Hotels */}
-        <StatsCard
-          title="Hotels & Rooms"
-          value={stats.hotels.total}
-          subtitle="Hotels available"
-          icon={Hotel}
-          color="green"
-          details={[
-            {
-              label: "Available Rooms",
-              value: stats.hotels.availableRooms,
-              color: "secondary",
-            },
-          ]}
-        />
+          <StatsCard
+            title="Hotels & Rooms"
+            value={stats.hotels.total}
+            subtitle="Hotels available"
+            icon={Hotel}
+            color="green"
+            details={[
+              {
+                label: "Available Rooms",
+                value: stats.hotels.availableRooms,
+                color: "secondary",
+              },
+            ]}
+          />
 
-        {/* Flights */}
-        <StatsCard
-          title="Flights Available"
-          value={stats.flights.total}
-          subtitle="Flight options"
-          icon={Plane}
-          color="purple"
-          details={[
-            {
-              label: "Available Seats",
-              value: stats.flights.availableSeats,
-              color: "secondary",
-            },
-          ]}
-        />
+          <StatsCard
+            title="Flights Available"
+            value={stats.flights.total}
+            subtitle="Flight options"
+            icon={Plane}
+            color="purple"
+            details={[
+              {
+                label: "Available Seats",
+                value: stats.flights.availableSeats,
+                color: "secondary",
+              },
+            ]}
+          />
 
-        {/* Destinations */}
-        <StatsCard
-          title="Destinations"
-          value={stats.destinations.total}
-          subtitle="Places to explore"
-          icon={Map}
-          color="orange"
-        />
+          <StatsCard
+            title="Destinations"
+            value={stats.destinations.total}
+            subtitle="Places to explore"
+            icon={Map}
+            color="orange"
+          />
+        </div>
       </div>
 
       {/* Admin/Agent Only Stats */}
       {isAdmin && stats.bookings && stats.users && (
-        <>
-          <div className="border-t pt-6">
-            <h2 className="text-2xl font-bold text-foreground mb-4">
-              Management Overview
-            </h2>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              {/* Bookings */}
-              <StatsCard
-                title="Bookings"
-                value={stats.bookings.total}
-                subtitle="Total bookings"
-                icon={Calendar}
-                color="yellow"
-                details={[
-                  {
-                    label: "Pending",
-                    value: stats.bookings.pending,
-                    color: "outline",
-                  },
-                  {
-                    label: "Confirmed",
-                    value: stats.bookings.confirmed,
-                    color: "secondary",
-                  },
-                  {
-                    label: "Completed",
-                    value: stats.bookings.completed,
-                    color: "default",
-                  },
-                ]}
-              />
-
-              {/* Users */}
-              <StatsCard
-                title="Users"
-                value={stats.users.total}
-                subtitle="Registered users"
-                icon={Users}
-                color="red"
-                details={[
-                  {
-                    label: "Customers",
-                    value: stats.users.customers,
-                    color: "secondary",
-                  },
-                  {
-                    label: "Agents",
-                    value: stats.users.agents,
-                    color: "outline",
-                  },
-                  {
-                    label: "Admins",
-                    value: stats.users.admins,
-                    color: "destructive",
-                  },
-                ]}
-              />
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-muted/50">
+              <Building className="h-4 w-4 text-muted-foreground" />
+              <h2 className="text-lg font-semibold text-foreground">
+                Management Overview
+              </h2>
             </div>
+            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
           </div>
-        </>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <StatsCard
+              title="Bookings"
+              value={stats.bookings.total}
+              subtitle="Total bookings"
+              icon={Calendar}
+              color="yellow"
+              details={[
+                {
+                  label: "Pending",
+                  value: stats.bookings.pending,
+                  color: "outline",
+                },
+                {
+                  label: "Confirmed",
+                  value: stats.bookings.confirmed,
+                  color: "secondary",
+                },
+                {
+                  label: "Completed",
+                  value: stats.bookings.completed,
+                  color: "default",
+                },
+              ]}
+            />
+
+            <StatsCard
+              title="Users"
+              value={stats.users.total}
+              subtitle="Registered users"
+              icon={Users}
+              color="red"
+              details={[
+                {
+                  label: "Customers",
+                  value: stats.users.customers,
+                  color: "secondary",
+                },
+                {
+                  label: "Agents",
+                  value: stats.users.agents,
+                  color: "outline",
+                },
+                {
+                  label: "Admins",
+                  value: stats.users.admins,
+                  color: "destructive",
+                },
+              ]}
+            />
+          </div>
+        </div>
       )}
 
       {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Building className="h-5 w-5" />
+      <Card className="border-2 shadow-sm hover:shadow-md transition-shadow">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Building className="h-5 w-5 text-primary" />
+            </div>
             Quick Actions
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Link href="/dashboard/tours">
-              <Button variant="outline" className="justify-start w-full">
-                <TrendingUp className="mr-2 h-4 w-4" />
-                Browse Tours
+            <Link href="/dashboard/tours" className="group">
+              <Button
+                variant="outline"
+                className="justify-start w-full h-auto py-4 gap-3 hover:bg-blue-50 hover:border-blue-200 dark:hover:bg-blue-950/20 transition-all"
+              >
+                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30 group-hover:scale-110 transition-transform">
+                  <TrendingUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                </div>
+                <span className="font-medium">Browse Tours</span>
               </Button>
             </Link>
-            <Link href="/dashboard/hotels">
-              <Button variant="outline" className="justify-start w-full">
-                <Hotel className="mr-2 h-4 w-4" />
-                Find Hotels
+            <Link href="/dashboard/hotels" className="group">
+              <Button
+                variant="outline"
+                className="justify-start w-full h-auto py-4 gap-3 hover:bg-green-50 hover:border-green-200 dark:hover:bg-green-950/20 transition-all"
+              >
+                <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30 group-hover:scale-110 transition-transform">
+                  <Hotel className="h-4 w-4 text-green-600 dark:text-green-400" />
+                </div>
+                <span className="font-medium">Find Hotels</span>
               </Button>
             </Link>
-            <Link href="/dashboard/flights">
-              <Button variant="outline" className="justify-start w-full">
-                <Plane className="mr-2 h-4 w-4" />
-                Book Flights
+            <Link href="/dashboard/flights" className="group">
+              <Button
+                variant="outline"
+                className="justify-start w-full h-auto py-4 gap-3 hover:bg-purple-50 hover:border-purple-200 dark:hover:bg-purple-950/20 transition-all"
+              >
+                <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30 group-hover:scale-110 transition-transform">
+                  <Plane className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                </div>
+                <span className="font-medium">Book Flights</span>
               </Button>
             </Link>
-            <Link href="/dashboard/destinations">
-              <Button variant="outline" className="justify-start w-full">
-                <MapPin className="mr-2 h-4 w-4" />
-                Explore Destinations
+            <Link href="/dashboard/destinations" className="group">
+              <Button
+                variant="outline"
+                className="justify-start w-full h-auto py-4 gap-3 hover:bg-orange-50 hover:border-orange-200 dark:hover:bg-orange-950/20 transition-all"
+              >
+                <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30 group-hover:scale-110 transition-transform">
+                  <MapPin className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                </div>
+                <span className="font-medium">Explore Destinations</span>
               </Button>
             </Link>
           </div>
@@ -258,22 +320,37 @@ export function DashboardOverview() {
 
       {/* Recent Activity Card for Non-Admins */}
       {!isAdmin && (
-        <Card>
+        <Card className="bg-gradient-to-br from-primary/5 to-transparent border-primary/20">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5" />
+              <div className="p-2 rounded-lg bg-primary/10">
+                <CreditCard className="h-5 w-5 text-primary" />
+              </div>
               Your Travel Summary
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-6">
-              <p className="text-muted-foreground mb-4">
-                Start planning your next adventure!
-              </p>
-              <div className="flex justify-center gap-2">
-                <Button size="sm">View My Bookings</Button>
+            <div className="text-center py-8 space-y-6">
+              <div className="space-y-2">
+                <p className="text-lg font-medium text-foreground">
+                  Start planning your next adventure!
+                </p>
+                <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                  Discover amazing destinations, book hotels, and create
+                  unforgettable memories
+                </p>
+              </div>
+              <div className="flex justify-center gap-3 flex-wrap">
+                <Button
+                  size="default"
+                  className="gap-2 shadow-md hover:shadow-lg transition-all"
+                >
+                  <Calendar className="h-4 w-4" />
+                  View My Bookings
+                </Button>
                 <Link href="/dashboard/tours">
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="default" className="gap-2">
+                    <Sparkles className="h-4 w-4" />
                     Browse Tours
                   </Button>
                 </Link>
