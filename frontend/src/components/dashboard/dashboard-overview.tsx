@@ -5,6 +5,7 @@ import { RootState } from "@/redux/store";
 import { useGetDashboardStatsQuery } from "@/redux/dashboardApi";
 import { StatsCard } from "./stats-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import {
@@ -20,7 +21,100 @@ import {
   Map,
   Sparkles,
 } from "lucide-react";
-import { Loader2 } from "lucide-react";
+
+// Loading Skeleton Component
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-8 pb-8">
+      {/* Header Skeleton */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/10 p-6 md:p-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-3 flex-1">
+            <Skeleton className="h-10 w-3/4 max-w-md" />
+            <Skeleton className="h-5 w-2/3 max-w-sm" />
+          </div>
+          <Skeleton className="h-10 w-32" />
+        </div>
+      </div>
+
+      {/* Main Stats Grid Skeleton */}
+      <div>
+        <div className="mb-4 space-y-2">
+          <Skeleton className="h-7 w-48" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i} className="relative overflow-hidden border-2">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-12 w-12 rounded-xl" />
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <Skeleton className="h-9 w-20" />
+                  <Skeleton className="h-3 w-32" />
+                  <div className="flex gap-2 pt-3 border-t">
+                    <Skeleton className="h-6 w-24 rounded-full" />
+                    <Skeleton className="h-6 w-20 rounded-full" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {/* Management Overview Skeleton (for admin view) */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
+          <Skeleton className="h-10 w-56 rounded-full" />
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-transparent" />
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          {[...Array(2)].map((_, i) => (
+            <Card key={i} className="relative overflow-hidden border-2">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-12 w-12 rounded-xl" />
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <Skeleton className="h-9 w-20" />
+                  <Skeleton className="h-3 w-32" />
+                  <div className="flex flex-wrap gap-2 pt-3 border-t">
+                    <Skeleton className="h-6 w-20 rounded-full" />
+                    <Skeleton className="h-6 w-24 rounded-full" />
+                    <Skeleton className="h-6 w-22 rounded-full" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {/* Quick Actions Skeleton */}
+      <Card className="border-2">
+        <CardHeader className="pb-4">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-9 w-9 rounded-lg" />
+            <Skeleton className="h-6 w-32" />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[...Array(4)].map((_, i) => (
+              <Skeleton key={i} className="h-[72px] w-full rounded-lg" />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 export function DashboardOverview() {
   const user = useSelector((state: RootState) => state.auth.user);
@@ -36,16 +130,7 @@ export function DashboardOverview() {
   const stats = dashboardData?.data;
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
-          <p className="text-sm text-muted-foreground">
-            Loading your dashboard...
-          </p>
-        </div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (isError) {
