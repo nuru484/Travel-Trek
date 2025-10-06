@@ -36,22 +36,27 @@ export default function FlightsPage() {
 
   return (
     <div className="container mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <CardTitle>Flights</CardTitle>
         {isAdmin && (
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleCreateFlight}>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Flight
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCreateFlight}
+              className="flex-1 sm:flex-none"
+            >
+              <Plus className="mr-2 h-4 w-4 hidden sm:inline-block" />
+              <span className="text-xs sm:text-sm">Create Flight</span>
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowDeleteDialog(true)}
               disabled={isDeletingAll}
-              className="text-destructive hover:text-destructive"
+              className="flex-1 sm:flex-none text-destructive hover:text-destructive"
             >
-              Delete All
+              <span className="text-xs sm:text-sm">Delete All</span>
             </Button>
           </div>
         )}

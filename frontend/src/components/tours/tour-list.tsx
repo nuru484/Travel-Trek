@@ -4,7 +4,6 @@ import { useGetAllToursQuery } from "@/redux/tourApi";
 import { TourListItem } from "./tour-list-item";
 import { ITour } from "@/types/tour.types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import { Calendar, AlertCircle, Search } from "lucide-react";
 
 export function TourList() {
@@ -86,12 +85,6 @@ export function TourList() {
             </p>
           </div>
         </div>
-        <Badge
-          variant="secondary"
-          className="font-medium text-xs sm:text-sm w-fit"
-        >
-          {tourCount} tour{tourCount !== 1 ? "s" : ""} found
-        </Badge>
       </div>
 
       {/* Tour List */}
