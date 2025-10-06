@@ -27,7 +27,7 @@ export function UserProfileDropdown() {
   const handleLogout = async () => {
     try {
       await logout().unwrap();
-      router.push("/");
+      router.push("/login");
       toast.success("Logout successful");
     } catch (error) {
       toast.error(extractApiErrorMessage(error).message);

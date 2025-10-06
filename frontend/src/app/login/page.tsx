@@ -88,19 +88,16 @@ export default function LoginPage() {
         {/* Main form container */}
         <div className="relative w-full max-w-md">
           {/* Card wrapper */}
-          <div className="bg-card border border-border rounded-xl shadow-lg p-8">
+          <div className="bg-card border border-border rounded-xl shadow-lg p-3 md:p-6">
             {/* Header section */}
             <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold text-card-foreground mb-2">
-                Welcome Back
-              </h1>
               <p className="text-muted-foreground text-sm">
-                Sign in to your account to continue
+                Sign in to continue
               </p>
             </div>
 
             {/* Demo Login Section */}
-            <div className="mb-6 p-4 bg-muted/30 rounded-lg border border-border/50">
+            <div className="mb-8 p-1 md:p-2 lg:p-4 bg-muted/30 rounded-lg border border-border/50">
               <p className="text-xs font-medium text-muted-foreground mb-3 text-center">
                 Quick Demo Access
               </p>
@@ -142,7 +139,7 @@ export default function LoginPage() {
             </div>
 
             {/* Divider */}
-            <div className="relative mb-6">
+            <div className="relative mb-8">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t border-border" />
               </div>
