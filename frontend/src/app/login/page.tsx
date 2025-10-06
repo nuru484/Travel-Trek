@@ -14,6 +14,8 @@ import { useLoginMutation } from "@/redux/auth/authApi";
 import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
 import { useRouter } from "next/navigation";
 import Header from "@/components/index/Header";
+import { Button } from "@/components/ui/button";
+import { User, UserCog, Shield } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -36,7 +38,6 @@ export default function LoginPage() {
         extractApiErrorMessage(err);
 
       if (hasFieldErrors && fieldErrors) {
-        // Apply field errors to the form
         Object.entries(fieldErrors).forEach(([field, errorMessage]) => {
           form.setError(field as keyof ILoginFormSchema, {
             message: errorMessage,
@@ -44,10 +45,38 @@ export default function LoginPage() {
         });
       }
 
-      // Always show toast with the main message
       toast.error(message);
     }
   }
+
+  const handleDemoLogin = async (role: "customer" | "agent" | "admin") => {
+    const credentials = {
+      customer: {
+        email: process.env.NEXT_PUBLIC_DEMO_CUSTOMER_EMAIL || "",
+        password: process.env.NEXT_PUBLIC_DEMO_CUSTOMER_PASSWORD || "",
+      },
+      agent: {
+        email: process.env.NEXT_PUBLIC_DEMO_AGENT_EMAIL || "",
+        password: process.env.NEXT_PUBLIC_DEMO_AGENT_PASSWORD || "",
+      },
+      admin: {
+        email: process.env.NEXT_PUBLIC_DEMO_ADMIN_EMAIL || "",
+        password: process.env.NEXT_PUBLIC_DEMO_ADMIN_PASSWORD || "",
+      },
+    };
+
+    const selectedCredentials = credentials[role];
+
+    if (!selectedCredentials.email || !selectedCredentials.password) {
+      toast.error(`Demo ${role} credentials not configured`);
+      return;
+    }
+
+    form.setValue("email", selectedCredentials.email);
+    form.setValue("password", selectedCredentials.password);
+
+    await onSubmit(selectedCredentials);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -68,6 +97,60 @@ export default function LoginPage() {
               <p className="text-muted-foreground text-sm">
                 Sign in to your account to continue
               </p>
+            </div>
+
+            {/* Demo Login Section */}
+            <div className="mb-6 p-4 bg-muted/30 rounded-lg border border-border/50">
+              <p className="text-xs font-medium text-muted-foreground mb-3 text-center">
+                Quick Demo Access
+              </p>
+              <div className="grid grid-cols-1 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDemoLogin("customer")}
+                  disabled={isLoading}
+                  className="w-full cursor-pointer justify-start gap-2 bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
+                >
+                  <User className="h-4 w-4" />
+                  <span className="text-sm">Login as Customer</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDemoLogin("agent")}
+                  disabled={isLoading}
+                  className="w-full cursor-pointer justify-start gap-2 bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
+                >
+                  <UserCog className="h-4 w-4" />
+                  <span className="text-sm">Login as Agent</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDemoLogin("admin")}
+                  disabled={isLoading}
+                  className="w-full cursor-pointer justify-start gap-2 bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
+                >
+                  <Shield className="h-4 w-4" />
+                  <span className="text-sm">Login as Admin</span>
+                </Button>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="relative mb-6">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">
+                  Or continue with
+                </span>
+              </div>
             </div>
 
             {/* Form section */}
