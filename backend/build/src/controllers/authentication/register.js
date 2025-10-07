@@ -20,6 +20,7 @@ const CookieManager_1 = require("../../utils/CookieManager");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const env_2 = __importDefault(require("../../config/env"));
 const logger_1 = __importDefault(require("../../utils/logger"));
+const error_handler_1 = require("../../middlewares/error-handler");
 /**
  * Controller function for user registration
  */
@@ -31,8 +32,7 @@ const handleRegisterUser = async (req, res, next) => {
         let isAdminCreatingUser = false;
         if (req.user) {
             if (req.user.role !== user_profile_types_1.UserRole.ADMIN) {
-                res.status(constants_2.HTTP_STATUS_CODES.UNAUTHORIZED);
-                throw new Error('Unauthorized. Only admins can add users.');
+                throw new error_handler_1.UnauthorizedError('Unauthorized. Only admins can add users.');
             }
             isAdminCreatingUser = true;
             userRole = userDetails.role ?? user_profile_types_1.UserRole.CUSTOMER;
@@ -40,13 +40,26 @@ const handleRegisterUser = async (req, res, next) => {
         else {
             userRole = user_profile_types_1.UserRole.CUSTOMER;
         }
+        const existingUserByEmail = await prismaClient_1.default.user.findUnique({
+            where: { email: userDetails.email },
+        });
+        if (existingUserByEmail) {
+            throw new error_handler_1.CustomError(constants_2.HTTP_STATUS_CODES.CONFLICT, 'A user with this email already exists.');
+        }
+        if (userDetails.phone) {
+            const existingUserByPhone = await prismaClient_1.default.user.findUnique({
+                where: { phone: userDetails.phone },
+            });
+            if (existingUserByPhone) {
+                throw new error_handler_1.CustomError(constants_2.HTTP_STATUS_CODES.CONFLICT, 'A user with this phone number already exists.');
+            }
+        }
         // Hash password
         const hashedPassword = await bcrypt_1.default.hash(userDetails.password, constants_3.BCRYPT_SALT_ROUNDS);
         // Validate profilePicture
         const profilePicture = req.body.profilePicture;
         if (profilePicture && typeof profilePicture !== 'string') {
-            res.status(constants_2.HTTP_STATUS_CODES.BAD_REQUEST);
-            throw new Error('Invalid profile picture format. Expected a string URL.');
+            throw new error_handler_1.BadRequestError('Invalid profile picture format. Expected a string URL.');
         }
         uploadedImageUrl = profilePicture;
         const userCreationData = {

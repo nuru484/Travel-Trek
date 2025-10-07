@@ -15,6 +15,7 @@ const conditional_cloudinary_upload_1 = __importDefault(require("../middlewares/
 const multer_1 = __importDefault(require("../config/multer"));
 const constants_1 = require("../config/constants");
 const constants_2 = require("../config/constants");
+const logger_1 = __importDefault(require("../utils/logger"));
 /**
  * Controller function for updating user profile
  */
@@ -24,62 +25,70 @@ const handleUpdateUserProfile = (0, error_handler_1.asyncHandler)(async (req, re
     const currentUserRole = req.user?.role;
     const userDetails = req.body;
     if (!userId || isNaN(parseInt(userId))) {
-        res.status(constants_1.HTTP_STATUS_CODES.BAD_REQUEST);
-        throw new Error('Valid user ID is required');
+        throw new error_handler_1.BadRequestError('Valid user ID is required.');
     }
     const targetUserId = parseInt(userId);
     // Authorization check
     if (targetUserId !== parseInt(currentUserId?.toString() || '0') &&
         currentUserRole !== user_profile_types_1.UserRole.ADMIN &&
         currentUserRole !== user_profile_types_1.UserRole.AGENT) {
-        res.status(constants_1.HTTP_STATUS_CODES.FORBIDDEN);
-        throw new Error('You are not authorized to update this user');
+        throw new error_handler_1.UnauthorizedError('You are not authorized to update this user.');
     }
-    // Track the uploaded image URL for cleanup if needed
     let uploadedImageUrl;
     let oldProfilePicture = null;
     try {
-        // First, get the current user to check for existing profile picture
+        // Fetch current user data
         const existingUser = await prismaClient_1.default.user.findUnique({
             where: { id: targetUserId },
-            select: { profilePicture: true },
+            select: { profilePicture: true, email: true, phone: true },
         });
         if (!existingUser) {
-            res.status(constants_1.HTTP_STATUS_CODES.NOT_FOUND);
-            throw new Error('User not found');
+            throw new error_handler_1.CustomError(constants_1.HTTP_STATUS_CODES.NOT_FOUND, 'User not found.');
         }
         oldProfilePicture = existingUser.profilePicture;
-        // Prepare update data with proper typing for Prisma
+        // === Duplicate checks ===
+        if (userDetails.email && userDetails.email !== existingUser.email) {
+            const existingUserByEmail = await prismaClient_1.default.user.findUnique({
+                where: { email: userDetails.email },
+            });
+            if (existingUserByEmail && existingUserByEmail.id !== targetUserId) {
+                throw new error_handler_1.CustomError(constants_1.HTTP_STATUS_CODES.CONFLICT, 'A user with this email already exists.');
+            }
+        }
+        if (userDetails.phone && userDetails.phone !== existingUser.phone) {
+            const existingUserByPhone = await prismaClient_1.default.user.findUnique({
+                where: { phone: userDetails.phone },
+            });
+            if (existingUserByPhone && existingUserByPhone.id !== targetUserId) {
+                throw new error_handler_1.CustomError(constants_1.HTTP_STATUS_CODES.CONFLICT, 'A user with this phone number already exists.');
+            }
+        }
+        // Prepare update data
         const updateData = {};
-        // Only update fields that are provided
-        if (userDetails.name !== undefined) {
+        if (userDetails.name !== undefined)
             updateData.name = userDetails.name;
-        }
-        if (userDetails.email !== undefined) {
+        if (userDetails.email !== undefined)
             updateData.email = userDetails.email;
-        }
-        if (userDetails.phone !== undefined) {
+        if (userDetails.phone !== undefined)
             updateData.phone = userDetails.phone;
-        }
-        if (userDetails.address !== undefined) {
+        if (userDetails.address !== undefined)
             updateData.address = userDetails.address;
-        }
-        // Handle password update if provided
+        // Password update
         if (userDetails.password) {
             updateData.password = await bcrypt_1.default.hash(userDetails.password, constants_1.BCRYPT_SALT_ROUNDS);
         }
-        // Handle profile picture - it should be a string URL after middleware processing
+        // Profile picture update
         if (req.body.profilePicture &&
             typeof req.body.profilePicture === 'string') {
             updateData.profilePicture = req.body.profilePicture;
             uploadedImageUrl = req.body.profilePicture;
         }
-        // Update user in database
+        // Perform update
         const updatedUser = await prismaClient_1.default.user.update({
             where: { id: targetUserId },
             data: updateData,
         });
-        // If we successfully updated with a new profile picture, clean up the old one
+        // Clean up old image if replaced
         if (uploadedImageUrl &&
             oldProfilePicture &&
             oldProfilePicture !== uploadedImageUrl) {
@@ -87,26 +96,23 @@ const handleUpdateUserProfile = (0, error_handler_1.asyncHandler)(async (req, re
                 await claudinary_1.cloudinaryService.deleteImage(oldProfilePicture);
             }
             catch (cleanupError) {
-                console.warn('Failed to clean up old profile picture:', cleanupError);
-                // Don't throw here as the main operation succeeded
+                logger_1.default.warn('Failed to clean up old profile picture:', cleanupError);
             }
         }
-        // Remove password from response
         const { password, ...userWithoutPassword } = updatedUser;
-        // Send response
         res.status(constants_1.HTTP_STATUS_CODES.OK).json({
             message: 'Profile updated successfully.',
             data: userWithoutPassword,
         });
     }
     catch (error) {
-        // If Cloudinary upload succeeded but DB update failed, clean up uploaded image
+        // Cleanup newly uploaded image if operation failed
         if (uploadedImageUrl) {
             try {
                 await claudinary_1.cloudinaryService.deleteImage(uploadedImageUrl);
             }
             catch (cleanupError) {
-                console.error('Failed to clean up Cloudinary image:', cleanupError);
+                logger_1.default.error('Failed to clean up Cloudinary image:', cleanupError);
             }
         }
         next(error);
@@ -133,12 +139,10 @@ exports.getUserById = (0, error_handler_1.asyncHandler)(async (req, res, next) =
         throw new error_handler_1.ValidationError('Valid user ID is required');
     }
     const targetUserId = parseInt(userId);
-    // Authorization check - users can view their own profile, admins can view any profile
     if (targetUserId !== parseInt(currentUserId?.toString() || '0') &&
         currentUserRole !== user_profile_types_1.UserRole.ADMIN &&
         currentUserRole !== user_profile_types_1.UserRole.AGENT) {
-        res.status(constants_1.HTTP_STATUS_CODES.FORBIDDEN);
-        throw new Error('You are not authorized to view this user profile');
+        throw new error_handler_1.UnauthorizedError('You are not authorized to view this user profile');
     }
     // Get user from database
     const user = await prismaClient_1.default.user.findUnique({
@@ -156,8 +160,7 @@ exports.getUserById = (0, error_handler_1.asyncHandler)(async (req, res, next) =
         },
     });
     if (!user) {
-        res.status(constants_1.HTTP_STATUS_CODES.NOT_FOUND);
-        throw new Error('User not found');
+        throw new error_handler_1.NotFoundError('User not found');
     }
     const response = {
         id: user.id,
@@ -256,8 +259,7 @@ exports.changeUserRole = (0, error_handler_1.asyncHandler)(async (req, res, next
     }
     // Prevent users from changing their own role
     if (parseInt(userId) === parseInt(currentUserId?.toString() || '0')) {
-        res.status(constants_1.HTTP_STATUS_CODES.FORBIDDEN);
-        throw new Error('You cannot change your own role');
+        throw new error_handler_1.ForbiddenError('You cannot change your own role');
     }
     // Check if user exists
     const existingUser = await prismaClient_1.default.user.findUnique({
@@ -265,13 +267,10 @@ exports.changeUserRole = (0, error_handler_1.asyncHandler)(async (req, res, next
         select: { id: true, name: true, email: true, role: true },
     });
     if (!existingUser) {
-        res.status(constants_1.HTTP_STATUS_CODES.NOT_FOUND);
-        throw new Error('User not found');
+        throw new error_handler_1.NotFoundError('User not found');
     }
-    // Check if role is already the same
     if (existingUser.role === role) {
-        res.status(constants_1.HTTP_STATUS_CODES.BAD_REQUEST);
-        throw new Error(`User already has the role: ${role}`);
+        throw new error_handler_1.BadRequestError(`User already has the role: ${role}`);
     }
     // Update user role
     const updatedUser = await prismaClient_1.default.user.update({
@@ -319,20 +318,15 @@ exports.deleteUser = (0, error_handler_1.asyncHandler)(async (req, res, next) =>
     const targetUserId = parseInt(userId);
     // Authorization checks
     if (targetUserId === parseInt(currentUserId?.toString() || '0')) {
-        // User is trying to delete themselves
         if (currentUserRole === user_profile_types_1.UserRole.ADMIN) {
-            res.status(constants_1.HTTP_STATUS_CODES.FORBIDDEN);
-            throw new Error('Admins cannot delete themselves');
+            throw new error_handler_1.ForbiddenError('Admins cannot delete themselves');
         }
     }
     else {
-        // User is trying to delete someone else
         if (currentUserRole !== user_profile_types_1.UserRole.ADMIN) {
-            res.status(constants_1.HTTP_STATUS_CODES.FORBIDDEN);
-            throw new Error('You are not authorized to delete other users');
+            throw new error_handler_1.UnauthorizedError('You are not authorized to delete other users');
         }
     }
-    // Check if user exists and get related counts
     const existingUser = await prismaClient_1.default.user.findUnique({
         where: { id: targetUserId },
         select: {
@@ -351,10 +345,8 @@ exports.deleteUser = (0, error_handler_1.asyncHandler)(async (req, res, next) =>
         },
     });
     if (!existingUser) {
-        res.status(constants_1.HTTP_STATUS_CODES.NOT_FOUND);
-        throw new Error('User not found');
+        throw new error_handler_1.NotFoundError('User not found');
     }
-    // Check for non-refunded payments
     const activePayments = await prismaClient_1.default.payment.count({
         where: {
             userId: targetUserId,
@@ -363,24 +355,20 @@ exports.deleteUser = (0, error_handler_1.asyncHandler)(async (req, res, next) =>
             },
         },
     });
-    // If user has active payments (not refunded), prevent deletion
     if (activePayments > 0) {
-        res.status(constants_1.HTTP_STATUS_CODES.CONFLICT);
-        throw new Error('Cannot delete user with active (non-refunded) payments. ' +
+        throw new error_handler_1.CustomError(constants_1.HTTP_STATUS_CODES.CONFLICT, 'Cannot delete user with active (non-refunded) payments. ' +
             'Please handle or refund payments first.');
     }
     // Delete user (cascade deletes Wishlist and Notifications)
     await prismaClient_1.default.user.delete({
         where: { id: targetUserId },
     });
-    // Clean up profile picture from Cloudinary if exists
     if (existingUser.profilePicture) {
         try {
             await claudinary_1.cloudinaryService.deleteImage(existingUser.profilePicture);
         }
         catch (cleanupError) {
-            console.warn(`Failed to clean up profile picture for deleted user ${userId}:`, cleanupError);
-            // Don't throw here as the main operation succeeded
+            logger_1.default.warn(`Failed to clean up profile picture for deleted user ${userId}:`, cleanupError);
         }
     }
     res.status(constants_1.HTTP_STATUS_CODES.OK).json({
@@ -395,8 +383,7 @@ exports.deleteAllUsers = (0, error_handler_1.asyncHandler)(async (req, res, next
     const confirmDelete = req.body.confirmDelete;
     // Require explicit confirmation
     if (confirmDelete !== 'DELETE_ALL_USERS') {
-        res.status(constants_1.HTTP_STATUS_CODES.BAD_REQUEST);
-        throw new Error('This operation requires confirmation. Send { "confirmDelete": "DELETE_ALL_USERS" } in request body.');
+        throw new error_handler_1.BadRequestError('This operation requires confirmation. Send { "confirmDelete": "DELETE_ALL_USERS" } in request body.');
     }
     // Get all users except the current admin
     const usersToDelete = await prismaClient_1.default.user.findMany({
@@ -431,8 +418,7 @@ exports.deleteAllUsers = (0, error_handler_1.asyncHandler)(async (req, res, next
     });
     const blockedUserIds = new Set(usersWithActivePayments.map((p) => p.userId));
     if (blockedUserIds.size > 0) {
-        res.status(constants_1.HTTP_STATUS_CODES.CONFLICT);
-        throw new Error(`Cannot delete ${blockedUserIds.size} users with active (non-refunded) payments. ` +
+        throw new error_handler_1.CustomError(constants_1.HTTP_STATUS_CODES.CONFLICT, `Cannot delete ${blockedUserIds.size} users with active (non-refunded) payments. ` +
             'Please handle or refund payments first.');
     }
     // Collect profile pictures for cleanup
@@ -452,14 +438,14 @@ exports.deleteAllUsers = (0, error_handler_1.asyncHandler)(async (req, res, next
                 await claudinary_1.cloudinaryService.deleteImage(profilePicture);
             }
             catch (error) {
-                console.warn(`Failed to clean up profile picture: ${profilePicture}`, error);
+                logger_1.default.warn(`Failed to clean up profile picture: ${profilePicture}`, error);
             }
         });
         // Execute cleanup concurrently but don't wait for completion
         Promise.allSettled(cleanupPromises).then((results) => {
             const failed = results.filter((result) => result.status === 'rejected').length;
             if (failed > 0) {
-                console.warn(`Failed to clean up ${failed} profile pictures from Cloudinary`);
+                logger_1.default.warn(`Failed to clean up ${failed} profile pictures from Cloudinary`);
             }
         });
     }
