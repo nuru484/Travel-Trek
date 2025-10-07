@@ -15,6 +15,11 @@ import { CLOUDINARY_UPLOAD_OPTIONS } from '../../config/constants';
 import { cloudinaryService } from '../../config/claudinary';
 import { HTTP_STATUS_CODES } from '../../config/constants';
 import { BCRYPT_SALT_ROUNDS } from '../../config/constants';
+import { assertEnv } from '../../config/env';
+import { CookieManager } from '../../utils/CookieManager';
+import { ITokenPayload, IRefreshTokenPayload } from 'types/auth.types';
+import jwt from 'jsonwebtoken';
+import ENV from '../../config/env';
 
 /**
  * Controller function for user registration
@@ -64,6 +69,24 @@ const handleRegisterUser = async (
     const user = await prisma.user.create({
       data: userCreationData,
     });
+
+    const accessToken = jwt.sign(
+      { id: user.id.toString(), role: user.role } as ITokenPayload,
+      assertEnv(ENV.ACCESS_TOKEN_SECRET, 'ACCESS_TOKEN_SECRET'),
+      { expiresIn: '30m' },
+    );
+
+    const refreshToken = jwt.sign(
+      { id: user.id.toString(), role: user.role } as IRefreshTokenPayload,
+      assertEnv(ENV.REFRESH_TOKEN_SECRET, 'REFRESH_TOKEN_SECRET'),
+      {
+        expiresIn: '7d',
+      },
+    );
+
+    CookieManager.clearAllTokens(res);
+    CookieManager.setAccessToken(res, accessToken);
+    CookieManager.setRefreshToken(res, refreshToken);
 
     const { password, ...userWithoutPassword } = user;
 

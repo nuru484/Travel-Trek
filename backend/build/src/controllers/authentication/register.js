@@ -15,6 +15,10 @@ const constants_1 = require("../../config/constants");
 const claudinary_1 = require("../../config/claudinary");
 const constants_2 = require("../../config/constants");
 const constants_3 = require("../../config/constants");
+const env_1 = require("../../config/env");
+const CookieManager_1 = require("../../utils/CookieManager");
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const env_2 = __importDefault(require("../../config/env"));
 /**
  * Controller function for user registration
  */
@@ -52,6 +56,13 @@ const handleRegisterUser = async (req, res, next) => {
         const user = await prismaClient_1.default.user.create({
             data: userCreationData,
         });
+        const accessToken = jsonwebtoken_1.default.sign({ id: user.id.toString(), role: user.role }, (0, env_1.assertEnv)(env_2.default.ACCESS_TOKEN_SECRET, 'ACCESS_TOKEN_SECRET'), { expiresIn: '30m' });
+        const refreshToken = jsonwebtoken_1.default.sign({ id: user.id.toString(), role: user.role }, (0, env_1.assertEnv)(env_2.default.REFRESH_TOKEN_SECRET, 'REFRESH_TOKEN_SECRET'), {
+            expiresIn: '7d',
+        });
+        CookieManager_1.CookieManager.clearAllTokens(res);
+        CookieManager_1.CookieManager.setAccessToken(res, accessToken);
+        CookieManager_1.CookieManager.setRefreshToken(res, refreshToken);
         const { password, ...userWithoutPassword } = user;
         // Send response
         res.status(constants_2.HTTP_STATUS_CODES.CREATED).json({

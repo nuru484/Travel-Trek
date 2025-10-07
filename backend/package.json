@@ -7,6 +7,7 @@
     "dev": "ts-node-dev --respawn --transpile-only --env-file .env server.ts",
     "build": "npx tsc --diagnostics && cp -r generated build/ && echo 'Build completed successfully!'",
     "start": "node build/server.js",
+    "startDev": "node --env-file .env build/server.js",
     "migrate": "npx prisma migrate dev --name init"
   },
   "keywords": [
