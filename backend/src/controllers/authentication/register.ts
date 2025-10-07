@@ -53,30 +53,6 @@ const handleRegisterUser = async (
       userRole = UserRole.CUSTOMER;
     }
 
-    const existingUserByEmail = await prisma.user.findUnique({
-      where: { email: userDetails.email },
-    });
-
-    if (existingUserByEmail) {
-      throw new CustomError(
-        HTTP_STATUS_CODES.CONFLICT,
-        'A user with this email already exists.',
-      );
-    }
-
-    if (userDetails.phone) {
-      const existingUserByPhone = await prisma.user.findUnique({
-        where: { phone: userDetails.phone },
-      });
-
-      if (existingUserByPhone) {
-        throw new CustomError(
-          HTTP_STATUS_CODES.CONFLICT,
-          'A user with this phone number already exists.',
-        );
-      }
-    }
-
     // Hash password
     const hashedPassword = await bcrypt.hash(
       userDetails.password,
