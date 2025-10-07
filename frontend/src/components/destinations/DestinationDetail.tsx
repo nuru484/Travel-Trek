@@ -1,7 +1,7 @@
 // src/components/destinations/DestinationDetail.tsx
 "use client";
 import { useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useSelector } from "react-redux";
 import { format } from "date-fns";
 import { RootState } from "@/redux/store";
@@ -19,6 +19,7 @@ import {
 import { ConfirmationDialog } from "../ui/confirmation-dialog";
 import toast from "react-hot-toast";
 import Image from "next/image";
+import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
 
 interface IDestinationDetailProps {
   destination: IDestination;
@@ -28,7 +29,6 @@ export default function DestinationDetail({
   destination,
 }: IDestinationDetailProps) {
   const router = useRouter();
-  const pathname = usePathname();
   const user = useSelector((state: RootState) => state.auth.user);
   const isAdmin = user?.role === "ADMIN" || user?.role === "AGENT";
   const [deleteDestination, { isLoading: isDeleting }] =
@@ -36,7 +36,7 @@ export default function DestinationDetail({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const handleEdit = () => {
-    router.push(`/admin-dashboard/destinations/${destination.id}/edit`);
+    router.push(`/dashboard/destinations/${destination.id}/edit`);
   };
 
   const handleDelete = async () => {
@@ -44,14 +44,11 @@ export default function DestinationDetail({
       await deleteDestination(destination.id).unwrap();
       toast.success("Destination deleted successfully");
       setShowDeleteDialog(false);
-      router.push(
-        pathname.startsWith("/admin-dashboard")
-          ? "/admin-dashboard/destinations"
-          : "/dashboard/destinations"
-      );
+      router.push("/dashboard/destinations");
     } catch (error) {
+      const { message } = extractApiErrorMessage(error);
       console.error("Failed to delete destination:", error);
-      toast.error("Failed to delete destination");
+      toast.error(message || "Failed to delete destination");
     }
   };
 

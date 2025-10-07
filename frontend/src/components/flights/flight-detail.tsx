@@ -1,7 +1,7 @@
 // src/components/flights/flight-detail.tsx
 "use client";
-import { useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useSelector } from "react-redux";
 import { format } from "date-fns";
 import { RootState } from "@/redux/store";
@@ -42,6 +42,7 @@ import {
   CreditCard,
 } from "lucide-react";
 import { ConfirmationDialog } from "../ui/confirmation-dialog";
+import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
 import toast from "react-hot-toast";
 import Image from "next/image";
 
@@ -51,7 +52,6 @@ interface IFlightDetailProps {
 
 export function FlightDetail({ flight }: IFlightDetailProps) {
   const router = useRouter();
-  const pathname = usePathname();
   const user = useSelector((state: RootState) => state.auth.user);
   const isAdmin = user?.role === "ADMIN";
   const [deleteFlight, { isLoading: isDeleting }] = useDeleteFlightMutation();
@@ -62,7 +62,11 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
   const [showBookDialog, setShowBookDialog] = useState(false);
   const [showUnbookDialog, setShowUnbookDialog] = useState(false);
 
-  const { data: destinationsData } = useGetAllDestinationsQuery({ limit: 100 });
+  const {
+    data: destinationsData,
+    isError: isDestinationsError,
+    error: destinationsError,
+  } = useGetAllDestinationsQuery({ limit: 100 });
   const destinations = destinationsData?.data || [];
 
   const { data: bookingsData } = useGetAllUserBookingsQuery(
@@ -95,6 +99,14 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
       : `Destination ID: ${id}`;
   };
 
+  useEffect(() => {
+    if (isDestinationsError) {
+      const { message } = extractApiErrorMessage(destinationsError);
+      console.error("Failed to fetch Destinations:", destinationsError);
+      toast.error(message || "Failed to load destinations");
+    }
+  }, [isDestinationsError, destinationsError]);
+
   const handleEdit = () => {
     router.push(`/dashboard/flights/${flight.id}/edit`);
   };
@@ -106,8 +118,9 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
       setShowDeleteDialog(false);
       router.push("/dashboard/flights");
     } catch (error) {
+      const { message } = extractApiErrorMessage(error);
       console.error("Failed to delete flight:", error);
-      toast.error("Failed to delete flight");
+      toast.error(message || "Failed to delete flight");
     }
   };
 
@@ -127,8 +140,9 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
       toast.success("Flight booked successfully");
       setShowBookDialog(false);
     } catch (error) {
+      const { message } = extractApiErrorMessage(error);
       console.error("Failed to book flight:", error);
-      toast.error("Failed to book flight");
+      toast.error(message || "Failed to book flight");
     }
   };
 
@@ -140,8 +154,9 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
       toast.success("Booking cancelled successfully");
       setShowUnbookDialog(false);
     } catch (error) {
+      const { message } = extractApiErrorMessage(error);
       console.error("Failed to cancel booking:", error);
-      toast.error("Failed to cancel booking");
+      toast.error(message || "Failed to cancel booking");
     }
   };
 

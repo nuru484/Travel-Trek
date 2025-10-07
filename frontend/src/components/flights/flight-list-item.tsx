@@ -1,6 +1,6 @@
 // src/components/flights/flight-list-item.tsx
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSelector } from "react-redux";
 import { format } from "date-fns";
@@ -24,6 +24,7 @@ import {
   Bookmark,
 } from "lucide-react";
 import { ConfirmationDialog } from "../ui/confirmation-dialog";
+import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
 import toast from "react-hot-toast";
 import { truncateText } from "@/utils/truncateText";
 import Image from "next/image";
@@ -40,10 +41,18 @@ export function FlightListItem({ flight }: IFlightListItemProps) {
   const [deleteFlight, { isLoading: isDeleting }] = useDeleteFlightMutation();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  const { data: destinationsData } = useGetAllDestinationsQuery({ limit: 100 });
+  const {
+    data: destinationsData,
+    isError: isDestinationsError,
+    error: destinationsError,
+  } = useGetAllDestinationsQuery({ limit: 100 });
   const destinations = destinationsData?.data || [];
 
-  const { data: bookingsData } = useGetAllUserBookingsQuery(
+  const {
+    data: bookingsData,
+    isError: isBookingsError,
+    error: BookingsError,
+  } = useGetAllUserBookingsQuery(
     { userId: user.id, params: { page: 1, limit: 1000 } },
     { skip: !user }
   );
@@ -53,6 +62,22 @@ export function FlightListItem({ flight }: IFlightListItemProps) {
       booking.flight?.id === flight.id &&
       booking.userId === parseInt(user?.id || "0")
   );
+
+  useEffect(() => {
+    if (isDestinationsError) {
+      const { message } = extractApiErrorMessage(destinationsError);
+      console.error("Failed to fetch Destinations:", destinationsError);
+      toast.error(message || "Failed to load destinations");
+    }
+  }, [isDestinationsError, destinationsError]);
+
+  useEffect(() => {
+    if (isBookingsError) {
+      const { message } = extractApiErrorMessage(BookingsError);
+      console.error("Failed to fetch Bookings:", BookingsError);
+      toast.error(message || "Failed to load bookings");
+    }
+  }, [isBookingsError, BookingsError]);
 
   const handleView = () => {
     router.push(`/dashboard/flights/${flight.id}/detail`);
@@ -68,8 +93,9 @@ export function FlightListItem({ flight }: IFlightListItemProps) {
       toast.success("Flight deleted successfully");
       setShowDeleteDialog(false);
     } catch (error) {
-      console.error(error);
-      toast.error("Failed to delete flight");
+      const { message } = extractApiErrorMessage(error);
+      console.error("Failed to delete flight:", error);
+      toast.error(message || "Failed to delete flight");
     }
   };
 

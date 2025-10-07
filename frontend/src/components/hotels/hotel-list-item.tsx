@@ -1,6 +1,6 @@
 // src/components/hotels/hotel-list-item.tsx
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
@@ -34,6 +34,7 @@ import { BookingButton } from "../bookings/BookingButton";
 import toast from "react-hot-toast";
 import { truncateText } from "@/utils/truncateText";
 import Image from "next/image";
+import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
 
 interface IHotelListItemProps {
   hotel: IHotel;
@@ -50,7 +51,11 @@ export function HotelListItem({ hotel }: IHotelListItemProps) {
   const [selectedRoomId, setSelectedRoomId] = useState("");
   const [selectedRoom, setSelectedRoom] = useState<IHotelRoom | null>(null);
 
-  const { data: bookingsData } = useGetAllUserBookingsQuery(
+  const {
+    data: bookingsData,
+    isError: isBookingsError,
+    error: BookingsError,
+  } = useGetAllUserBookingsQuery(
     { userId: user?.id, params: { page: 1, limit: 1000 } },
     { skip: !user }
   );
@@ -71,6 +76,14 @@ export function HotelListItem({ hotel }: IHotelListItemProps) {
     return filteredRooms;
   }, [selectedRoomId, selectedRoom, filteredRooms]);
 
+  useEffect(() => {
+    if (isBookingsError) {
+      const { message } = extractApiErrorMessage(BookingsError);
+      console.error("Failed to fetch user Bookings:", BookingsError);
+      toast.error(message || "Failed to load user bookings");
+    }
+  }, [isBookingsError, BookingsError]);
+
   const handleView = () => router.push(`/dashboard/hotels/${hotel.id}/detail`);
   const handleEdit = () => router.push(`/dashboard/hotels/${hotel.id}/edit`);
 
@@ -80,8 +93,9 @@ export function HotelListItem({ hotel }: IHotelListItemProps) {
       toast.success("Hotel deleted successfully");
       setShowDeleteDialog(false);
     } catch (error) {
+      const { message } = extractApiErrorMessage(error);
       console.error("Failed to delete hotel:", error);
-      toast.error("Failed to delete hotel");
+      toast.error(message || "Failed to delete hotel");
     }
   };
 
@@ -382,4 +396,3 @@ export function HotelListItem({ hotel }: IHotelListItemProps) {
     </>
   );
 }
-                  

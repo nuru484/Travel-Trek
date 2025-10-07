@@ -14,6 +14,7 @@ import { ConfirmationDialog } from "../ui/confirmation-dialog";
 import toast from "react-hot-toast";
 import { truncateText } from "@/utils/truncateText";
 import Image from "next/image";
+import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
 
 interface IDestinationListItemProps {
   destination: IDestination;
@@ -43,8 +44,9 @@ export default function DestinationListItem({
       toast.success("Destination deleted successfully");
       setShowDeleteDialog(false);
     } catch (error) {
+      const { message } = extractApiErrorMessage(error);
       console.error("Failed to delete destination:", error);
-      toast.error("Failed to delete destination");
+      toast.error(message || "Failed to delete destination");
     }
   };
 

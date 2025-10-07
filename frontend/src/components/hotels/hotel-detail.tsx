@@ -34,6 +34,7 @@ import {
   Phone,
 } from "lucide-react";
 import { ConfirmationDialog } from "../ui/confirmation-dialog";
+import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
 import toast from "react-hot-toast";
 import Image from "next/image";
 
@@ -64,8 +65,9 @@ export function HotelDetail({ hotel }: IHotelDetailProps) {
           : "/dashboard/hotels"
       );
     } catch (error) {
+      const { message } = extractApiErrorMessage(error);
       console.error("Failed to delete hotel:", error);
-      toast.error("Failed to delete hotel");
+      toast.error(message || "Failed to delete hotel");
     }
   };
 
