@@ -1,6 +1,6 @@
 // src/components/tours/tour-list-item.tsx
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
@@ -26,6 +26,7 @@ import { ConfirmationDialog } from "../ui/confirmation-dialog";
 import { BookingButton } from "../bookings/BookingButton";
 import toast from "react-hot-toast";
 import { truncateText } from "@/utils/truncateText";
+import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
 
 interface ITourListItemProps {
   tour: ITour;
@@ -38,10 +39,19 @@ export function TourListItem({ tour }: ITourListItemProps) {
   const [deleteTour, { isLoading: isDeleting }] = useDeleteTourMutation();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  const { data: bookingsData } = useGetAllUserBookingsQuery(
-    { userId: user.id, params: { page: 1, limit: 1000 } },
-    { skip: !user }
-  );
+  const { data: bookingsData, error: bookingsError } =
+    useGetAllUserBookingsQuery(
+      { userId: user.id, params: { page: 1, limit: 1000 } },
+      { skip: !user }
+    );
+
+  useEffect(() => {
+    if (bookingsError) {
+      const { message } = extractApiErrorMessage(bookingsError);
+      console.error("Failed to fetch user bookings:", bookingsError);
+      toast.error(message || "Failed to load booking information");
+    }
+  }, [bookingsError]);
 
   const isTourBooked = bookingsData?.data.some(
     (booking) =>
@@ -63,8 +73,9 @@ export function TourListItem({ tour }: ITourListItemProps) {
       toast.success("Tour deleted successfully");
       setShowDeleteDialog(false);
     } catch (error) {
+      const { message } = extractApiErrorMessage(error);
       console.error("Failed to delete tour:", error);
-      toast.error("Failed to delete tour");
+      toast.error(message || "Failed to delete tour");
     }
   };
 
@@ -99,7 +110,6 @@ export function TourListItem({ tour }: ITourListItemProps) {
               <h3 className="font-semibold text-foreground text-base sm:text-lg truncate">
                 {tour.name}
               </h3>
-              {/* Status under name on small screens, inline on sm+ */}
               <div className="mt-1 flex sm:inline-flex">
                 <Badge
                   variant={getStatusColor(tour.status)}
@@ -220,7 +230,6 @@ export function TourListItem({ tour }: ITourListItemProps) {
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete
                 </Button>
-                {/* Admin booking - no userId passed, will open dialog */}
                 <BookingButton
                   tourId={tour.id}
                   price={tour.price}
@@ -231,7 +240,6 @@ export function TourListItem({ tour }: ITourListItemProps) {
                 />
               </>
             ) : (
-              // Regular user booking
               <>
                 {isTourBooked ? (
                   <Button

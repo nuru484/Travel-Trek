@@ -32,6 +32,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ConfirmationDialog } from "../ui/confirmation-dialog";
+import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
 import toast from "react-hot-toast";
 
 interface ITourDetailProps {
@@ -80,8 +81,9 @@ export function TourDetail({ tour }: ITourDetailProps) {
       setShowDeleteDialog(false);
       router.push("/dashboard/tours");
     } catch (error) {
+      const { message } = extractApiErrorMessage(error);
       console.error("Failed to delete tour:", error);
-      toast.error("Failed to delete tour");
+      toast.error(message || "Failed to delete tour");
     }
   };
 
@@ -95,8 +97,9 @@ export function TourDetail({ tour }: ITourDetailProps) {
       toast.success("Tour booked successfully");
       setShowBookDialog(false);
     } catch (error) {
+      const { message } = extractApiErrorMessage(error);
       console.error("Failed to book tour:", error);
-      toast.error("Failed to book tour");
+      toast.error(message || "Failed to book tour");
     }
   };
 
@@ -107,8 +110,9 @@ export function TourDetail({ tour }: ITourDetailProps) {
       toast.success("Booking cancelled successfully");
       setShowUnbookDialog(false);
     } catch (error) {
+      const { message } = extractApiErrorMessage(error);
       console.error("Failed to cancel booking:", error);
-      toast.error("Failed to cancel booking");
+      toast.error(message || "Failed to cancel booking");
     }
   };
 

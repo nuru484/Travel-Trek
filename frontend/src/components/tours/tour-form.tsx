@@ -1,4 +1,3 @@
-// src/components/tours/tour-form.tsx
 "use client";
 import React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -122,8 +121,19 @@ export function TourForm({ tour, mode }: ITourFormProps) {
       router.push("/dashboard/tours");
     } catch (error) {
       console.error(`Failed to ${mode} tour:`, error);
-      const apiError = extractApiErrorMessage(error).message;
-      toast.error(apiError || `Failed to ${mode} tour`);
+      const { message, fieldErrors, hasFieldErrors } =
+        extractApiErrorMessage(error);
+
+      if (hasFieldErrors && fieldErrors) {
+        Object.entries(fieldErrors).forEach(([field, errorMessage]) => {
+          form.setError(field as keyof TourFormValues, {
+            message: errorMessage,
+          });
+        });
+        toast.error(message);
+      } else {
+        toast.error(message || `Failed to ${mode} tour`);
+      }
     }
   };
 
@@ -176,7 +186,7 @@ export function TourForm({ tour, mode }: ITourFormProps) {
                     <FormControl>
                       <Select
                         onValueChange={field.onChange}
-                        defaultValue={field.value}
+                        value={field.value}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select tour type" />
@@ -238,7 +248,7 @@ export function TourForm({ tour, mode }: ITourFormProps) {
                           placeholder="e.g., 7"
                           {...field}
                           onChange={(e) =>
-                            field.onChange(parseInt(e.target.value))
+                            field.onChange(parseInt(e.target.value) || 0)
                           }
                         />
                       </FormControl>
@@ -257,9 +267,10 @@ export function TourForm({ tour, mode }: ITourFormProps) {
                         <Input
                           type="number"
                           placeholder="e.g., 999.99"
+                          step="0.01"
                           {...field}
                           onChange={(e) =>
-                            field.onChange(parseFloat(e.target.value))
+                            field.onChange(parseFloat(e.target.value) || 0)
                           }
                         />
                       </FormControl>
@@ -281,7 +292,7 @@ export function TourForm({ tour, mode }: ITourFormProps) {
                         placeholder="e.g., 20"
                         {...field}
                         onChange={(e) =>
-                          field.onChange(parseInt(e.target.value))
+                          field.onChange(parseInt(e.target.value) || 0)
                         }
                       />
                     </FormControl>
