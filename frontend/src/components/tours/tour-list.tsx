@@ -5,9 +5,14 @@ import { TourListItem } from "./tour-list-item";
 import { ITour } from "@/types/tour.types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar, AlertCircle, Search } from "lucide-react";
+import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
 
 export function TourList() {
-  const { data, error, isLoading, isFetching } = useGetAllToursQuery({});
+  const { data, error, isError, isLoading, isFetching } = useGetAllToursQuery(
+    {}
+  );
+
+  const { message } = extractApiErrorMessage(error);
 
   if (isLoading) {
     return (
@@ -28,7 +33,7 @@ export function TourList() {
     );
   }
 
-  if (error) {
+  if (isError) {
     return (
       <div className="text-center py-16">
         <div className="max-w-md mx-auto px-4">
@@ -39,8 +44,9 @@ export function TourList() {
             Failed to Load Tours
           </h3>
           <p className="text-sm sm:text-base text-muted-foreground mb-4">
-            We couldn&apos;t load the tour information. Please check your
-            connection and try again.
+            {message ||
+              `We couldn&apos;t load the tour information. Please check your
+            connection and try again.`}
           </p>
         </div>
       </div>
