@@ -138,8 +138,23 @@ export default function UserForm({ mode, user }: IUserFormProps) {
         router.push(`/dashboard/users/${resultUser.id}/user-profile`);
       }
     } catch (error) {
-      console.error(error);
-      toast.error(extractApiErrorMessage(error).message || "Operation failed");
+      console.error("User form submission error:", error);
+
+      // Extract message and field-level errors
+      const { message, fieldErrors, hasFieldErrors } =
+        extractApiErrorMessage(error);
+
+      if (hasFieldErrors && fieldErrors) {
+        Object.entries(fieldErrors).forEach(([field, errorMessage]) => {
+          form.setError(field as keyof UserFormValues, {
+            message: errorMessage,
+          });
+        });
+
+        toast.error(message);
+      } else {
+        toast.error(message || "Operation failed");
+      }
     }
   };
 

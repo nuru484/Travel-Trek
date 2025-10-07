@@ -1,4 +1,4 @@
-// src/utils/extractApiErrorMessage.ts
+// src/utils/extractApiError.ts
 interface ApiErrorResult {
   message: string;
   fieldErrors?: Record<string, string>;
