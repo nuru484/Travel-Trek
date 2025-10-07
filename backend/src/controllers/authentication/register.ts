@@ -21,6 +21,11 @@ import { ITokenPayload, IRefreshTokenPayload } from 'types/auth.types';
 import jwt from 'jsonwebtoken';
 import ENV from '../../config/env';
 import logger from '../../utils/logger';
+import {
+  CustomError,
+  BadRequestError,
+  UnauthorizedError,
+} from '../../middlewares/error-handler';
 
 /**
  * Controller function for user registration
@@ -39,14 +44,37 @@ const handleRegisterUser = async (
 
     if (req.user) {
       if (req.user.role !== UserRole.ADMIN) {
-        res.status(HTTP_STATUS_CODES.UNAUTHORIZED);
-        throw new Error('Unauthorized. Only admins can add users.');
+        throw new UnauthorizedError('Unauthorized. Only admins can add users.');
       }
 
       isAdminCreatingUser = true;
       userRole = userDetails.role ?? UserRole.CUSTOMER;
     } else {
       userRole = UserRole.CUSTOMER;
+    }
+
+    const existingUserByEmail = await prisma.user.findUnique({
+      where: { email: userDetails.email },
+    });
+
+    if (existingUserByEmail) {
+      throw new CustomError(
+        HTTP_STATUS_CODES.CONFLICT,
+        'A user with this email already exists.',
+      );
+    }
+
+    if (userDetails.phone) {
+      const existingUserByPhone = await prisma.user.findUnique({
+        where: { phone: userDetails.phone },
+      });
+
+      if (existingUserByPhone) {
+        throw new CustomError(
+          HTTP_STATUS_CODES.CONFLICT,
+          'A user with this phone number already exists.',
+        );
+      }
     }
 
     // Hash password
@@ -58,8 +86,9 @@ const handleRegisterUser = async (
     // Validate profilePicture
     const profilePicture = req.body.profilePicture;
     if (profilePicture && typeof profilePicture !== 'string') {
-      res.status(HTTP_STATUS_CODES.BAD_REQUEST);
-      throw new Error('Invalid profile picture format. Expected a string URL.');
+      throw new BadRequestError(
+        'Invalid profile picture format. Expected a string URL.',
+      );
     }
 
     uploadedImageUrl = profilePicture;
