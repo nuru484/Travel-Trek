@@ -98,8 +98,6 @@ export function PaymentsDataTable({
     return cols;
   }, [showActions, showSelection, shouldShowUser, shouldShowBooking, userRole]);
 
-  console.log(data);
-
   const table = useReactTable({
     data,
     columns,
