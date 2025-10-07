@@ -1,6 +1,5 @@
-// src/components/flights/flight-form.tsx
 "use client";
-import React, { useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -22,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Save } from "lucide-react";
+import { Loader2, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   useCreateFlightMutation,
@@ -73,12 +72,13 @@ export function FlightForm({ flight, mode }: IFlightFormProps) {
   const router = useRouter();
   const [createFlight, { isLoading: isCreating }] = useCreateFlightMutation();
   const [updateFlight, { isLoading: isUpdating }] = useUpdateFlightMutation();
-
   const { data: destinationsData, isLoading: isDestinationsLoading } =
     useGetAllDestinationsQuery({ limit: 100 });
-  const [previewUrl, setPreviewUrl] = React.useState<string | null>(
+
+  const [previewUrl, setPreviewUrl] = useState<string | null>(
     flight?.photo || null
   );
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const destinations: IDestination[] = React.useMemo(() => {
     return destinationsData?.data || [];
@@ -110,24 +110,54 @@ export function FlightForm({ flight, mode }: IFlightFormProps) {
     },
   });
 
-  const handleFileChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    onChange: (value: File | null) => void
-  ) => {
-    const file = e.target.files?.[0];
+  const handleImageChange = (file: File | undefined) => {
     if (file) {
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        form.setError("flightPhoto", {
+          type: "manual",
+          message: "Please select a valid image file",
+        });
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        form.setError("flightPhoto", {
+          type: "manual",
+          message: "Image size should be less than 5MB",
+        });
+        return;
+      }
+
+      // Clean up old preview URL
+      if (previewUrl && previewUrl !== flight?.photo) {
+        URL.revokeObjectURL(previewUrl);
+      }
+
       const url = URL.createObjectURL(file);
       setPreviewUrl(url);
-      onChange(file);
-    } else {
-      setPreviewUrl(null);
-      onChange(null);
+      form.setValue("flightPhoto", file);
+      form.clearErrors("flightPhoto");
+    }
+  };
+
+  const removeImage = () => {
+    if (previewUrl && previewUrl !== flight?.photo) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
+    setPreviewUrl(null);
+    form.setValue("flightPhoto", undefined);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
   useEffect(() => {
     return () => {
-      if (previewUrl && !flight?.photo) {
+      if (previewUrl && previewUrl !== flight?.photo) {
         URL.revokeObjectURL(previewUrl);
       }
     };
@@ -165,8 +195,19 @@ export function FlightForm({ flight, mode }: IFlightFormProps) {
       router.push("/dashboard/flights");
     } catch (error) {
       console.error(`Failed to ${mode} flight:`, error);
-      const apiError = extractApiErrorMessage(error).message;
-      toast.error(apiError || `Failed to ${mode} flight`);
+      const { message, fieldErrors, hasFieldErrors } =
+        extractApiErrorMessage(error);
+
+      if (hasFieldErrors && fieldErrors) {
+        Object.entries(fieldErrors).forEach(([field, errorMessage]) => {
+          form.setError(field as keyof FlightFormValues, {
+            message: errorMessage,
+          });
+        });
+        toast.error(message);
+      } else {
+        toast.error(message || `Failed to ${mode} flight`);
+      }
     }
   };
 
@@ -425,28 +466,62 @@ export function FlightForm({ flight, mode }: IFlightFormProps) {
               <FormField
                 control={form.control}
                 name="flightPhoto"
-                render={({ field: { onChange, value, ...fieldProps } }) => (
+                render={() => (
                   <FormItem>
                     <FormLabel>Flight Photo (Optional)</FormLabel>
                     <FormControl>
-                      <div className="space-y-2">
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => handleFileChange(e, onChange)}
-                          {...fieldProps}
-                        />
-                        {(previewUrl || flight?.photo) && (
-                          <div className="mt-2">
-                            <Image
-                              src={previewUrl || flight?.photo || ""}
-                              alt="Flight photo preview"
-                              className="h-24 w-24 object-cover rounded-md border border-input"
-                              width={96}
-                              height={96}
-                            />
+                      <div className="space-y-3">
+                        {/* Preview */}
+                        {previewUrl && (
+                          <div className="relative w-24 h-24 mx-auto">
+                            <div className="relative w-full h-full rounded-md overflow-hidden border-2 border-muted-foreground/20">
+                              <Image
+                                src={previewUrl}
+                                alt="Flight photo preview"
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={removeImage}
+                              className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-1 hover:bg-destructive/90 transition-colors"
+                              aria-label="Remove image"
+                            >
+                              <X size={12} />
+                            </button>
                           </div>
                         )}
+
+                        {/* File Input */}
+                        <div className="relative">
+                          <Input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) =>
+                              handleImageChange(e.target.files?.[0])
+                            }
+                            disabled={isLoading}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="w-full bg-muted border-dashed border-2 hover:bg-muted/80"
+                            disabled={isLoading}
+                          >
+                            <Upload className="mr-2 h-4 w-4" />
+                            {previewUrl
+                              ? "Change Photo"
+                              : "Upload Flight Photo"}
+                          </Button>
+                        </div>
+
+                        <p className="text-xs text-muted-foreground text-center">
+                          Supported formats: JPG, PNG, GIF (Max 5MB)
+                        </p>
                       </div>
                     </FormControl>
                     <FormMessage />
@@ -460,21 +535,19 @@ export function FlightForm({ flight, mode }: IFlightFormProps) {
                   variant="outline"
                   onClick={() => router.push("/dashboard/flights")}
                   disabled={isLoading}
-                  className="flex-1 hover:cursor-pointer"
+                  className="flex-1 cursor-pointer"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
                   disabled={isLoading}
-                  className="flex-1 hover:cursor-pointer"
+                  className="flex-1 cursor-pointer"
                 >
-                  <Save className="mr-2 h-4 w-4" />
-                  {isLoading
-                    ? "Saving..."
-                    : mode === "create"
-                    ? "Create Flight"
-                    : "Update Flight"}
+                  {isLoading && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  {mode === "create" ? "Create Flight" : "Update Flight"}
                 </Button>
               </div>
             </form>

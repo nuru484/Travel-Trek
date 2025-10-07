@@ -1,9 +1,9 @@
-// src/components/destinations/DestinationForm.tsx
 "use client";
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -15,22 +15,21 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Save } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { Loader2, X, Upload } from "lucide-react";
+import Image from "next/image";
+import toast from "react-hot-toast";
 import {
   useCreateDestinationMutation,
   useUpdateDestinationMutation,
 } from "@/redux/destinationApi";
-import toast from "react-hot-toast";
-import { IDestination } from "@/types/destination.types";
-import Image from "next/image";
 import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
+import { IDestination } from "@/types/destination.types";
 
 const destinationFormSchema = z.object({
   name: z.string().min(1, "Destination name is required"),
-  description: z.string().optional(),
+  description: z.string().optional().nullable(),
   country: z.string().min(1, "Country is required"),
-  city: z.string().optional(),
+  city: z.string().optional().nullable(),
   destinationPhoto: z.any().optional(),
 });
 
@@ -46,43 +45,81 @@ export default function DestinationForm({
   mode,
 }: IDestinationFormProps) {
   const router = useRouter();
+
   const [createDestination, { isLoading: isCreating }] =
     useCreateDestinationMutation();
   const [updateDestination, { isLoading: isUpdating }] =
     useUpdateDestinationMutation();
-  const [previewUrl, setPreviewUrl] = React.useState<string | null>(
+
+  const [previewUrl, setPreviewUrl] = useState<string | null>(
     destination?.photo || null
   );
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const form = useForm<DestinationFormValues>({
-    resolver: zodResolver(destinationFormSchema),
-    defaultValues: {
+  const defaultValues: Partial<DestinationFormValues> = useMemo(
+    () => ({
       name: destination?.name || "",
       description: destination?.description || "",
       country: destination?.country || "",
       city: destination?.city || "",
       destinationPhoto: undefined,
-    },
+    }),
+    [destination]
+  );
+
+  const form = useForm<DestinationFormValues>({
+    resolver: zodResolver(destinationFormSchema),
+    defaultValues,
   });
 
-  const handleFileChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    onChange: (value: File | null) => void
-  ) => {
-    const file = e.target.files?.[0];
+  const handleImageChange = (file: File | undefined) => {
     if (file) {
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        form.setError("destinationPhoto", {
+          type: "manual",
+          message: "Please select a valid image file",
+        });
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        form.setError("destinationPhoto", {
+          type: "manual",
+          message: "Image size should be less than 5MB",
+        });
+        return;
+      }
+
+      // Clean up old preview URL
+      if (previewUrl && previewUrl !== destination?.photo) {
+        URL.revokeObjectURL(previewUrl);
+      }
+
       const url = URL.createObjectURL(file);
       setPreviewUrl(url);
-      onChange(file);
-    } else {
-      setPreviewUrl(null);
-      onChange(null);
+      form.setValue("destinationPhoto", file);
+      form.clearErrors("destinationPhoto");
+    }
+  };
+
+  const removeImage = () => {
+    if (previewUrl && previewUrl !== destination?.photo) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
+    setPreviewUrl(null);
+    form.setValue("destinationPhoto", undefined);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
   useEffect(() => {
     return () => {
-      if (previewUrl && !destination?.photo) {
+      if (previewUrl && previewUrl !== destination?.photo) {
         URL.revokeObjectURL(previewUrl);
       }
     };
@@ -112,9 +149,20 @@ export default function DestinationForm({
 
       router.push("/dashboard/destinations");
     } catch (error) {
-      console.error(`Failed to ${mode} destination:`, error);
-      const apiError = extractApiErrorMessage(error).message;
-      toast.error(apiError || `Failed to ${mode} destination`);
+      console.error("Destination form submission error:", error);
+      const { message, fieldErrors, hasFieldErrors } =
+        extractApiErrorMessage(error);
+
+      if (hasFieldErrors && fieldErrors) {
+        Object.entries(fieldErrors).forEach(([field, errorMessage]) => {
+          form.setError(field as keyof DestinationFormValues, {
+            message: errorMessage,
+          });
+        });
+        toast.error(message);
+      } else {
+        toast.error(message || "Operation failed");
+      }
     }
   };
 
@@ -126,12 +174,13 @@ export default function DestinationForm({
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {/* Name */}
               <FormField
                 control={form.control}
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Name</FormLabel>
+                    <FormLabel>Destination Name</FormLabel>
                     <FormControl>
                       <Input placeholder="e.g., Tamale" {...field} />
                     </FormControl>
@@ -140,6 +189,7 @@ export default function DestinationForm({
                 )}
               />
 
+              {/* Description */}
               <FormField
                 control={form.control}
                 name="description"
@@ -154,6 +204,7 @@ export default function DestinationForm({
                 )}
               />
 
+              {/* Country and City */}
               <div className="grid gap-6 md:grid-cols-2">
                 <FormField
                   control={form.control}
@@ -184,31 +235,66 @@ export default function DestinationForm({
                 />
               </div>
 
+              {/* Photo Upload */}
               <FormField
                 control={form.control}
                 name="destinationPhoto"
-                render={({ field: { onChange, value, ...fieldProps } }) => (
+                render={() => (
                   <FormItem>
                     <FormLabel>Destination Photo (Optional)</FormLabel>
                     <FormControl>
-                      <div className="space-y-2">
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => handleFileChange(e, onChange)}
-                          {...fieldProps}
-                        />
-                        {(previewUrl || destination?.photo) && (
-                          <div className="mt-2">
-                            <Image
-                              src={previewUrl || destination?.photo || ""}
-                              alt="Destination photo preview"
-                              className="h-24 w-24 object-cover rounded-md border border-input"
-                              width={96}
-                              height={96}
-                            />
+                      <div className="space-y-3">
+                        {/* Preview */}
+                        {previewUrl && (
+                          <div className="relative w-24 h-24 mx-auto">
+                            <div className="relative w-full h-full rounded-md overflow-hidden border-2 border-muted-foreground/20">
+                              <Image
+                                src={previewUrl}
+                                alt="Destination preview"
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={removeImage}
+                              className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-1 hover:bg-destructive/90 transition-colors"
+                              aria-label="Remove image"
+                            >
+                              <X size={12} />
+                            </button>
                           </div>
                         )}
+
+                        {/* File Input */}
+                        <div className="relative">
+                          <Input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) =>
+                              handleImageChange(e.target.files?.[0])
+                            }
+                            disabled={isLoading}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="w-full bg-muted border-dashed border-2 hover:bg-muted/80"
+                            disabled={isLoading}
+                          >
+                            <Upload className="mr-2 h-4 w-4" />
+                            {previewUrl
+                              ? "Change Photo"
+                              : "Upload Destination Photo"}
+                          </Button>
+                        </div>
+
+                        <p className="text-xs text-muted-foreground text-center">
+                          Supported formats: JPG, PNG, GIF (Max 5MB)
+                        </p>
                       </div>
                     </FormControl>
                     <FormMessage />
@@ -216,21 +302,26 @@ export default function DestinationForm({
                 )}
               />
 
+              {/* Actions */}
               <div className="flex gap-3 pt-4">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => router.push("/dashboard/destinations")}
                   disabled={isLoading}
-                  className="flex-1"
+                  className="flex-1 cursor-pointer"
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isLoading} className="flex-1">
-                  <Save className="mr-2 h-4 w-4" />
-                  {isLoading
-                    ? "Saving..."
-                    : mode === "create"
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="flex-1 cursor-pointer"
+                >
+                  {isLoading && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  {mode === "create"
                     ? "Create Destination"
                     : "Update Destination"}
                 </Button>
