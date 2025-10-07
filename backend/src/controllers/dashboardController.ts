@@ -45,13 +45,7 @@ interface IDashboardResponse {
  */
 const getDashboardStats = asyncHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const userId = req.user?.id;
     const userRole = req.user?.role;
-
-    if (!userId) {
-      res.status(HTTP_STATUS_CODES.UNAUTHORIZED);
-      throw new Error('User ID is required');
-    }
 
     try {
       // Base stats that all users can see

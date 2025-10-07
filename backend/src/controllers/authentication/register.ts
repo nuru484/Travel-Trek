@@ -20,6 +20,7 @@ import { CookieManager } from '../../utils/CookieManager';
 import { ITokenPayload, IRefreshTokenPayload } from 'types/auth.types';
 import jwt from 'jsonwebtoken';
 import ENV from '../../config/env';
+import logger from '../../utils/logger';
 
 /**
  * Controller function for user registration
@@ -33,13 +34,16 @@ const handleRegisterUser = async (
   let uploadedImageUrl: string | undefined;
 
   try {
-    const existingUser = await prisma.user.findFirst();
-
-    // Determine role logic
     let userRole: UserRole;
-    if (!existingUser) {
-      userRole = UserRole.ADMIN;
-    } else if (req.user && req.user.role === UserRole.ADMIN) {
+    let isAdminCreatingUser = false;
+
+    if (req.user) {
+      if (req.user.role !== UserRole.ADMIN) {
+        res.status(HTTP_STATUS_CODES.UNAUTHORIZED);
+        throw new Error('Unauthorized. Only admins can add users.');
+      }
+
+      isAdminCreatingUser = true;
       userRole = userDetails.role ?? UserRole.CUSTOMER;
     } else {
       userRole = UserRole.CUSTOMER;
@@ -57,6 +61,7 @@ const handleRegisterUser = async (
       res.status(HTTP_STATUS_CODES.BAD_REQUEST);
       throw new Error('Invalid profile picture format. Expected a string URL.');
     }
+
     uploadedImageUrl = profilePicture;
 
     const userCreationData: IUserRegistrationInput = {
@@ -70,38 +75,40 @@ const handleRegisterUser = async (
       data: userCreationData,
     });
 
-    const accessToken = jwt.sign(
-      { id: user.id.toString(), role: user.role } as ITokenPayload,
-      assertEnv(ENV.ACCESS_TOKEN_SECRET, 'ACCESS_TOKEN_SECRET'),
-      { expiresIn: '30m' },
-    );
-
-    const refreshToken = jwt.sign(
-      { id: user.id.toString(), role: user.role } as IRefreshTokenPayload,
-      assertEnv(ENV.REFRESH_TOKEN_SECRET, 'REFRESH_TOKEN_SECRET'),
-      {
-        expiresIn: '7d',
-      },
-    );
-
-    CookieManager.clearAllTokens(res);
-    CookieManager.setAccessToken(res, accessToken);
-    CookieManager.setRefreshToken(res, refreshToken);
-
     const { password, ...userWithoutPassword } = user;
 
-    // Send response
+    if (!isAdminCreatingUser) {
+      const accessToken = jwt.sign(
+        { id: user.id.toString(), role: user.role } as ITokenPayload,
+        assertEnv(ENV.ACCESS_TOKEN_SECRET, 'ACCESS_TOKEN_SECRET'),
+        { expiresIn: '30m' },
+      );
+
+      const refreshToken = jwt.sign(
+        { id: user.id.toString(), role: user.role } as IRefreshTokenPayload,
+        assertEnv(ENV.REFRESH_TOKEN_SECRET, 'REFRESH_TOKEN_SECRET'),
+        {
+          expiresIn: '7d',
+        },
+      );
+
+      CookieManager.clearAllTokens(res);
+      CookieManager.setAccessToken(res, accessToken);
+      CookieManager.setRefreshToken(res, refreshToken);
+    }
+
     res.status(HTTP_STATUS_CODES.CREATED).json({
-      message: 'Registration successful.',
+      message: isAdminCreatingUser
+        ? 'User created successfully.'
+        : 'Registration successful.',
       data: userWithoutPassword as IUserResponseData,
     });
   } catch (error) {
-    // Clean up Cloudinary image if upload succeeded but DB operation failed
     if (uploadedImageUrl) {
       try {
         await cloudinaryService.deleteImage(uploadedImageUrl);
       } catch (cleanupError) {
-        console.error('Failed to clean up Cloudinary image:', cleanupError);
+        logger.error('Failed to clean up Cloudinary image:', cleanupError);
       }
     }
     next(error);
