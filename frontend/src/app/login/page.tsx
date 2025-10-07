@@ -108,10 +108,10 @@ export default function LoginPage() {
                   size="sm"
                   onClick={() => handleDemoLogin("customer")}
                   disabled={isLoading}
-                  className="w-full cursor-pointer justify-start gap-2 bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
+                  className="w-full cursor-pointer justify-between bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
                 >
-                  <User className="h-4 w-4" />
                   <span className="text-sm">Login as Customer</span>
+                  <User className="h-4 w-4" />
                 </Button>
                 <Button
                   type="button"
@@ -119,10 +119,10 @@ export default function LoginPage() {
                   size="sm"
                   onClick={() => handleDemoLogin("agent")}
                   disabled={isLoading}
-                  className="w-full cursor-pointer justify-start gap-2 bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
+                  className="w-full cursor-pointer justify-between bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
                 >
-                  <UserCog className="h-4 w-4" />
                   <span className="text-sm">Login as Agent</span>
+                  <UserCog className="h-4 w-4" />
                 </Button>
                 <Button
                   type="button"
@@ -130,10 +130,10 @@ export default function LoginPage() {
                   size="sm"
                   onClick={() => handleDemoLogin("admin")}
                   disabled={isLoading}
-                  className="w-full cursor-pointer justify-start gap-2 bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
+                  className="w-full cursor-pointer justify-between bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
                 >
-                  <Shield className="h-4 w-4" />
                   <span className="text-sm">Login as Admin</span>
+                  <Shield className="h-4 w-4" />
                 </Button>
               </div>
             </div>
