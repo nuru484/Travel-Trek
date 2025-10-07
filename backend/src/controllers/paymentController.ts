@@ -1072,8 +1072,6 @@ export const refundPayment = asyncHandler(
       data: { status: 'CANCELLED' },
     });
 
-    // Here you would typically integrate with Paystack's refund API
-    // For now, we'll just log the refund request
     console.log(`Refund requested for payment ${id}:`, {
       transactionReference: payment.transactionReference,
       amount: payment.amount,

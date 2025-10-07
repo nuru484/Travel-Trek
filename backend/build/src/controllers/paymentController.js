@@ -835,8 +835,6 @@ exports.refundPayment = (0, error_handler_1.asyncHandler)(async (req, res, next)
         where: { id: payment.bookingId },
         data: { status: 'CANCELLED' },
     });
-    // Here you would typically integrate with Paystack's refund API
-    // For now, we'll just log the refund request
     console.log(`Refund requested for payment ${id}:`, {
         transactionReference: payment.transactionReference,
         amount: payment.amount,
