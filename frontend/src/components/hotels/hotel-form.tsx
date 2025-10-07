@@ -1,6 +1,5 @@
-// src/components/hotels/hotel-form.tsx
 "use client";
-import React, { useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -23,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Save } from "lucide-react";
+import { Loader2, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   useCreateHotelMutation,
@@ -62,11 +61,11 @@ export function HotelForm({ hotel, mode }: IHotelFormProps) {
   const [updateHotel, { isLoading: isUpdating }] = useUpdateHotelMutation();
   const { data: destinationsData, isLoading: isDestinationsLoading } =
     useGetAllDestinationsQuery({ limit: 100 });
-  const [previewUrl, setPreviewUrl] = React.useState<string | null>(
+  const [previewUrl, setPreviewUrl] = useState<string | null>(
     hotel?.photo || null
   );
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Transform destinationsData.data to an array of IDestination
   const destinations: IDestination[] = React.useMemo(() => {
     return destinationsData?.data || [];
   }, [destinationsData]);
@@ -87,24 +86,54 @@ export function HotelForm({ hotel, mode }: IHotelFormProps) {
     },
   });
 
-  const handleFileChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    onChange: (value: File | null) => void
-  ) => {
-    const file = e.target.files?.[0];
+  const handleImageChange = (file: File | undefined) => {
     if (file) {
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        form.setError("hotelPhoto", {
+          type: "manual",
+          message: "Please select a valid image file",
+        });
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        form.setError("hotelPhoto", {
+          type: "manual",
+          message: "Image size should be less than 5MB",
+        });
+        return;
+      }
+
+      // Clean up old preview URL
+      if (previewUrl && previewUrl !== hotel?.photo) {
+        URL.revokeObjectURL(previewUrl);
+      }
+
       const url = URL.createObjectURL(file);
       setPreviewUrl(url);
-      onChange(file);
-    } else {
-      setPreviewUrl(null);
-      onChange(null);
+      form.setValue("hotelPhoto", file);
+      form.clearErrors("hotelPhoto");
+    }
+  };
+
+  const removeImage = () => {
+    if (previewUrl && previewUrl !== hotel?.photo) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
+    setPreviewUrl(null);
+    form.setValue("hotelPhoto", undefined);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
   useEffect(() => {
     return () => {
-      if (previewUrl && !hotel?.photo) {
+      if (previewUrl && previewUrl !== hotel?.photo) {
         URL.revokeObjectURL(previewUrl);
       }
     };
@@ -144,8 +173,19 @@ export function HotelForm({ hotel, mode }: IHotelFormProps) {
       router.push("/dashboard/hotels");
     } catch (error) {
       console.error(`Failed to ${mode} hotel:`, error);
-      const apiError = extractApiErrorMessage(error).message;
-      toast.error(apiError || `Failed to ${mode} hotel`);
+      const { message, fieldErrors, hasFieldErrors } =
+        extractApiErrorMessage(error);
+
+      if (hasFieldErrors && fieldErrors) {
+        Object.entries(fieldErrors).forEach(([field, errorMessage]) => {
+          form.setError(field as keyof HotelFormValues, {
+            message: errorMessage,
+          });
+        });
+        toast.error(message);
+      } else {
+        toast.error(message || `Failed to ${mode} hotel`);
+      }
     }
   };
 
@@ -344,28 +384,60 @@ export function HotelForm({ hotel, mode }: IHotelFormProps) {
               <FormField
                 control={form.control}
                 name="hotelPhoto"
-                render={({ field: { onChange, value, ...fieldProps } }) => (
+                render={() => (
                   <FormItem>
                     <FormLabel>Hotel Photo (Optional)</FormLabel>
                     <FormControl>
-                      <div className="space-y-2">
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => handleFileChange(e, onChange)}
-                          {...fieldProps}
-                        />
-                        {(previewUrl || hotel?.photo) && (
-                          <div className="mt-2">
-                            <Image
-                              src={previewUrl || hotel?.photo || ""}
-                              alt="Hotel photo preview"
-                              className="h-24 w-24 object-cover rounded-md border border-input"
-                              width={96}
-                              height={96}
-                            />
+                      <div className="space-y-3">
+                        {/* Preview */}
+                        {previewUrl && (
+                          <div className="relative w-24 h-24 mx-auto">
+                            <div className="relative w-full h-full rounded-md overflow-hidden border-2 border-muted-foreground/20">
+                              <Image
+                                src={previewUrl}
+                                alt="Hotel photo preview"
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={removeImage}
+                              className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-1 hover:bg-destructive/90 transition-colors"
+                              aria-label="Remove image"
+                            >
+                              <X size={12} />
+                            </button>
                           </div>
                         )}
+
+                        {/* File Input */}
+                        <div className="relative">
+                          <Input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) =>
+                              handleImageChange(e.target.files?.[0])
+                            }
+                            disabled={isLoading}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="w-full bg-muted border-dashed border-2 hover:bg-muted/80"
+                            disabled={isLoading}
+                          >
+                            <Upload className="mr-2 h-4 w-4" />
+                            {previewUrl ? "Change Photo" : "Upload Hotel Photo"}
+                          </Button>
+                        </div>
+
+                        <p className="text-xs text-muted-foreground text-center">
+                          Supported formats: JPG, PNG, GIF (Max 5MB)
+                        </p>
                       </div>
                     </FormControl>
                     <FormMessage />
@@ -379,17 +451,19 @@ export function HotelForm({ hotel, mode }: IHotelFormProps) {
                   variant="outline"
                   onClick={() => router.push("/dashboard/hotels")}
                   disabled={isLoading}
-                  className="flex-1"
+                  className="flex-1 cursor-pointer"
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isLoading} className="flex-1">
-                  <Save className="mr-2 h-4 w-4" />
-                  {isLoading
-                    ? "Saving..."
-                    : mode === "create"
-                    ? "Create Hotel"
-                    : "Update Hotel"}
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="flex-1 cursor-pointer"
+                >
+                  {isLoading && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  {mode === "create" ? "Create Hotel" : "Update Hotel"}
                 </Button>
               </div>
             </form>

@@ -1,11 +1,10 @@
-// src/components/rooms/room-fom.tsx
 "use client";
-import React, { useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -24,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Save } from "lucide-react";
+import { Loader2, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCreateRoomMutation, useUpdateRoomMutation } from "@/redux/roomApi";
 import { useGetAllHotelsQuery } from "@/redux/hotelApi";
@@ -57,14 +56,15 @@ export function RoomForm({ room, mode, hotelId }: IRoomFormProps) {
   const router = useRouter();
   const [createRoom, { isLoading: isCreating }] = useCreateRoomMutation();
   const [updateRoom, { isLoading: isUpdating }] = useUpdateRoomMutation();
-
   const { data: hotelsData, isLoading: isHotelsLoading } = useGetAllHotelsQuery(
-    { limit: 100 }
+    {
+      limit: 100,
+    }
   );
-
-  const [previewUrl, setPreviewUrl] = React.useState<string | null>(
+  const [previewUrl, setPreviewUrl] = useState<string | null>(
     room?.photo || null
   );
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const hotels: IHotel[] = React.useMemo(() => {
     return hotelsData?.data || [];
@@ -74,7 +74,6 @@ export function RoomForm({ room, mode, hotelId }: IRoomFormProps) {
     if (room?.hotel?.id) {
       return Number(room.hotel.id);
     }
-
     if (hotelId) {
       return hotelId;
     }
@@ -105,24 +104,53 @@ export function RoomForm({ room, mode, hotelId }: IRoomFormProps) {
     }
   }, [hotelId, hotels, form]);
 
-  const handleFileChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    onChange: (value: File | null) => void
-  ) => {
-    const file = e.target.files?.[0];
+  const handleImageChange = (file: File | undefined) => {
     if (file) {
+      if (!file.type.startsWith("image/")) {
+        form.setError("roomPhoto", {
+          type: "manual",
+          message: "Please select a valid image file",
+        });
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        form.setError("roomPhoto", {
+          type: "manual",
+          message: "Image size should be less than 5MB",
+        });
+        return;
+      }
+
+      // Clean up old preview URL
+      if (previewUrl && previewUrl !== room?.photo) {
+        URL.revokeObjectURL(previewUrl);
+      }
+
       const url = URL.createObjectURL(file);
       setPreviewUrl(url);
-      onChange(file);
-    } else {
-      setPreviewUrl(null);
-      onChange(null);
+      form.setValue("roomPhoto", file);
+      form.clearErrors("roomPhoto");
+    }
+  };
+
+  const removeImage = () => {
+    if (previewUrl && previewUrl !== room?.photo) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
+    setPreviewUrl(null);
+    form.setValue("roomPhoto", undefined);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
   useEffect(() => {
     return () => {
-      if (previewUrl && !room?.photo) {
+      if (previewUrl && previewUrl !== room?.photo) {
         URL.revokeObjectURL(previewUrl);
       }
     };
@@ -148,7 +176,6 @@ export function RoomForm({ room, mode, hotelId }: IRoomFormProps) {
       if (mode === "create") {
         const response = await createRoom(formData).unwrap();
         toast.success("Room created successfully");
-
         router.push(`/dashboard/rooms/${response.data.id}/detail`);
       } else {
         await updateRoom({
@@ -156,14 +183,23 @@ export function RoomForm({ room, mode, hotelId }: IRoomFormProps) {
           formData,
         }).unwrap();
         toast.success("Room updated successfully");
-
-        const hotelId = values.hotelId;
-        router.push(`/dashboard/rooms/${hotelId}/detail`);
+        router.push(`/dashboard/rooms/${values.hotelId}/detail`);
       }
     } catch (error) {
       console.error(`Failed to ${mode} room:`, error);
-      const apiError = extractApiErrorMessage(error).message;
-      toast.error(apiError || `Failed to ${mode} room`);
+      const { message, fieldErrors, hasFieldErrors } =
+        extractApiErrorMessage(error);
+
+      if (hasFieldErrors && fieldErrors) {
+        Object.entries(fieldErrors).forEach(([field, errorMessage]) => {
+          form.setError(field as keyof RoomFormValues, {
+            message: errorMessage,
+          });
+        });
+        toast.error(message);
+      } else {
+        toast.error(message || `Failed to ${mode} room`);
+      }
     }
   };
 
@@ -189,16 +225,6 @@ export function RoomForm({ room, mode, hotelId }: IRoomFormProps) {
   return (
     <div className="space-y-6">
       <Card className="max-w-2xl mx-auto">
-        <CardHeader>
-          <CardTitle>
-            {selectedHotel && (
-              <div className="text-sm font-normal text-muted-foreground mt-1">
-                Selected Hotel: {selectedHotel.name} ({selectedHotel.city},{" "}
-                {selectedHotel.country})
-              </div>
-            )}
-          </CardTitle>
-        </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -214,7 +240,7 @@ export function RoomForm({ room, mode, hotelId }: IRoomFormProps) {
                           field.onChange(parseInt(value))
                         }
                         value={field.value?.toString() || ""}
-                        disabled={isHotelsLoading}
+                        disabled={isHotelsLoading || !!hotelId}
                       >
                         <SelectTrigger>
                           <SelectValue
@@ -237,6 +263,12 @@ export function RoomForm({ room, mode, hotelId }: IRoomFormProps) {
                         </SelectContent>
                       </Select>
                     </FormControl>
+                    {selectedHotel && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Selected: {selectedHotel.name} ({selectedHotel.city},{" "}
+                        {selectedHotel.country})
+                      </p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -375,6 +407,7 @@ export function RoomForm({ room, mode, hotelId }: IRoomFormProps) {
                     <div className="space-y-1 leading-none">
                       <FormLabel>Available for Booking</FormLabel>
                     </div>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -382,28 +415,60 @@ export function RoomForm({ room, mode, hotelId }: IRoomFormProps) {
               <FormField
                 control={form.control}
                 name="roomPhoto"
-                render={({ field: { onChange, value, ...fieldProps } }) => (
+                render={() => (
                   <FormItem>
                     <FormLabel>Room Photo (Optional)</FormLabel>
                     <FormControl>
-                      <div className="space-y-2">
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => handleFileChange(e, onChange)}
-                          {...fieldProps}
-                        />
-                        {(previewUrl || room?.photo) && (
-                          <div className="mt-2">
-                            <Image
-                              src={previewUrl || room?.photo || ""}
-                              alt="Room photo preview"
-                              className="h-24 w-24 object-cover rounded-md border border-input"
-                              width={96}
-                              height={96}
-                            />
+                      <div className="space-y-3">
+                        {/* Preview */}
+                        {previewUrl && (
+                          <div className="relative w-24 h-24 mx-auto">
+                            <div className="relative w-full h-full rounded-md overflow-hidden border-2 border-muted-foreground/20">
+                              <Image
+                                src={previewUrl}
+                                alt="Room photo preview"
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={removeImage}
+                              className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-1 hover:bg-destructive/90 transition-colors"
+                              aria-label="Remove image"
+                            >
+                              <X size={12} />
+                            </button>
                           </div>
                         )}
+
+                        {/* File Input */}
+                        <div className="relative">
+                          <Input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) =>
+                              handleImageChange(e.target.files?.[0])
+                            }
+                            disabled={isLoading}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="w-full bg-muted border-dashed border-2 hover:bg-muted/80"
+                            disabled={isLoading}
+                          >
+                            <Upload className="mr-2 h-4 w-4" />
+                            {previewUrl ? "Change Photo" : "Upload Room Photo"}
+                          </Button>
+                        </div>
+
+                        <p className="text-xs text-muted-foreground text-center">
+                          Supported formats: JPG, PNG, GIF (Max 5MB)
+                        </p>
                       </div>
                     </FormControl>
                     <FormMessage />
@@ -417,21 +482,19 @@ export function RoomForm({ room, mode, hotelId }: IRoomFormProps) {
                   variant="outline"
                   onClick={() => router.push("/dashboard/hotels")}
                   disabled={isLoading}
-                  className="flex-1 hover:cursor-pointer"
+                  className="flex-1 cursor-pointer"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
                   disabled={isLoading}
-                  className="flex-1 hover:cursor-pointer"
+                  className="flex-1 cursor-pointer"
                 >
-                  <Save className="mr-2 h-4 w-4" />
-                  {isLoading
-                    ? "Saving..."
-                    : mode === "create"
-                    ? "Create Room"
-                    : "Update Room"}
+                  {isLoading && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  {mode === "create" ? "Create Room" : "Update Room"}
                 </Button>
               </div>
             </form>
