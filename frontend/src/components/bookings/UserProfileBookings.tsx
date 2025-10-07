@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
+import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
+import { AlertCircle, RefreshCw } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface UserProfileBookingsProps {
   userId: number;
@@ -18,6 +21,8 @@ export function UserProfileBookings({ userId }: UserProfileBookingsProps) {
   const {
     data: bookingsData,
     isLoading,
+    isError,
+    error,
     refetch,
   } = useGetAllUserBookingsQuery({
     userId,
@@ -69,6 +74,39 @@ export function UserProfileBookings({ userId }: UserProfileBookingsProps) {
     );
   }
 
+  // Error state
+  if (isError && error) {
+    const { message } = extractApiErrorMessage(error);
+    return (
+      <Card className="w-full">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg sm:text-xl">Recent Bookings</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error Loading Bookings</AlertTitle>
+            <AlertDescription>
+              {message || "Failed to load bookings. Please try again."}
+            </AlertDescription>
+          </Alert>
+          <div className="mt-4 flex justify-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              className="w-full sm:w-auto"
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Refresh
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Success state
   return (
     <Card className="w-full">
       <CardHeader className="pb-4">

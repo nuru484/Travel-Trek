@@ -1,6 +1,6 @@
 // src/components/bookings/BookingButton.tsx
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCreateBookingMutation } from "@/redux/bookingApi";
 import { useGetAllUsersQuery, useLazySearchUsersQuery } from "@/redux/userApi";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { User, Bookmark } from "lucide-react";
 import toast from "react-hot-toast";
+import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
 
 interface IBookingBase {
   userId: number;
@@ -70,11 +71,23 @@ export function BookingButton({
     limit: 50,
   });
 
-  const [searchUsers, { data: searchData }] = useLazySearchUsersQuery();
+  const [
+    searchUsers,
+    { data: searchData, isError: isSearchError, error: searchError },
+  ] = useLazySearchUsersQuery();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Handle search errors
+  useEffect(() => {
+    if (isSearchError && searchError) {
+      const { message } = extractApiErrorMessage(searchError);
+      console.error("Failed to search users:", searchError);
+      toast.error(message || "Failed to search users");
+    }
+  }, [isSearchError, searchError]);
 
   const handleBook = async (finalUserId: number) => {
     try {
@@ -96,8 +109,9 @@ export function BookingButton({
       setIsDialogOpen(false);
       setSelectedUserId(null);
     } catch (error) {
+      const { message } = extractApiErrorMessage(error);
       console.error("Failed to book:", error);
-      toast.error("Failed to book");
+      toast.error(message || "Failed to create booking");
     }
   };
 

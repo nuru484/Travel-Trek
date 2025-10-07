@@ -39,19 +39,22 @@ export function TourListItem({ tour }: ITourListItemProps) {
   const [deleteTour, { isLoading: isDeleting }] = useDeleteTourMutation();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  const { data: bookingsData, error: bookingsError } =
-    useGetAllUserBookingsQuery(
-      { userId: user.id, params: { page: 1, limit: 1000 } },
-      { skip: !user }
-    );
+  const {
+    data: bookingsData,
+    error: bookingsError,
+    isError: isBookingsError,
+  } = useGetAllUserBookingsQuery(
+    { userId: user.id, params: { page: 1, limit: 1000 } },
+    { skip: !user }
+  );
 
   useEffect(() => {
-    if (bookingsError) {
+    if (isBookingsError) {
       const { message } = extractApiErrorMessage(bookingsError);
       console.error("Failed to fetch user bookings:", bookingsError);
       toast.error(message || "Failed to load booking information");
     }
-  }, [bookingsError]);
+  }, [bookingsError, isBookingsError]);
 
   const isTourBooked = bookingsData?.data.some(
     (booking) =>

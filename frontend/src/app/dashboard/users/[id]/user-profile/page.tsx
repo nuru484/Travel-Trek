@@ -23,26 +23,57 @@ const UserProfilePage = () => {
     isError,
     isLoading,
     refetch,
-  } = useGetUserQuery({
-    userId,
-  });
+  } = useGetUserQuery({ userId });
 
   const errorMessage = extractApiErrorMessage(error).message;
 
-  if (isLoading) return <UserProfileHeaderSkeleton />;
+  const isViewingOwnProfile = currentUser?.id === userId;
+  const isAdmin = currentUser?.role === "ADMIN";
 
-  if (isError) return <ErrorMessage error={errorMessage} onRetry={refetch} />;
+  if (isLoading) {
+    return (
+      <div className="container mx-auto max-w-6xl space-y-8 py-6">
+        <UserProfileHeaderSkeleton />
+        <div className="space-y-6">
+          <UserProfileBookings userId={userId} />
+          <UserProfilePayments userId={userId} />
+        </div>
+      </div>
+    );
+  }
 
-  const user = userData?.data;
+  if (isError && isViewingOwnProfile && currentUser) {
+    return (
+      <div className="container mx-auto max-w-6xl space-y-8 py-6">
+        <UserProfileHeader user={currentUser} currentUser={currentUser} />
+        <div className="space-y-6">
+          <UserProfileBookings userId={userId} />
+          <UserProfilePayments userId={userId} />
+        </div>
+      </div>
+    );
+  }
+
+  if (isError && isAdmin) {
+    return (
+      <div className="container mx-auto max-w-6xl space-y-8 py-6">
+        <ErrorMessage error={errorMessage} onRetry={refetch} />
+        <div className="space-y-6">
+          <UserProfileBookings userId={userId} />
+          <UserProfilePayments userId={userId} />
+        </div>
+      </div>
+    );
+  }
+
+  const user = userData?.data ?? null;
 
   return (
     <div className="container mx-auto max-w-6xl space-y-8 py-6">
       <UserProfileHeader user={user} currentUser={currentUser} />
-
-      {/* Recent Activity Section */}
       <div className="space-y-6">
-        <UserProfileBookings userId={user.id} />
-        <UserProfilePayments userId={user.id} />
+        <UserProfileBookings userId={userId} />
+        <UserProfilePayments userId={userId} />
       </div>
     </div>
   );
