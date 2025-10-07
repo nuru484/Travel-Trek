@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import logger from '../utils/logger';
 import ENV from '../config/env';
+import { handlePrismaError, isPrismaError } from './prismaErrorHandler';
 
 /**
  * Error severity levels for better logging and monitoring
@@ -31,7 +32,7 @@ export class CustomError extends Error {
       severity?: ErrorSeverity;
       code?: string;
       context?: Record<string, unknown>;
-    } = {}
+    } = {},
   ) {
     super(message);
     this.name = this.constructor.name;
@@ -42,12 +43,18 @@ export class CustomError extends Error {
     this.code = options.code;
     this.context = options.context;
 
-    // Maintains proper stack trace
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, this.constructor);
     }
   }
 }
+
+/**
+ * Type guard to check if an error is a CustomError
+ */
+const isCustomError = (error: unknown): error is CustomError => {
+  return error instanceof CustomError;
+};
 
 /**
  * Error response interface for consistent API responses
@@ -78,12 +85,10 @@ const sanitizeErrorData = (data: unknown): unknown => {
   if (typeof data === 'object' && data !== null) {
     const sanitized: Record<string, unknown> = {};
 
-    // Deep copy and sanitize object properties
     Object.entries(data as Record<string, unknown>).forEach(([key, value]) => {
-      // Skip sensitive fields
       if (
         ['password', 'token', 'secret', 'auth', 'key', 'credit', 'ssn'].some(
-          (k) => key.toLowerCase().includes(k)
+          (k) => key.toLowerCase().includes(k),
         )
       ) {
         sanitized[key] = '[REDACTED]';
@@ -101,29 +106,46 @@ const sanitizeErrorData = (data: unknown): unknown => {
 };
 
 /**
- * Error handler middleware with better typing and security
+ * Error handler middleware with full type safety
  */
 export const errorHandler = (
   error: Error | CustomError,
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): void => {
   const isProduction = ENV.NODE_ENV === 'production';
   const errorId = generateErrorId();
 
-  // Sanitize request body for logging
+  // Convert Prisma errors first
+  let processedError: Error | CustomError = error;
+
+  if (isPrismaError(error)) {
+    processedError = handlePrismaError(error);
+  }
+
   const sanitizedBody = sanitizeErrorData(req.body);
 
-  // Custom error with appropriate HTTP status and detailed info
-  const isCustomError = error instanceof CustomError;
-  const status = isCustomError ? error.status : 500;
-  const severity = isCustomError ? error.severity : ErrorSeverity.HIGH;
+  // Default values
+  let status = 500;
+  let severity = ErrorSeverity.HIGH;
+  let layer = 'unknown';
+  let code: string | undefined;
+  let context: Record<string, unknown> | undefined;
 
-  // Prepare error details for logging
+  // Safely narrow CustomError type
+  if (isCustomError(processedError)) {
+    status = processedError.status;
+    severity = processedError.severity;
+    layer = processedError.layer;
+    code = processedError.code;
+    context = processedError.context;
+  }
+
+  // Logging details
   const logDetails = {
     errorId,
-    message: error.message,
+    message: processedError.message,
     path: req.path,
     method: req.method,
     ip: req.ip,
@@ -131,14 +153,14 @@ export const errorHandler = (
     params: req.params,
     query: req.query,
     severity,
-    stack: !isProduction ? error.stack : undefined,
+    stack: !isProduction ? processedError.stack : undefined,
     timestamp: new Date().toISOString(),
-    layer: isCustomError ? error.layer : 'unknown',
-    code: isCustomError ? error.code : undefined,
-    context: isCustomError ? error.context : undefined,
+    layer,
+    code,
+    context,
   };
 
-  // Log the error with appropriate level based on severity
+  // Log at the appropriate level
   switch (severity) {
     case ErrorSeverity.CRITICAL:
     case ErrorSeverity.HIGH:
@@ -154,37 +176,30 @@ export const errorHandler = (
       logger.error(logDetails);
   }
 
-  // Prepare client response
+  // Client response
   const errorResponse: ErrorResponse = {
     status: 'error',
     message:
       isProduction && status === 500
         ? 'Internal Server Error'
-        : error.message || 'Internal Server Error',
+        : processedError.message || 'Internal Server Error',
   };
 
-  // Add additional error details for non-production environments
+  // Extra details for non-production
   if (!isProduction) {
     errorResponse.errorId = errorId;
-
-    if (isCustomError) {
-      errorResponse.code = error.code;
-
-      if (error.context) {
-        errorResponse.details = error.context;
-      }
-    }
+    if (code) errorResponse.code = code;
+    if (context) errorResponse.details = context;
   }
 
-  // Send appropriate response
   res.status(status).json(errorResponse);
 };
 
 /**
- * Wrapper for async route handlers to automatically catch errors
+ * Wrapper for async route handlers
  */
 export const asyncHandler = <T>(
-  fn: (req: Request, res: Response, next: NextFunction) => Promise<T>
+  fn: (req: Request, res: Response, next: NextFunction) => Promise<T>,
 ) => {
   return (req: Request, res: Response, next: NextFunction): Promise<void> => {
     return Promise.resolve(fn(req, res, next) as Promise<void>).catch(next);
@@ -192,7 +207,7 @@ export const asyncHandler = <T>(
 };
 
 /**
- * Create specific error types for common use cases
+ * Common custom error subclasses
  */
 export class NotFoundError extends CustomError {
   constructor(
@@ -201,7 +216,7 @@ export class NotFoundError extends CustomError {
       layer?: string;
       code?: string;
       context?: Record<string, unknown>;
-    }
+    },
   ) {
     super(404, message, { ...options, severity: ErrorSeverity.LOW });
   }
@@ -214,7 +229,7 @@ export class UnauthorizedError extends CustomError {
       layer?: string;
       code?: string;
       context?: Record<string, unknown>;
-    }
+    },
   ) {
     super(401, message, { ...options, severity: ErrorSeverity.MEDIUM });
   }
@@ -222,12 +237,12 @@ export class UnauthorizedError extends CustomError {
 
 export class ForbiddenError extends CustomError {
   constructor(
-    message = 'Access forbidden, You are not allowed to access this resource',
+    message = 'Access forbidden, you are not allowed to access this resource',
     options?: {
       layer?: string;
       code?: string;
       context?: Record<string, unknown>;
-    }
+    },
   ) {
     super(403, message, { ...options, severity: ErrorSeverity.MEDIUM });
   }
@@ -240,7 +255,7 @@ export class ValidationError extends CustomError {
       layer?: string;
       code?: string;
       context?: Record<string, unknown>;
-    }
+    },
   ) {
     super(400, message, { ...options, severity: ErrorSeverity.LOW });
   }
@@ -253,12 +268,11 @@ export class InternalServerError extends CustomError {
       layer?: string;
       code?: string;
       context?: Record<string, unknown>;
-    }
+    },
   ) {
     super(500, message, { ...options, severity: ErrorSeverity.HIGH });
   }
 }
-
 
 export class BadRequestError extends CustomError {
   constructor(
@@ -267,7 +281,7 @@ export class BadRequestError extends CustomError {
       layer?: string;
       code?: string;
       context?: Record<string, unknown>;
-    }
+    },
   ) {
     super(400, message, { ...options, severity: ErrorSeverity.LOW });
   }

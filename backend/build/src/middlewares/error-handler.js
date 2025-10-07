@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.BadRequestError = exports.InternalServerError = exports.ValidationError = exports.ForbiddenError = exports.UnauthorizedError = exports.NotFoundError = exports.asyncHandler = exports.errorHandler = exports.CustomError = exports.ErrorSeverity = void 0;
 const logger_1 = __importDefault(require("../utils/logger"));
 const env_1 = __importDefault(require("../config/env"));
+const prismaErrorHandler_1 = require("./prismaErrorHandler");
 /**
  * Error severity levels for better logging and monitoring
  */
@@ -35,13 +36,18 @@ class CustomError extends Error {
         this.timestamp = new Date();
         this.code = options.code;
         this.context = options.context;
-        // Maintains proper stack trace
         if (Error.captureStackTrace) {
             Error.captureStackTrace(this, this.constructor);
         }
     }
 }
 exports.CustomError = CustomError;
+/**
+ * Type guard to check if an error is a CustomError
+ */
+const isCustomError = (error) => {
+    return error instanceof CustomError;
+};
 /**
  * Generate a unique error ID for tracking
  */
@@ -58,9 +64,7 @@ const sanitizeErrorData = (data) => {
         return data;
     if (typeof data === 'object' && data !== null) {
         const sanitized = {};
-        // Deep copy and sanitize object properties
         Object.entries(data).forEach(([key, value]) => {
-            // Skip sensitive fields
             if (['password', 'token', 'secret', 'auth', 'key', 'credit', 'ssn'].some((k) => key.toLowerCase().includes(k))) {
                 sanitized[key] = '[REDACTED]';
             }
@@ -76,21 +80,35 @@ const sanitizeErrorData = (data) => {
     return data;
 };
 /**
- * Error handler middleware with better typing and security
+ * Error handler middleware with full type safety
  */
 const errorHandler = (error, req, res, next) => {
     const isProduction = env_1.default.NODE_ENV === 'production';
     const errorId = generateErrorId();
-    // Sanitize request body for logging
+    // Convert Prisma errors first
+    let processedError = error;
+    if ((0, prismaErrorHandler_1.isPrismaError)(error)) {
+        processedError = (0, prismaErrorHandler_1.handlePrismaError)(error);
+    }
     const sanitizedBody = sanitizeErrorData(req.body);
-    // Custom error with appropriate HTTP status and detailed info
-    const isCustomError = error instanceof CustomError;
-    const status = isCustomError ? error.status : 500;
-    const severity = isCustomError ? error.severity : ErrorSeverity.HIGH;
-    // Prepare error details for logging
+    // Default values
+    let status = 500;
+    let severity = ErrorSeverity.HIGH;
+    let layer = 'unknown';
+    let code;
+    let context;
+    // Safely narrow CustomError type
+    if (isCustomError(processedError)) {
+        status = processedError.status;
+        severity = processedError.severity;
+        layer = processedError.layer;
+        code = processedError.code;
+        context = processedError.context;
+    }
+    // Logging details
     const logDetails = {
         errorId,
-        message: error.message,
+        message: processedError.message,
         path: req.path,
         method: req.method,
         ip: req.ip,
@@ -98,13 +116,13 @@ const errorHandler = (error, req, res, next) => {
         params: req.params,
         query: req.query,
         severity,
-        stack: !isProduction ? error.stack : undefined,
+        stack: !isProduction ? processedError.stack : undefined,
         timestamp: new Date().toISOString(),
-        layer: isCustomError ? error.layer : 'unknown',
-        code: isCustomError ? error.code : undefined,
-        context: isCustomError ? error.context : undefined,
+        layer,
+        code,
+        context,
     };
-    // Log the error with appropriate level based on severity
+    // Log at the appropriate level
     switch (severity) {
         case ErrorSeverity.CRITICAL:
         case ErrorSeverity.HIGH:
@@ -119,29 +137,26 @@ const errorHandler = (error, req, res, next) => {
         default:
             logger_1.default.error(logDetails);
     }
-    // Prepare client response
+    // Client response
     const errorResponse = {
         status: 'error',
         message: isProduction && status === 500
             ? 'Internal Server Error'
-            : error.message || 'Internal Server Error',
+            : processedError.message || 'Internal Server Error',
     };
-    // Add additional error details for non-production environments
+    // Extra details for non-production
     if (!isProduction) {
         errorResponse.errorId = errorId;
-        if (isCustomError) {
-            errorResponse.code = error.code;
-            if (error.context) {
-                errorResponse.details = error.context;
-            }
-        }
+        if (code)
+            errorResponse.code = code;
+        if (context)
+            errorResponse.details = context;
     }
-    // Send appropriate response
     res.status(status).json(errorResponse);
 };
 exports.errorHandler = errorHandler;
 /**
- * Wrapper for async route handlers to automatically catch errors
+ * Wrapper for async route handlers
  */
 const asyncHandler = (fn) => {
     return (req, res, next) => {
@@ -150,7 +165,7 @@ const asyncHandler = (fn) => {
 };
 exports.asyncHandler = asyncHandler;
 /**
- * Create specific error types for common use cases
+ * Common custom error subclasses
  */
 class NotFoundError extends CustomError {
     constructor(message = 'Resource not found', options) {
@@ -165,7 +180,7 @@ class UnauthorizedError extends CustomError {
 }
 exports.UnauthorizedError = UnauthorizedError;
 class ForbiddenError extends CustomError {
-    constructor(message = 'Access forbidden, You are not allowed to access this resource', options) {
+    constructor(message = 'Access forbidden, you are not allowed to access this resource', options) {
         super(403, message, { ...options, severity: ErrorSeverity.MEDIUM });
     }
 }
