@@ -16,7 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Loader2 } from "lucide-react";
+import { Loader2, X, Upload } from "lucide-react";
 import Image from "next/image";
 import toast from "react-hot-toast";
 import {
@@ -51,6 +51,7 @@ export default function UserForm({ mode, user }: IUserFormProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(
     user?.profilePicture || null
   );
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const [registerUser, { isLoading: isCreating }] = useCreateUserMutation();
   const [updateUser, { isLoading: isUpdating }] =
@@ -80,24 +81,59 @@ export default function UserForm({ mode, user }: IUserFormProps) {
     defaultValues,
   });
 
-  const handleFileChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    onChange: (file: File | null) => void
-  ) => {
-    const file = e.target.files?.[0];
+  const handleImageChange = (file: File | undefined) => {
     if (file) {
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        form.setError("profilePicture", {
+          type: "manual",
+          message: "Please select a valid image file",
+        });
+        return;
+      }
+
+      // Validate file size (e.g., max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        form.setError("profilePicture", {
+          type: "manual",
+          message: "Image size should be less than 5MB",
+        });
+        return;
+      }
+
+      // Clean up previous preview URL if it exists and it's not the user's original profile picture
+      if (previewUrl && previewUrl !== user?.profilePicture) {
+        URL.revokeObjectURL(previewUrl);
+      }
+
+      // Create preview URL
       const url = URL.createObjectURL(file);
       setPreviewUrl(url);
-      onChange(file);
-    } else {
-      setPreviewUrl(null);
-      onChange(null);
+
+      // Update form field
+      form.setValue("profilePicture", file);
+      form.clearErrors("profilePicture");
+    }
+  };
+
+  const removeImage = () => {
+    if (previewUrl && previewUrl !== user?.profilePicture) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
+    setPreviewUrl(null);
+    form.setValue("profilePicture", undefined);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
   useEffect(() => {
     return () => {
-      if (previewUrl && !user?.profilePicture) URL.revokeObjectURL(previewUrl);
+      if (previewUrl && previewUrl !== user?.profilePicture) {
+        URL.revokeObjectURL(previewUrl);
+      }
     };
   }, [previewUrl, user?.profilePicture]);
 
@@ -252,28 +288,60 @@ export default function UserForm({ mode, user }: IUserFormProps) {
               <FormField
                 control={form.control}
                 name="profilePicture"
-                render={({ field: { onChange, ...rest } }) => (
+                render={() => (
                   <FormItem>
                     <FormLabel>Profile Picture (Optional)</FormLabel>
                     <FormControl>
-                      <div className="space-y-2">
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => handleFileChange(e, onChange)}
-                        />
-
-                        {(previewUrl || user?.profilePicture) && (
-                          <div className="mt-2">
-                            <Image
-                              src={previewUrl || user?.profilePicture || ""}
-                              alt="Profile preview"
-                              className="h-24 w-24 object-cover rounded-full border border-input"
-                              width={96}
-                              height={96}
-                            />
+                      <div className="space-y-3">
+                        {/* Image Preview */}
+                        {previewUrl && (
+                          <div className="relative w-24 h-24 mx-auto">
+                            <div className="relative w-full h-full rounded-full overflow-hidden border-2 border-muted-foreground/20">
+                              <Image
+                                src={previewUrl}
+                                alt="Profile preview"
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={removeImage}
+                              className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-1 hover:bg-destructive/90 transition-colors"
+                              aria-label="Remove image"
+                            >
+                              <X size={12} />
+                            </button>
                           </div>
                         )}
+
+                        {/* File Input */}
+                        <div className="relative">
+                          <Input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) =>
+                              handleImageChange(e.target.files?.[0])
+                            }
+                            disabled={isLoading}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="w-full bg-muted border-dashed border-2 hover:bg-muted/80"
+                            disabled={isLoading}
+                          >
+                            <Upload className="mr-2 h-4 w-4" />
+                            {previewUrl ? "Change Picture" : "Upload Picture"}
+                          </Button>
+                        </div>
+
+                        <p className="text-xs text-muted-foreground text-center">
+                          Supported formats: JPG, PNG, GIF (Max 5MB)
+                        </p>
                       </div>
                     </FormControl>
                     <FormMessage />
