@@ -576,8 +576,6 @@ exports.getUserPayments = (0, error_handler_1.asyncHandler)(async (req, res, nex
         },
     });
 });
-// Continue with the remaining controller methods (updatePaymentStatus, deletePayment, deleteAllPayments, refundPayment)
-// They remain largely the same, just ensure the Prisma queries match the schema structure
 /**
  * Update payment status
  */
@@ -594,7 +592,7 @@ exports.updatePaymentStatus = (0, error_handler_1.asyncHandler)(async (req, res,
     }
     // Validate status
     if (!['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED'].includes(status)) {
-        throw new Error('Invalid payment status');
+        throw new error_handler_1.BadRequestError('Invalid payment status');
     }
     // Find the payment
     const payment = await prismaClient_1.default.payment.findUnique({
@@ -608,10 +606,10 @@ exports.updatePaymentStatus = (0, error_handler_1.asyncHandler)(async (req, res,
     }
     // Prevent invalid status transitions
     if (payment.status === 'COMPLETED' && status === 'PENDING') {
-        throw new Error('Cannot change completed payment back to pending');
+        throw new error_handler_1.CustomError(constants_1.HTTP_STATUS_CODES.CONFLICT, 'Cannot change completed payment back to pending');
     }
     if (payment.status === 'REFUNDED' && status !== 'REFUNDED') {
-        throw new Error('Cannot change status of refunded payment');
+        throw new error_handler_1.CustomError(constants_1.HTTP_STATUS_CODES.CONFLICT, 'Cannot change status of refunded payment');
     }
     // Update payment status
     const updatedPayment = await prismaClient_1.default.payment.update({
@@ -672,7 +670,7 @@ exports.deletePayment = (0, error_handler_1.asyncHandler)(async (req, res, next)
     }
     // Prevent deletion of completed payments (for audit purposes)
     if (payment.status === 'COMPLETED') {
-        throw new Error('Cannot delete completed payments. Consider refunding instead.');
+        throw new error_handler_1.CustomError(constants_1.HTTP_STATUS_CODES.CONFLICT, 'Cannot delete completed payments. Consider refunding instead.');
     }
     // Delete the payment
     await prismaClient_1.default.payment.delete({
@@ -715,7 +713,6 @@ exports.deleteAllPayments = (0, error_handler_1.asyncHandler)(async (req, res, n
         where.status = status;
     }
     else {
-        // Default: only delete PENDING, FAILED, or REFUNDED payments
         where.status = {
             in: ['PENDING', 'FAILED', 'REFUNDED'],
         };
@@ -733,7 +730,7 @@ exports.deleteAllPayments = (0, error_handler_1.asyncHandler)(async (req, res, n
     if (beforeDate) {
         const date = new Date(beforeDate);
         if (isNaN(date.getTime())) {
-            throw new Error('Invalid beforeDate format. Use ISO 8601 format (YYYY-MM-DD)');
+            throw new error_handler_1.BadRequestError('Invalid beforeDate format. Use ISO 8601 format (YYYY-MM-DD)');
         }
         where.createdAt = {
             lt: date,
@@ -767,7 +764,7 @@ exports.deleteAllPayments = (0, error_handler_1.asyncHandler)(async (req, res, n
     // Prevent deletion if any completed payments are included
     const completedPayments = paymentsToDelete.filter((p) => p.status === 'COMPLETED');
     if (completedPayments.length > 0) {
-        throw new Error(`Cannot delete ${completedPayments.length} completed payment(s). Remove completed payments from selection or refund them instead.`);
+        throw new error_handler_1.CustomError(constants_1.HTTP_STATUS_CODES.CONFLICT, `Cannot delete ${completedPayments.length} completed payment(s). Remove completed payments from selection or refund them instead.`);
     }
     // Delete the payments
     const deleteResult = await prismaClient_1.default.payment.deleteMany({
@@ -823,9 +820,9 @@ exports.refundPayment = (0, error_handler_1.asyncHandler)(async (req, res, next)
     }
     // Only completed payments can be refunded
     if (payment.status !== 'COMPLETED') {
-        throw new Error('Only completed payments can be refunded');
+        throw new error_handler_1.CustomError(constants_1.HTTP_STATUS_CODES.CONFLICT, 'Only completed payments can be refunded');
     }
-    // Update payment to REFUNDED status
+    // Update payment to REFUND HTTP_STATUS_CODES.CONFLICT,ED status
     const refundedPayment = await prismaClient_1.default.payment.update({
         where: { id: parseInt(id) },
         data: {
