@@ -260,8 +260,6 @@ export const updateFlightValidation: ValidationChain[] = [
   ),
 ];
 
-
-
 export const flightSearchValidation: ValidationChain[] = [
   validator.number('page', {
     required: false,

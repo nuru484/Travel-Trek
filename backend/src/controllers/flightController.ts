@@ -21,6 +21,7 @@ import {
   getFlightsValidation,
   flightPhotoValidation,
 } from '../validations/flight-validation';
+import logger from '../utils/logger';
 
 /**
  * Create a new flight
@@ -45,9 +46,31 @@ const handleCreateFlight = asyncHandler(
     } = req.body;
     const user = req.user;
 
+    const parsedOriginId = parseInt(String(originId), 10);
+    const parsedDestinationId = parseInt(String(destinationId), 10);
+    const parsedPrice = parseFloat(String(price));
+    const parsedStops = stops ? parseInt(String(stops), 10) : 0;
+    const parsedCapacity = parseInt(String(capacity), 10);
+
+    if (isNaN(parsedOriginId) || isNaN(parsedDestinationId)) {
+      throw new BadRequestError('Invalid origin or destination ID');
+    }
+
+    if (isNaN(parsedPrice) || parsedPrice < 0) {
+      throw new BadRequestError('Invalid price');
+    }
+
+    if (isNaN(parsedCapacity) || parsedCapacity < 0) {
+      throw new BadRequestError('Invalid capacity');
+    }
+
+    if (stops !== undefined && isNaN(parsedStops)) {
+      throw new BadRequestError('Invalid stops value');
+    }
+
     const [origin, destination] = await Promise.all([
-      prisma.destination.findUnique({ where: { id: Number(originId) } }),
-      prisma.destination.findUnique({ where: { id: Number(destinationId) } }),
+      prisma.destination.findUnique({ where: { id: parsedOriginId } }),
+      prisma.destination.findUnique({ where: { id: parsedDestinationId } }),
     ]);
 
     if (!origin || !destination) {
@@ -72,15 +95,15 @@ const handleCreateFlight = asyncHandler(
         airline,
         departure: departureDate,
         arrival: arrivalDate,
-        origin: { connect: { id: Number(originId) } },
-        destination: { connect: { id: Number(destinationId) } },
-        price: +price,
+        origin: { connect: { id: parsedOriginId } },
+        destination: { connect: { id: parsedDestinationId } },
+        price: parsedPrice,
         flightClass,
         duration: durationInMinutes,
-        stops: stops ? Number(stops) : 0,
+        stops: parsedStops,
         photo: typeof photoUrl === 'string' ? photoUrl : null,
-        seatsAvailable: capacity,
-        capacity: capacity,
+        seatsAvailable: parsedCapacity,
+        capacity: parsedCapacity,
       },
     });
 
@@ -113,7 +136,7 @@ const handleCreateFlight = asyncHandler(
 export const createFlight: RequestHandler[] = [
   multerUpload.single('flightPhoto'),
   ...validationMiddleware.create([
-    ...createFlightValidation,
+    createFlightValidation,
     ...flightPhotoValidation,
   ]),
   conditionalCloudinaryUpload(CLOUDINARY_UPLOAD_OPTIONS, 'flightPhoto'),
@@ -211,7 +234,46 @@ const handleUpdateFlight = asyncHandler(
       capacity,
     } = req.body;
 
-    const parsedId = parseInt(id!);
+    const parsedId = parseInt(id!, 10);
+    const parsedOriginId =
+      originId !== undefined ? parseInt(String(originId), 10) : undefined;
+    const parsedDestinationId =
+      destinationId !== undefined
+        ? parseInt(String(destinationId), 10)
+        : undefined;
+    const parsedPrice =
+      price !== undefined ? parseFloat(String(price)) : undefined;
+    const parsedStops =
+      stops !== undefined ? parseInt(String(stops), 10) : undefined;
+    const parsedCapacity =
+      capacity !== undefined ? parseInt(String(capacity), 10) : undefined;
+
+    if (isNaN(parsedId)) {
+      throw new BadRequestError('Invalid flight ID');
+    }
+
+    if (parsedOriginId !== undefined && isNaN(parsedOriginId)) {
+      throw new BadRequestError('Invalid origin ID');
+    }
+
+    if (parsedDestinationId !== undefined && isNaN(parsedDestinationId)) {
+      throw new BadRequestError('Invalid destination ID');
+    }
+
+    if (parsedPrice !== undefined && (isNaN(parsedPrice) || parsedPrice < 0)) {
+      throw new BadRequestError('Invalid price');
+    }
+
+    if (
+      parsedCapacity !== undefined &&
+      (isNaN(parsedCapacity) || parsedCapacity < 0)
+    ) {
+      throw new BadRequestError('Invalid capacity');
+    }
+
+    if (parsedStops !== undefined && isNaN(parsedStops)) {
+      throw new BadRequestError('Invalid stops value');
+    }
 
     let uploadedImageUrl: string | undefined;
     let oldPhoto: string | null = null;
@@ -219,11 +281,7 @@ const handleUpdateFlight = asyncHandler(
     try {
       const existingFlight = await prisma.flight.findUnique({
         where: { id: parsedId },
-        include: {
-          bookings: {
-            select: { id: true },
-          },
-        },
+        include: { bookings: { select: { id: true } } },
       });
 
       if (!existingFlight) {
@@ -253,11 +311,11 @@ const handleUpdateFlight = asyncHandler(
         : existingFlight.departure;
       const newArrival = arrival ? new Date(arrival) : existingFlight.arrival;
 
-      if (departure && new Date(departure) <= now) {
+      if (departure && newDeparture <= now) {
         throw new BadRequestError('Departure time must be in the future');
       }
 
-      if (arrival && new Date(arrival) <= now) {
+      if (arrival && newArrival <= now) {
         throw new BadRequestError('Arrival time must be in the future');
       }
 
@@ -267,11 +325,11 @@ const handleUpdateFlight = asyncHandler(
 
       if (
         hasBookings &&
-        (originId !== undefined || destinationId !== undefined)
+        (parsedOriginId !== undefined || parsedDestinationId !== undefined)
       ) {
         if (
-          originId !== existingFlight.originId ||
-          destinationId !== existingFlight.destinationId
+          parsedOriginId !== existingFlight.originId ||
+          parsedDestinationId !== existingFlight.destinationId
         ) {
           throw new BadRequestError(
             'Cannot change flight route (origin/destination) when bookings exist. Please cancel all bookings first or create a new flight.',
@@ -279,31 +337,30 @@ const handleUpdateFlight = asyncHandler(
         }
       }
 
-      if (capacity !== undefined) {
-        if (capacity < bookedSeats) {
+      if (parsedCapacity !== undefined) {
+        if (parsedCapacity < bookedSeats) {
           throw new BadRequestError(
-            `Cannot reduce capacity to ${capacity}. ${bookedSeats} seats are already booked. Minimum capacity allowed is ${bookedSeats}.`,
+            `Cannot reduce capacity to ${parsedCapacity}. ${bookedSeats} seats are already booked. Minimum capacity allowed is ${bookedSeats}.`,
           );
-        }
-
-        if (capacity > existingFlight.capacity) {
-          const additionalSeats = capacity - existingFlight.capacity;
         }
       }
 
-      if (originId || destinationId) {
+      if (parsedOriginId || parsedDestinationId) {
         const [origin, destination] = await Promise.all([
-          originId
-            ? prisma.destination.findUnique({ where: { id: originId } })
+          parsedOriginId
+            ? prisma.destination.findUnique({ where: { id: parsedOriginId } })
             : null,
-          destinationId
+          parsedDestinationId
             ? prisma.destination.findUnique({
-                where: { id: destinationId },
+                where: { id: parsedDestinationId },
               })
             : null,
         ]);
 
-        if ((originId && !origin) || (destinationId && !destination)) {
+        if (
+          (parsedOriginId && !origin) ||
+          (parsedDestinationId && !destination)
+        ) {
           throw new NotFoundError('Origin or destination not found');
         }
       }
@@ -318,39 +375,22 @@ const handleUpdateFlight = asyncHandler(
 
       const updateData: any = {};
 
-      if (flightNumber !== undefined) {
-        updateData.flightNumber = flightNumber;
-      }
-      if (airline !== undefined) {
-        updateData.airline = airline;
-      }
-      if (departure !== undefined) {
-        updateData.departure = newDeparture;
-      }
-      if (arrival !== undefined) {
-        updateData.arrival = newArrival;
-      }
-      if (calculatedDuration !== undefined) {
+      if (flightNumber !== undefined) updateData.flightNumber = flightNumber;
+      if (airline !== undefined) updateData.airline = airline;
+      if (departure !== undefined) updateData.departure = newDeparture;
+      if (arrival !== undefined) updateData.arrival = newArrival;
+      if (calculatedDuration !== undefined)
         updateData.duration = calculatedDuration;
-      }
-      if (originId !== undefined) {
-        updateData.origin = { connect: { id: originId } };
-      }
-      if (destinationId !== undefined) {
-        updateData.destination = { connect: { id: destinationId } };
-      }
-      if (prisma !== undefined) {
-        updateData.price = price;
-      }
-      if (flightClass !== undefined) {
-        updateData.flightClass = flightClass;
-      }
-      if (stops !== undefined) {
-        updateData.stops = stops;
-      }
-      if (capacity !== undefined) {
-        updateData.capacity = capacity;
-        updateData.seatsAvailable = capacity - bookedSeats;
+      if (parsedOriginId !== undefined)
+        updateData.origin = { connect: { id: parsedOriginId } };
+      if (parsedDestinationId !== undefined)
+        updateData.destination = { connect: { id: parsedDestinationId } };
+      if (parsedPrice !== undefined) updateData.price = parsedPrice;
+      if (flightClass !== undefined) updateData.flightClass = flightClass;
+      if (parsedStops !== undefined) updateData.stops = parsedStops;
+      if (parsedCapacity !== undefined) {
+        updateData.capacity = parsedCapacity;
+        updateData.seatsAvailable = parsedCapacity - bookedSeats;
       }
 
       if (req.body.flightPhoto && typeof req.body.flightPhoto === 'string') {
