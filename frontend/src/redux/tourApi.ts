@@ -7,7 +7,6 @@ export interface ITourPayload {
   name: string;
   description?: string | null;
   type: "ADVENTURE" | "CULTURAL" | "BEACH" | "CITY" | "WILDLIFE" | "CRUISE";
-  duration: number;
   price: number;
   maxGuests: number;
   startDate: string;

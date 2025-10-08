@@ -2,10 +2,7 @@
 import { z } from "zod";
 
 export const loginFormSchema = z.object({
-  email: z
-    .string()
-    .nonempty("Email is required")
-    .email("Email must be a valid email address"),
+  email: z.email("Email must be a valid email address"),
   password: z
     .string()
     .min(4, "Password must be at least 5 characters")
@@ -21,10 +18,7 @@ export const signupFormSchema = z.object({
     .string()
     .min(1, "Name is required")
     .max(100, "Name must be 100 characters or less"),
-  email: z
-    .string()
-    .nonempty("Email is required")
-    .email("Email must be a valid email address"),
+  email: z.email("Email must be a valid email address"),
   password: z
     .string()
     .min(4, "Password must be at least 5 characters")

@@ -64,6 +64,7 @@ export function TourDetail({ tour }: ITourDetailProps) {
       booking.userId === parseInt(user?.id || "0")
   );
   const isTourBooked = !!userBooking;
+  const isFullyBooked = tour.guestsBooked >= tour.maxGuests;
 
   const formatDate = (date: string | Date) =>
     format(new Date(date), "EEEE, MMMM dd, yyyy HH:mm");
@@ -166,11 +167,17 @@ export function TourDetail({ tour }: ITourDetailProps) {
                     ? setShowUnbookDialog(true)
                     : setShowBookDialog(true)
                 }
-                disabled={isBooking || isUnbooking}
+                disabled={
+                  isBooking || isUnbooking || (isFullyBooked && !isTourBooked)
+                }
                 className="cursor-pointer"
               >
                 <Bookmark className="mr-2 h-4 w-4" />
-                {isTourBooked ? "Unbook" : "Book Now"}
+                {isTourBooked
+                  ? "Unbook"
+                  : isFullyBooked
+                  ? "Fully Booked"
+                  : "Book Now"}
               </Button>
             )}
           </div>
@@ -192,6 +199,9 @@ export function TourDetail({ tour }: ITourDetailProps) {
               >
                 {tour.status}
               </Badge>
+              {isFullyBooked && (
+                <Badge variant="destructive">Fully Booked</Badge>
+              )}
               {isTourBooked && (
                 <Badge variant="outline">
                   Booking Status: {userBooking?.status}
@@ -277,11 +287,11 @@ export function TourDetail({ tour }: ITourDetailProps) {
                 </div>
                 <div>
                   <p className="font-medium text-foreground text-sm">
-                    Max Guests
+                    Availability
                   </p>
                   <p className="text-sm text-muted-foreground flex items-center gap-1">
                     <Users className="h-4 w-4" />
-                    {tour.maxGuests}
+                    {tour.guestsBooked} / {tour.maxGuests}
                   </p>
                 </div>
               </div>

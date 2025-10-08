@@ -41,7 +41,6 @@ const tourFormSchema = z.object({
       message: "Tour type is required",
     }
   ),
-  duration: z.number().min(1, "Duration must be a positive number"),
   price: z.number().min(0, "Price must be a non-negative number"),
   maxGuests: z.number().min(1, "Max guests must be a positive number"),
   startDate: z.string().min(1, "Start date is required"),
@@ -76,7 +75,6 @@ export function TourForm({ tour, mode }: ITourFormProps) {
       name: tour?.name || "",
       description: tour?.description || "",
       type: tour?.type || "ADVENTURE",
-      duration: tour?.duration || 0,
       price: tour?.price || 0,
       maxGuests: tour?.maxGuests || 0,
       startDate: tour?.startDate
@@ -99,7 +97,6 @@ export function TourForm({ tour, mode }: ITourFormProps) {
         name: values.name,
         description: values.description || null,
         type: values.type,
-        duration: values.duration,
         price: values.price,
         maxGuests: values.maxGuests,
         startDate: new Date(values.startDate).toISOString(),
@@ -238,27 +235,6 @@ export function TourForm({ tour, mode }: ITourFormProps) {
               <div className="grid gap-6 md:grid-cols-2">
                 <FormField
                   control={form.control}
-                  name="duration"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Duration (days)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          placeholder="e.g., 7"
-                          {...field}
-                          onChange={(e) =>
-                            field.onChange(parseInt(e.target.value) || 0)
-                          }
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
                   name="price"
                   render={({ field }) => (
                     <FormItem>
@@ -278,28 +254,28 @@ export function TourForm({ tour, mode }: ITourFormProps) {
                     </FormItem>
                   )}
                 />
-              </div>
 
-              <FormField
-                control={form.control}
-                name="maxGuests"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Max Guests</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="e.g., 20"
-                        {...field}
-                        onChange={(e) =>
-                          field.onChange(parseInt(e.target.value) || 0)
-                        }
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={form.control}
+                  name="maxGuests"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Max Guests</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="e.g., 20"
+                          {...field}
+                          onChange={(e) =>
+                            field.onChange(parseInt(e.target.value) || 0)
+                          }
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               <FormField
                 control={form.control}

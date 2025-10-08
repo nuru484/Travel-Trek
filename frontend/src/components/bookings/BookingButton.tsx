@@ -1,4 +1,3 @@
-// src/components/bookings/BookingButton.tsx
 "use client";
 import { useState, useEffect } from "react";
 import { useCreateBookingMutation } from "@/redux/bookingApi";
@@ -52,6 +51,7 @@ interface IBookingButtonProps {
     | "link";
   size?: "default" | "sm" | "lg" | "icon";
   className?: string;
+  label?: string;
 }
 
 export function BookingButton({
@@ -64,6 +64,7 @@ export function BookingButton({
   variant = "default",
   size = "default",
   className = "",
+  label,
 }: IBookingButtonProps) {
   const [createBooking, { isLoading }] = useCreateBookingMutation();
   const { data: usersData, isLoading: isUsersLoading } = useGetAllUsersQuery({
@@ -142,7 +143,7 @@ export function BookingButton({
           onClick={() => handleBook(userId)}
         >
           <Bookmark className="mr-2 h-4 w-4" />
-          {isLoading ? "Processing..." : "Book"}
+          {isLoading ? "Processing..." : label || "Book"}
         </Button>
       ) : (
         // Admin/agent: select user via dialog
@@ -155,7 +156,7 @@ export function BookingButton({
               className={className}
             >
               <Bookmark className="mr-2 h-4 w-4" />
-              Book
+              {label || "Book"}
             </Button>
           </DialogTrigger>
 

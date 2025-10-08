@@ -20,6 +20,7 @@ export interface IFlight {
   stops: number;
   photo: string | null;
   seatsAvailable: number;
+  capacity: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -49,9 +50,8 @@ export interface IFlightInput {
   destinationId: number;
   price: number;
   flightClass: FlightClass;
-  duration: number;
   stops?: number;
-  seatsAvailable: number;
+  capacity: number;
   flightPhoto?: string | File;
 }
 

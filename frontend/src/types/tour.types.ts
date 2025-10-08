@@ -23,6 +23,7 @@ export interface ITour {
   duration: number;
   price: number;
   maxGuests: number;
+  guestsBooked: number;
   startDate: string;
   endDate: string;
   location: string;

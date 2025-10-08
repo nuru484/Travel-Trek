@@ -1,4 +1,3 @@
-// src/components/flights/flight-list-item.tsx
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -226,7 +225,9 @@ export function FlightListItem({ flight }: IFlightListItemProps) {
 
                 <div className="flex items-center gap-1">
                   <Users className="h-3 w-3" />
-                  <span>{flight.seatsAvailable} seats</span>
+                  <span>
+                    {flight.seatsAvailable}/{flight.capacity} seats
+                  </span>
                 </div>
               </div>
 
@@ -267,7 +268,6 @@ export function FlightListItem({ flight }: IFlightListItemProps) {
                       <span className="hidden sm:inline">Delete</span>
                       <span className="sm:hidden">Del</span>
                     </Button>
-                    {/* Admin booking - no userId passed */}
                     <BookingButton
                       flightId={flight.id}
                       price={flight.price}
@@ -275,6 +275,9 @@ export function FlightListItem({ flight }: IFlightListItemProps) {
                       size="sm"
                       className="flex-1 sm:flex-none sm:min-w-[80px] cursor-pointer"
                       disabled={isDeleting || flight.seatsAvailable <= 0}
+                      label={
+                        flight.seatsAvailable <= 0 ? "Fully Booked" : undefined
+                      }
                     />
                   </>
                 ) : (
@@ -298,6 +301,11 @@ export function FlightListItem({ flight }: IFlightListItemProps) {
                         size="sm"
                         className="flex-1 sm:flex-none sm:min-w-[80px] cursor-pointer"
                         disabled={flight.seatsAvailable <= 0}
+                        label={
+                          flight.seatsAvailable <= 0
+                            ? "Fully Booked"
+                            : undefined
+                        }
                       />
                     )}
                   </>
@@ -313,7 +321,9 @@ export function FlightListItem({ flight }: IFlightListItemProps) {
                         ? "bg-green-500 w-full"
                         : flight.seatsAvailable > 20
                         ? "bg-yellow-500 w-3/4"
-                        : "bg-red-500 w-1/4"
+                        : flight.seatsAvailable > 0
+                        ? "bg-red-500 w-1/4"
+                        : "bg-gray-500 w-0"
                     }`}
                   />
                 </div>
@@ -322,7 +332,9 @@ export function FlightListItem({ flight }: IFlightListItemProps) {
                     ? "Great availability"
                     : flight.seatsAvailable > 20
                     ? "Limited seats"
-                    : "Few seats left"}
+                    : flight.seatsAvailable > 0
+                    ? "Few seats left"
+                    : "Fully booked"}
                 </p>
               </div>
             </div>

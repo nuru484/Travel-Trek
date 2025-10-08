@@ -46,11 +46,10 @@ const flightFormSchema = z.object({
   flightClass: z.enum(FlightClass, {
     message: "Flight class is required",
   }),
-  duration: z.number().min(1, "Duration must be a positive number"),
   stops: z.number().min(0, "Stops must be a non-negative number").optional(),
-  seatsAvailable: z
+  capacity: z
     .number()
-    .min(0, "Seats available must be a non-negative number"),
+    .min(0, "Capacity (Seats Available) must be a non-negative number"),
   flightPhoto: z.any().optional(),
 });
 
@@ -103,9 +102,8 @@ export function FlightForm({ flight, mode }: IFlightFormProps) {
       destinationId: flight?.destinationId || 0,
       price: flight?.price || 0,
       flightClass: flight?.flightClass || FlightClass.ECONOMY,
-      duration: flight?.duration || 0,
       stops: flight?.stops || 0,
-      seatsAvailable: flight?.seatsAvailable || 0,
+      capacity: flight?.seatsAvailable || 0,
       flightPhoto: undefined,
     },
   });
@@ -174,10 +172,9 @@ export function FlightForm({ flight, mode }: IFlightFormProps) {
       formData.append("destinationId", values.destinationId.toString());
       formData.append("price", values.price.toString());
       formData.append("flightClass", values.flightClass);
-      formData.append("duration", values.duration.toString());
       if (values.stops !== undefined)
         formData.append("stops", values.stops.toString());
-      formData.append("seatsAvailable", values.seatsAvailable.toString());
+      formData.append("capacity", values.capacity.toString());
       if (values.flightPhoto)
         formData.append("flightPhoto", values.flightPhoto);
 
@@ -401,27 +398,6 @@ export function FlightForm({ flight, mode }: IFlightFormProps) {
               <div className="grid gap-6 md:grid-cols-2">
                 <FormField
                   control={form.control}
-                  name="duration"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Duration (minutes)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          placeholder="e.g., 120"
-                          {...field}
-                          onChange={(e) =>
-                            field.onChange(parseInt(e.target.value))
-                          }
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
                   name="stops"
                   render={({ field }) => (
                     <FormItem>
@@ -440,28 +416,28 @@ export function FlightForm({ flight, mode }: IFlightFormProps) {
                     </FormItem>
                   )}
                 />
-              </div>
 
-              <FormField
-                control={form.control}
-                name="seatsAvailable"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Seats Available</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="e.g., 150"
-                        {...field}
-                        onChange={(e) =>
-                          field.onChange(parseInt(e.target.value))
-                        }
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={form.control}
+                  name="capacity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Capacity (Seats Available)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="e.g., 150"
+                          {...field}
+                          onChange={(e) =>
+                            field.onChange(parseInt(e.target.value))
+                          }
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               <FormField
                 control={form.control}

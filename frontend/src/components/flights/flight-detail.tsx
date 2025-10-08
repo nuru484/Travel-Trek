@@ -510,19 +510,25 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
                         Seats Available
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {flight.seatsAvailable} seats remaining
+                        {flight.seatsAvailable > 0
+                          ? `${flight.seatsAvailable} of ${flight.capacity} seats remaining`
+                          : "Fully Booked"}
                       </p>
                     </div>
                     <Badge
                       variant={
-                        flight.seatsAvailable > 20
+                        flight.seatsAvailable === 0
+                          ? "destructive"
+                          : flight.seatsAvailable > 20
                           ? "default"
                           : flight.seatsAvailable > 5
                           ? "secondary"
                           : "destructive"
                       }
                     >
-                      {flight.seatsAvailable > 20
+                      {flight.seatsAvailable === 0
+                        ? "Unavailable"
+                        : flight.seatsAvailable > 20
                         ? "Available"
                         : flight.seatsAvailable > 5
                         ? "Limited"
@@ -542,6 +548,10 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
                         ? "Direct"
                         : `${flight.stops} stop${flight.stops > 1 ? "s" : ""}`}
                     </p>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-muted-foreground">Capacity:</span>
+                    <p className="font-medium">{flight.capacity} seats</p>
                   </div>
                 </div>
               </div>

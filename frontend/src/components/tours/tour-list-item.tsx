@@ -62,6 +62,10 @@ export function TourListItem({ tour }: ITourListItemProps) {
       booking.userId === parseInt(user?.id || "0")
   );
 
+  // Check if tour is fully booked
+  const isFullyBooked = tour.guestsBooked >= tour.maxGuests;
+  const availableSpots = tour.maxGuests - tour.guestsBooked;
+
   const handleView = () => {
     router.push(`/dashboard/tours/${tour.id}/detail`);
   };
@@ -113,13 +117,18 @@ export function TourListItem({ tour }: ITourListItemProps) {
               <h3 className="font-semibold text-foreground text-base sm:text-lg truncate">
                 {tour.name}
               </h3>
-              <div className="mt-1 flex sm:inline-flex">
+              <div className="mt-1 flex gap-2 flex-wrap">
                 <Badge
                   variant={getStatusColor(tour.status)}
                   className="text-xs font-medium"
                 >
                   {tour.status}
                 </Badge>
+                {isFullyBooked && (
+                  <Badge variant="destructive" className="text-xs font-medium">
+                    Fully Booked
+                  </Badge>
+                )}
               </div>
               <p className="text-sm text-muted-foreground line-clamp-2 mt-2 sm:mt-1">
                 {tour.description || "No description available"}
@@ -163,8 +172,10 @@ export function TourListItem({ tour }: ITourListItemProps) {
             <div className="flex items-center gap-2 p-2 sm:p-3 bg-muted/30 rounded-lg">
               <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
               <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">Max Guests</p>
-                <p className="font-medium text-sm">{tour.maxGuests}</p>
+                <p className="text-xs text-muted-foreground">Guests</p>
+                <p className="font-medium text-sm">
+                  {tour.guestsBooked}/{tour.maxGuests}
+                </p>
               </div>
             </div>
 
@@ -196,6 +207,32 @@ export function TourListItem({ tour }: ITourListItemProps) {
                 {formatDate(tour.updatedAt)}
               </p>
             </div>
+          </div>
+
+          {/* Availability Indicator */}
+          <div className="mb-4">
+            <div className="w-full bg-muted rounded-full h-1.5">
+              <div
+                className={`h-1.5 rounded-full transition-all duration-500 ${
+                  availableSpots > 10
+                    ? "bg-green-500 w-full"
+                    : availableSpots > 5
+                    ? "bg-yellow-500 w-3/4"
+                    : availableSpots > 0
+                    ? "bg-red-500 w-1/4"
+                    : "bg-gray-500 w-0"
+                }`}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1 text-center">
+              {availableSpots > 10
+                ? "Great availability"
+                : availableSpots > 5
+                ? "Limited spots"
+                : availableSpots > 0
+                ? "Few spots left"
+                : "Fully booked"}
+            </p>
           </div>
 
           {/* Action Buttons */}
@@ -239,7 +276,8 @@ export function TourListItem({ tour }: ITourListItemProps) {
                   variant="outline"
                   size="sm"
                   className="flex-1 sm:flex-none sm:min-w-[100px] cursor-pointer"
-                  disabled={isDeleting}
+                  disabled={isDeleting || isFullyBooked}
+                  label={isFullyBooked ? "Fully Booked" : undefined}
                 />
               </>
             ) : (
@@ -262,6 +300,8 @@ export function TourListItem({ tour }: ITourListItemProps) {
                     variant="default"
                     size="sm"
                     className="flex-1 sm:flex-none sm:min-w-[100px] cursor-pointer"
+                    disabled={isFullyBooked}
+                    label={isFullyBooked ? "Fully Booked" : undefined}
                   />
                 )}
               </>
