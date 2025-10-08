@@ -19,75 +19,112 @@ const handleCreateBooking = (0, error_handler_1.asyncHandler)(async (req, res, n
     if (!user) {
         throw new error_handler_1.UnauthorizedError('Unauthorized, no user provided');
     }
-    // Only CUSTOMER can book for themselves, ADMIN/AGENT can book for any user
     if (user.role === 'CUSTOMER' && user.id !== userId.toString()) {
         throw new error_handler_1.UnauthorizedError('Customers can only book for themselves');
     }
-    // Validate referenced IDs
-    if (tourId) {
-        const tour = await prismaClient_1.default.tour.findUnique({ where: { id: tourId } });
-        if (!tour)
-            throw new error_handler_1.NotFoundError('Tour not found');
+    if (!tourId && !roomId && !flightId) {
+        throw new error_handler_1.BadRequestError('At least one of tourId, roomId, or flightId must be provided');
     }
-    if (roomId) {
-        const room = await prismaClient_1.default.room.findUnique({ where: { id: roomId } });
-        if (!room)
-            throw new error_handler_1.NotFoundError('Room not found');
-        if (!room.available)
-            throw new error_handler_1.NotFoundError('Room is not available');
-    }
-    if (flightId) {
-        const flight = await prismaClient_1.default.flight.findUnique({
-            where: { id: flightId },
-        });
-        if (!flight)
-            throw new error_handler_1.NotFoundError('Flight not found');
-        if (flight.seatsAvailable <= 0)
-            throw new error_handler_1.NotFoundError('No seats available on this flight');
-    }
-    // Ensure user exists
     const targetUser = await prismaClient_1.default.user.findUnique({ where: { id: userId } });
     if (!targetUser)
         throw new error_handler_1.NotFoundError('User not found');
-    const booking = await prismaClient_1.default.booking.create({
-        data: {
-            user: { connect: { id: userId } },
-            tour: tourId ? { connect: { id: tourId } } : undefined,
-            room: roomId ? { connect: { id: roomId } } : undefined,
-            flight: flightId ? { connect: { id: flightId } } : undefined,
-            totalPrice,
-            status: 'PENDING',
-        },
-        include: {
-            user: {
-                select: { id: true, name: true, email: true },
+    let tour = null;
+    if (tourId) {
+        tour = await prismaClient_1.default.tour.findUnique({ where: { id: tourId } });
+        if (!tour)
+            throw new error_handler_1.NotFoundError('Tour not found');
+        const availableSlots = tour.maxGuests - tour.guestsBooked;
+        if (availableSlots <= 0) {
+            throw new error_handler_1.BadRequestError('No available slots for this tour');
+        }
+        if (tour.status === 'CANCELLED') {
+            throw new error_handler_1.BadRequestError('This tour has been cancelled');
+        }
+        if (tour.status === 'COMPLETED') {
+            throw new error_handler_1.BadRequestError('This tour has already been completed');
+        }
+    }
+    let room = null;
+    if (roomId) {
+        room = await prismaClient_1.default.room.findUnique({ where: { id: roomId } });
+        if (!room)
+            throw new error_handler_1.NotFoundError('Room not found');
+        if (room.roomsAvailable <= 0) {
+            throw new error_handler_1.BadRequestError('No rooms available of this type');
+        }
+    }
+    let flight = null;
+    if (flightId) {
+        flight = await prismaClient_1.default.flight.findUnique({ where: { id: flightId } });
+        if (!flight)
+            throw new error_handler_1.NotFoundError('Flight not found');
+        if (flight.seatsAvailable <= 0) {
+            throw new error_handler_1.BadRequestError('No seats available on this flight');
+        }
+    }
+    const booking = await prismaClient_1.default.$transaction(async (tx) => {
+        if (tourId && tour) {
+            await tx.tour.update({
+                where: { id: tourId },
+                data: { guestsBooked: { increment: 1 } },
+            });
+        }
+        if (roomId && room) {
+            await tx.room.update({
+                where: { id: roomId },
+                data: { roomsAvailable: { decrement: 1 } },
+            });
+        }
+        if (flightId && flight) {
+            await tx.flight.update({
+                where: { id: flightId },
+                data: { seatsAvailable: { decrement: 1 } },
+            });
+        }
+        return await tx.booking.create({
+            data: {
+                user: { connect: { id: userId } },
+                tour: tourId ? { connect: { id: tourId } } : undefined,
+                room: roomId ? { connect: { id: roomId } } : undefined,
+                flight: flightId ? { connect: { id: flightId } } : undefined,
+                totalPrice,
+                status: 'PENDING',
             },
-            tour: {
-                select: { id: true, name: true, description: true },
-            },
-            room: {
-                select: {
-                    id: true,
-                    roomType: true,
-                    description: true,
-                    hotel: {
-                        select: {
-                            id: true,
-                            name: true,
-                            description: true,
+            include: {
+                user: {
+                    select: { id: true, name: true, email: true },
+                },
+                tour: {
+                    select: { id: true, name: true, description: true },
+                },
+                room: {
+                    select: {
+                        id: true,
+                        roomType: true,
+                        description: true,
+                        hotel: {
+                            select: {
+                                id: true,
+                                name: true,
+                                description: true,
+                            },
                         },
                     },
                 },
+                flight: {
+                    select: { id: true, flightNumber: true, airline: true },
+                },
+                payment: {
+                    select: {
+                        id: true,
+                        amount: true,
+                        status: true,
+                        paymentMethod: true,
+                    },
+                },
             },
-            flight: {
-                select: { id: true, flightNumber: true, airline: true },
-            },
-            payment: {
-                select: { id: true, amount: true, status: true, paymentMethod: true },
-            },
-        },
+        });
     });
-    // Normalize into discriminated union
     let response;
     if (booking.tour) {
         response = {
@@ -202,7 +239,6 @@ const handleGetBooking = (0, error_handler_1.asyncHandler)(async (req, res, next
     if (user.role === 'CUSTOMER' && booking.userId !== parseInt(user.id)) {
         throw new error_handler_1.UnauthorizedError('You can only view your own bookings');
     }
-    // Normalize into discriminated union
     let response;
     if (booking.tour) {
         response = {
@@ -289,72 +325,133 @@ const handleUpdateBooking = (0, error_handler_1.asyncHandler)(async (req, res, n
     if (!id) {
         throw new error_handler_1.NotFoundError('Booking ID is required');
     }
-    const booking = await prismaClient_1.default.booking.findUnique({
+    const existingBooking = await prismaClient_1.default.booking.findUnique({
         where: { id: parseInt(id) },
     });
-    if (!booking) {
+    if (!existingBooking) {
         throw new error_handler_1.NotFoundError('Booking not found');
     }
-    const [targetUser, tour, room, flight] = await Promise.all([
-        userId ? prismaClient_1.default.user.findUnique({ where: { id: userId } }) : null,
-        tourId ? prismaClient_1.default.tour.findUnique({ where: { id: tourId } }) : null,
-        roomId ? prismaClient_1.default.room.findUnique({ where: { id: roomId } }) : null,
-        flightId ? prismaClient_1.default.flight.findUnique({ where: { id: flightId } }) : null,
-    ]);
-    if (userId && !targetUser)
-        throw new error_handler_1.NotFoundError('User not found');
-    if (tourId && !tour)
-        throw new error_handler_1.NotFoundError('Tour not found');
-    if (roomId) {
+    if (userId) {
+        const targetUser = await prismaClient_1.default.user.findUnique({
+            where: { id: userId },
+        });
+        if (!targetUser)
+            throw new error_handler_1.NotFoundError('User not found');
+    }
+    if (tourId && tourId !== existingBooking.tourId) {
+        const tour = await prismaClient_1.default.tour.findUnique({ where: { id: tourId } });
+        if (!tour)
+            throw new error_handler_1.NotFoundError('Tour not found');
+        const availableSlots = tour.maxGuests - tour.guestsBooked;
+        if (availableSlots <= 0) {
+            throw new error_handler_1.BadRequestError('No available slots for this tour');
+        }
+        if (tour.status === 'CANCELLED') {
+            throw new error_handler_1.BadRequestError('This tour has been cancelled');
+        }
+        if (tour.status === 'COMPLETED') {
+            throw new error_handler_1.BadRequestError('This tour has already been completed');
+        }
+    }
+    if (roomId && roomId !== existingBooking.roomId) {
+        const room = await prismaClient_1.default.room.findUnique({ where: { id: roomId } });
         if (!room)
             throw new error_handler_1.NotFoundError('Room not found');
-        if (!room.available)
-            throw new Error('Room is not available');
+        if (room.roomsAvailable <= 0) {
+            throw new error_handler_1.BadRequestError('No rooms available of this type');
+        }
     }
-    if (flightId) {
+    if (flightId && flightId !== existingBooking.flightId) {
+        const flight = await prismaClient_1.default.flight.findUnique({
+            where: { id: flightId },
+        });
         if (!flight)
             throw new error_handler_1.NotFoundError('Flight not found');
-        if (flight.seatsAvailable <= 0)
-            throw new Error('No seats available on this flight');
+        if (flight.seatsAvailable <= 0) {
+            throw new error_handler_1.BadRequestError('No seats available on this flight');
+        }
     }
-    const updatedBooking = await prismaClient_1.default.booking.update({
-        where: { id: parseInt(id) },
-        data: {
-            user: userId ? { connect: { id: userId } } : undefined,
-            tour: tourId ? { connect: { id: tourId } } : undefined,
-            room: roomId ? { connect: { id: roomId } } : undefined,
-            flight: flightId ? { connect: { id: flightId } } : undefined,
-            totalPrice: totalPrice ?? booking.totalPrice,
-            status: status ?? booking.status,
-        },
-        include: {
-            user: {
-                select: { id: true, name: true, email: true },
+    const updatedBooking = await prismaClient_1.default.$transaction(async (tx) => {
+        if (tourId &&
+            existingBooking.tourId &&
+            tourId !== existingBooking.tourId) {
+            await tx.tour.update({
+                where: { id: existingBooking.tourId },
+                data: { guestsBooked: { decrement: 1 } },
+            });
+            await tx.tour.update({
+                where: { id: tourId },
+                data: { guestsBooked: { increment: 1 } },
+            });
+        }
+        if (roomId &&
+            existingBooking.roomId &&
+            roomId !== existingBooking.roomId) {
+            await tx.room.update({
+                where: { id: existingBooking.roomId },
+                data: { roomsAvailable: { increment: 1 } },
+            });
+            await tx.room.update({
+                where: { id: roomId },
+                data: { roomsAvailable: { decrement: 1 } },
+            });
+        }
+        if (flightId &&
+            existingBooking.flightId &&
+            flightId !== existingBooking.flightId) {
+            await tx.flight.update({
+                where: { id: existingBooking.flightId },
+                data: { seatsAvailable: { increment: 1 } },
+            });
+            await tx.flight.update({
+                where: { id: flightId },
+                data: { seatsAvailable: { decrement: 1 } },
+            });
+        }
+        return await tx.booking.update({
+            where: { id: parseInt(id) },
+            data: {
+                user: userId ? { connect: { id: userId } } : undefined,
+                tour: tourId ? { connect: { id: tourId } } : undefined,
+                room: roomId ? { connect: { id: roomId } } : undefined,
+                flight: flightId ? { connect: { id: flightId } } : undefined,
+                totalPrice: totalPrice ?? existingBooking.totalPrice,
+                status: status ?? existingBooking.status,
             },
-            tour: {
-                select: { id: true, name: true, description: true },
-            },
-            room: {
-                select: {
-                    id: true,
-                    roomType: true,
-                    description: true,
-                    hotel: {
-                        select: {
-                            id: true,
-                            name: true,
-                            description: true,
+            include: {
+                user: {
+                    select: { id: true, name: true, email: true },
+                },
+                tour: {
+                    select: { id: true, name: true, description: true },
+                },
+                room: {
+                    select: {
+                        id: true,
+                        roomType: true,
+                        description: true,
+                        hotel: {
+                            select: {
+                                id: true,
+                                name: true,
+                                description: true,
+                            },
                         },
                     },
                 },
+                flight: {
+                    select: { id: true, flightNumber: true, airline: true },
+                },
+                payment: {
+                    select: {
+                        id: true,
+                        amount: true,
+                        status: true,
+                        paymentMethod: true,
+                    },
+                },
             },
-            flight: {
-                select: { id: true, flightNumber: true, airline: true },
-            },
-            payment: {
-                select: { id: true, amount: true, status: true, paymentMethod: true },
-            },
-        },
+        });
     });
     const baseResponse = {
         id: updatedBooking.id,
@@ -418,13 +515,6 @@ exports.updateBooking = [
  */
 const handleDeleteBooking = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const { id } = req.params;
-    const user = req.user;
-    if (!user) {
-        throw new error_handler_1.UnauthorizedError('Unauthorized, no user provided');
-    }
-    if (user.role !== 'ADMIN' && user.role !== 'AGENT') {
-        throw new error_handler_1.UnauthorizedError('Only admins and agents can delete bookings');
-    }
     if (!id) {
         throw new error_handler_1.NotFoundError('Booking ID is required');
     }
@@ -441,8 +531,28 @@ const handleDeleteBooking = (0, error_handler_1.asyncHandler)(async (req, res, n
     if (booking.payment && booking.payment.status !== 'REFUNDED') {
         throw new error_handler_1.BadRequestError(`Cannot delete booking with payment status "${booking.payment.status}". Refund required first.`);
     }
-    await prismaClient_1.default.booking.delete({
-        where: { id: parseInt(id) },
+    await prismaClient_1.default.$transaction(async (tx) => {
+        if (booking.tourId) {
+            await tx.tour.update({
+                where: { id: booking.tourId },
+                data: { guestsBooked: { decrement: 1 } },
+            });
+        }
+        if (booking.roomId) {
+            await tx.room.update({
+                where: { id: booking.roomId },
+                data: { roomsAvailable: { increment: 1 } },
+            });
+        }
+        if (booking.flightId) {
+            await tx.flight.update({
+                where: { id: booking.flightId },
+                data: { seatsAvailable: { increment: 1 } },
+            });
+        }
+        await tx.booking.delete({
+            where: { id: parseInt(id) },
+        });
     });
     res.status(constants_1.HTTP_STATUS_CODES.OK).json({
         message: 'Booking deleted successfully',
@@ -522,7 +632,6 @@ const handleGetUserBookings = (0, error_handler_1.asyncHandler)(async (req, res)
     else if (bookingType === 'FLIGHT') {
         whereClause.flightId = { not: null };
     }
-    // Handle search across related entities
     if (search) {
         whereClause.OR = [
             {
@@ -942,28 +1051,40 @@ exports.getAllBookings = [
  * Delete all bookings
  */
 const handleDeleteAllBookings = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
-    const user = req.user;
-    if (!user) {
-        throw new error_handler_1.UnauthorizedError('Unauthorized, no user provided');
-    }
-    if (user.role !== 'ADMIN') {
-        throw new error_handler_1.UnauthorizedError('Only admins can delete all bookings');
-    }
-    // Get all bookings with payment details
     const bookings = await prismaClient_1.default.booking.findMany({
         include: { payment: true },
     });
-    // Filter out bookings that are safe to delete
     const deletableBookings = bookings.filter((booking) => booking.status !== 'COMPLETED' &&
         (!booking.payment || booking.payment.status === 'REFUNDED'));
     if (deletableBookings.length === 0) {
         throw new error_handler_1.BadRequestError('No bookings can be deleted. Completed or paid bookings must be refunded first.');
     }
-    // Delete only the safe bookings
-    await prismaClient_1.default.booking.deleteMany({
-        where: {
-            id: { in: deletableBookings.map((b) => b.id) },
-        },
+    await prismaClient_1.default.$transaction(async (tx) => {
+        for (const booking of deletableBookings) {
+            if (booking.tourId) {
+                await tx.tour.update({
+                    where: { id: booking.tourId },
+                    data: { guestsBooked: { decrement: 1 } },
+                });
+            }
+            if (booking.roomId) {
+                await tx.room.update({
+                    where: { id: booking.roomId },
+                    data: { roomsAvailable: { increment: 1 } },
+                });
+            }
+            if (booking.flightId) {
+                await tx.flight.update({
+                    where: { id: booking.flightId },
+                    data: { seatsAvailable: { increment: 1 } },
+                });
+            }
+        }
+        await tx.booking.deleteMany({
+            where: {
+                id: { in: deletableBookings.map((b) => b.id) },
+            },
+        });
     });
     res.status(constants_1.HTTP_STATUS_CODES.OK).json({
         message: `Deleted ${deletableBookings.length} booking(s) successfully`,

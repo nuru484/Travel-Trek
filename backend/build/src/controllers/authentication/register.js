@@ -40,20 +40,6 @@ const handleRegisterUser = async (req, res, next) => {
         else {
             userRole = user_profile_types_1.UserRole.CUSTOMER;
         }
-        const existingUserByEmail = await prismaClient_1.default.user.findUnique({
-            where: { email: userDetails.email },
-        });
-        if (existingUserByEmail) {
-            throw new error_handler_1.CustomError(constants_2.HTTP_STATUS_CODES.CONFLICT, 'A user with this email already exists.');
-        }
-        if (userDetails.phone) {
-            const existingUserByPhone = await prismaClient_1.default.user.findUnique({
-                where: { phone: userDetails.phone },
-            });
-            if (existingUserByPhone) {
-                throw new error_handler_1.CustomError(constants_2.HTTP_STATUS_CODES.CONFLICT, 'A user with this phone number already exists.');
-            }
-        }
         // Hash password
         const hashedPassword = await bcrypt_1.default.hash(userDetails.password, constants_3.BCRYPT_SALT_ROUNDS);
         // Validate profilePicture

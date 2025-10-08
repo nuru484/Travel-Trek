@@ -2,7 +2,6 @@ export interface ITourInput {
   name: string;
   description?: string | null;
   type: 'ADVENTURE' | 'CULTURAL' | 'BEACH' | 'CITY' | 'WILDLIFE' | 'CRUISE';
-  duration: number;
   price: number;
   maxGuests: number;
   startDate: string | Date;
@@ -19,6 +18,7 @@ export interface ITourResponse {
   duration: number;
   price: number;
   maxGuests: number;
+  guestsBooked: number;
   startDate: Date;
   endDate: Date;
   location: string;

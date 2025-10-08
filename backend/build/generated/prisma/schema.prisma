@@ -78,19 +78,20 @@ model User {
 }
 
 model Tour {
-  id          Int        @id @default(autoincrement())
-  name        String
-  description String?
-  type        TourType
-  status      TourStatus @default(UPCOMING)
-  duration    Int // Duration in days
-  price       Float
-  maxGuests   Int
-  startDate   DateTime
-  endDate     DateTime
-  location    String
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id           Int        @id @default(autoincrement())
+  name         String
+  description  String?
+  type         TourType
+  status       TourStatus @default(UPCOMING)
+  duration     Int
+  price        Float
+  maxGuests    Int
+  guestsBooked Int        @default(0)
+  startDate    DateTime
+  endDate      DateTime
+  location     String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
   itinerary    Itinerary[]
   bookings     Booking[]
@@ -104,6 +105,7 @@ model Tour {
   @@index([startDate, endDate], name: "tour_start_end_idx")
   @@index([type, status], name: "tour_type_status_idx")
   @@index([location], name: "tour_location_idx")
+  @@index([guestsBooked], name: "tour_guest_booked_idx")
 }
 
 model Destination {
@@ -180,25 +182,26 @@ model Hotel {
 }
 
 model Room {
-  id          Int      @id @default(autoincrement())
-  hotel       Hotel    @relation(fields: [hotelId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  hotelId     Int
-  roomType    String
-  price       Float
-  capacity    Int
-  photo       String?
-  description String?
-  amenities   String[]
-  available   Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             Int      @id @default(autoincrement())
+  hotel          Hotel    @relation(fields: [hotelId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  hotelId        Int
+  roomType       String
+  price          Float
+  capacity       Int
+  totalRooms     Int
+  roomsAvailable Int      @default(0)
+  photo          String?
+  description    String?
+  amenities      String[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   bookings Booking[]
 
   @@index([hotelId, roomType], name: "room_hotel_type_idx")
-  @@index([available], name: "room_available_idx")
   @@index([price], name: "room_price_idx")
   @@index([capacity], name: "room_capacity_idx")
+  @@index([roomsAvailable], name: "room_availability_idx")
 }
 
 model Flight {
@@ -216,7 +219,8 @@ model Flight {
   flightClass    String
   duration       Int
   stops          Int         @default(0)
-  seatsAvailable Int
+  capacity       Int
+  seatsAvailable Int         @default(0)
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 
@@ -227,6 +231,7 @@ model Flight {
   @@index([flightNumber], name: "flight_number_idx")
   @@index([airline], name: "flight_airline_idx")
   @@index([price], name: "flight_price_idx")
+  @@index([seatsAvailable], name: "flight_seats_available_idx")
 }
 
 model Booking {

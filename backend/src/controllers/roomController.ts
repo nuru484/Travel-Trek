@@ -5,14 +5,20 @@ import {
   NotFoundError,
   UnauthorizedError,
   BadRequestError,
+  CustomError,
 } from '../middlewares/error-handler';
 import { HTTP_STATUS_CODES } from '../config/constants';
-import { IRoomInput, IRoom, IRoomQueryParams } from 'types/room.types';
+import {
+  IRoomInput,
+  IRoom,
+  IRoomQueryParams,
+  IRoomResponse,
+} from 'types/room.types';
 import multerUpload from '../config/multer';
 import conditionalCloudinaryUpload from '../middlewares/conditional-cloudinary-upload';
 import { CLOUDINARY_UPLOAD_OPTIONS } from '../config/constants';
 import { cloudinaryService } from '../config/claudinary';
-
+import logger from '../utils/logger';
 /**
  * Create a new room
  */
@@ -27,21 +33,11 @@ const handleCreateRoom = asyncHandler(
       roomType,
       price,
       capacity,
+      totalRooms,
       description,
       amenities,
-      available,
     } = req.body;
-    const user = req.user;
 
-    if (!user) {
-      throw new UnauthorizedError('Unauthorized, no user provided');
-    }
-
-    if (user.role !== 'ADMIN' && user.role !== 'AGENT') {
-      throw new UnauthorizedError('Only admins and agents can create rooms');
-    }
-
-    // Check if hotel exists
     const hotel = await prisma.hotel.findUnique({
       where: { id: Number(hotelId) },
       select: { id: true, name: true, description: true },
@@ -51,19 +47,36 @@ const handleCreateRoom = asyncHandler(
       throw new NotFoundError('Hotel not found');
     }
 
+    // Optional: Check for duplicate room type in the same hotel
+    const existingRoom = await prisma.room.findFirst({
+      where: {
+        hotelId: Number(hotelId),
+        roomType: roomType.trim(),
+      },
+    });
+
+    if (existingRoom) {
+      throw new CustomError(
+        HTTP_STATUS_CODES.CONFLICT,
+        `Room type '${roomType}' already exists for this hotel`,
+      );
+    }
+
     // Get photo URL from middleware processing
     const photoUrl = req.body.roomPhoto;
 
+    // Create the room
     const room = await prisma.room.create({
       data: {
         hotel: { connect: { id: Number(hotelId) } },
-        roomType,
+        roomType: roomType.trim(),
         price: Number(price),
         capacity: Number(capacity),
-        description,
+        totalRooms: Number(totalRooms),
+        roomsAvailable: Number(totalRooms),
+        description: description?.trim() || null,
         amenities: amenities || [],
         photo: typeof photoUrl === 'string' ? photoUrl : null,
-        available: Boolean(available) ?? true,
       },
       include: {
         hotel: {
@@ -81,10 +94,11 @@ const handleCreateRoom = asyncHandler(
       roomType: room.roomType,
       price: room.price,
       capacity: room.capacity,
+      totalRooms: room.totalRooms,
+      roomsAvailable: room.roomsAvailable,
       description: room.description,
       amenities: room.amenities,
       photo: room.photo,
-      available: room.available,
       hotel: room.hotel,
       createdAt: room.createdAt,
       updatedAt: room.updatedAt,
@@ -93,7 +107,7 @@ const handleCreateRoom = asyncHandler(
     res.status(HTTP_STATUS_CODES.CREATED).json({
       message: 'Room created successfully',
       data: response,
-    });
+    } as IRoomResponse);
   },
 );
 
@@ -137,8 +151,9 @@ const getRoom = asyncHandler(
       capacity: room.capacity,
       description: room.description,
       amenities: room.amenities,
+      totalRooms: room.totalRooms,
+      roomsAvailable: room.roomsAvailable,
       photo: room.photo,
-      available: room.available,
       hotel: room.hotel,
       createdAt: room.createdAt,
       updatedAt: room.updatedAt,
@@ -166,33 +181,40 @@ const handleUpdateRoom = asyncHandler(
       roomType,
       price,
       capacity,
+      totalRooms,
       description,
       amenities,
-      available,
     } = req.body;
-    const user = req.user;
 
-    if (!user) {
-      throw new UnauthorizedError('Unauthorized, no user provided');
-    }
-
-    if (user.role !== 'ADMIN' && user.role !== 'AGENT') {
-      throw new UnauthorizedError('Only admins and agents can update rooms');
-    }
-
+    // Validate room ID
     if (!id) {
       throw new NotFoundError('Room ID is required');
     }
 
-    // Track the uploaded image URL for cleanup if needed
+    const parsedId = parseInt(id);
+
+    if (isNaN(parsedId)) {
+      throw new BadRequestError('Invalid room ID');
+    }
+
     let uploadedImageUrl: string | undefined;
     let oldPhoto: string | null = null;
 
     try {
-      // First, get the current room to check for existing photo
+      // Fetch existing room with bookings to validate changes
       const existingRoom = await prisma.room.findUnique({
-        where: { id: parseInt(id) },
-        select: { photo: true },
+        where: { id: parsedId },
+        include: {
+          bookings: {
+            where: {
+              OR: [{ status: 'PENDING' }, { status: 'CONFIRMED' }],
+            },
+            select: {
+              id: true,
+              status: true,
+            },
+          },
+        },
       });
 
       if (!existingRoom) {
@@ -200,9 +222,18 @@ const handleUpdateRoom = asyncHandler(
       }
 
       oldPhoto = existingRoom.photo;
+      const hasActiveBookings = existingRoom.bookings.length > 0;
+      const bookedRoomsCount =
+        existingRoom.totalRooms - existingRoom.roomsAvailable;
 
-      // Check if hotel exists if provided
-      if (hotelId) {
+      if (hotelId !== undefined && hotelId !== existingRoom.hotelId) {
+        if (hasActiveBookings) {
+          throw new BadRequestError(
+            'Cannot change hotel when active bookings exist. Please cancel all bookings first or create a new room.',
+          );
+        }
+
+        // Verify new hotel exists
         const hotel = await prisma.hotel.findUnique({
           where: { id: Number(hotelId) },
           select: { id: true, name: true, description: true },
@@ -213,15 +244,69 @@ const handleUpdateRoom = asyncHandler(
         }
       }
 
+      // Validate room type change
+      if (roomType !== undefined && roomType.trim() !== existingRoom.roomType) {
+        if (hasActiveBookings) {
+          throw new BadRequestError(
+            'Cannot change room type when active bookings exist. Please cancel all bookings first or create a new room.',
+          );
+        }
+
+        // Check for duplicate room type in the hotel
+        const duplicateRoom = await prisma.room.findFirst({
+          where: {
+            hotelId:
+              hotelId !== undefined ? Number(hotelId) : existingRoom.hotelId,
+            roomType: roomType.trim(),
+            id: { not: parsedId },
+          },
+        });
+
+        if (duplicateRoom) {
+          throw new CustomError(
+            HTTP_STATUS_CODES.CONFLICT,
+            `Room type '${roomType}' already exists for this hotel`,
+          );
+        }
+      }
+
+      // Validate price change
+      if (price !== undefined) {
+        if (hasActiveBookings) {
+          const priceChange =
+            Math.abs((price - existingRoom.price) / existingRoom.price) * 100;
+          if (priceChange > 50) {
+            console.warn(
+              `Large price change (${priceChange.toFixed(2)}%) on room ${parsedId} with active bookings`,
+            );
+          }
+        }
+      }
+
+      if (capacity !== undefined) {
+        if (hasActiveBookings && capacity < existingRoom.capacity) {
+          throw new BadRequestError(
+            'Cannot reduce room capacity when active bookings exist. Guests may have booked based on the current capacity.',
+          );
+        }
+      }
+
+      if (totalRooms !== undefined) {
+        if (totalRooms < bookedRoomsCount) {
+          throw new BadRequestError(
+            `Cannot reduce total rooms to ${totalRooms}. ${bookedRoomsCount} rooms are currently booked. Minimum total rooms allowed is ${bookedRoomsCount}.`,
+          );
+        }
+      }
+
       // Prepare update data
       const updateData: any = {};
 
-      // Only update fields that are provided
       if (hotelId !== undefined) {
         updateData.hotel = { connect: { id: Number(hotelId) } };
       }
       if (roomType !== undefined) {
-        updateData.roomType = roomType;
+        updateData.roomType = roomType.trim();
       }
       if (price !== undefined) {
         updateData.price = Number(price);
@@ -229,25 +314,25 @@ const handleUpdateRoom = asyncHandler(
       if (capacity !== undefined) {
         updateData.capacity = Number(capacity);
       }
+      if (totalRooms !== undefined) {
+        updateData.totalRooms = Number(totalRooms);
+
+        updateData.roomsAvailable = Number(totalRooms) - bookedRoomsCount;
+      }
       if (description !== undefined) {
-        updateData.description = description;
+        updateData.description = description?.trim() || null;
       }
       if (amenities !== undefined) {
-        updateData.amenities = amenities;
-      }
-      if (available !== undefined) {
-        updateData.available = Boolean(available);
+        updateData.amenities = amenities || [];
       }
 
-      // Handle photo - it should be a string URL after middleware processing
       if (req.body.roomPhoto && typeof req.body.roomPhoto === 'string') {
         updateData.photo = req.body.roomPhoto;
         uploadedImageUrl = req.body.roomPhoto;
       }
 
-      // Update room in database
       const updatedRoom = await prisma.room.update({
-        where: { id: parseInt(id) },
+        where: { id: parsedId },
         data: updateData,
         include: {
           hotel: {
@@ -260,7 +345,6 @@ const handleUpdateRoom = asyncHandler(
         },
       });
 
-      // If we successfully updated with a new photo, clean up the old one
       if (uploadedImageUrl && oldPhoto && oldPhoto !== uploadedImageUrl) {
         try {
           await cloudinaryService.deleteImage(oldPhoto);
@@ -274,10 +358,11 @@ const handleUpdateRoom = asyncHandler(
         roomType: updatedRoom.roomType,
         price: updatedRoom.price,
         capacity: updatedRoom.capacity,
+        totalRooms: updatedRoom.totalRooms,
+        roomsAvailable: updatedRoom.roomsAvailable,
         description: updatedRoom.description,
         amenities: updatedRoom.amenities,
         photo: updatedRoom.photo,
-        available: updatedRoom.available,
         hotel: updatedRoom.hotel,
         createdAt: updatedRoom.createdAt,
         updatedAt: updatedRoom.updatedAt,
@@ -286,9 +371,8 @@ const handleUpdateRoom = asyncHandler(
       res.status(HTTP_STATUS_CODES.OK).json({
         message: 'Room updated successfully',
         data: response,
-      });
+      } as IRoomResponse);
     } catch (error) {
-      // If Cloudinary upload succeeded but DB update failed, clean up uploaded image
       if (uploadedImageUrl) {
         try {
           await cloudinaryService.deleteImage(uploadedImageUrl);
@@ -320,58 +404,125 @@ const deleteRoom = asyncHandler(
     next: NextFunction,
   ): Promise<void> => {
     const { id } = req.params;
-    const user = req.user;
-
-    if (!user) {
-      throw new UnauthorizedError('Unauthorized, no user provided');
-    }
-
-    if (user.role !== 'ADMIN' && user.role !== 'AGENT') {
-      throw new UnauthorizedError('Only admins and agents can delete rooms');
-    }
 
     if (!id) {
       throw new NotFoundError('Room ID is required');
     }
 
-    const room = await prisma.room.findUnique({
-      where: { id: parseInt(id) },
-      include: { bookings: true },
-    });
-
-    if (!room) {
-      throw new NotFoundError('Room not found');
+    const parsedId = parseInt(id);
+    if (isNaN(parsedId)) {
+      throw new BadRequestError('Invalid room ID');
     }
 
-    if (room.bookings.length > 0) {
-      throw new BadRequestError(
-        'Cannot delete room with existing bookings. Please cancel or reassign bookings first.',
+    try {
+      const room = await prisma.room.findUnique({
+        where: { id: parsedId },
+        include: {
+          bookings: {
+            select: {
+              id: true,
+              status: true,
+            },
+          },
+          hotel: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      });
+
+      if (!room) {
+        throw new NotFoundError('Room not found');
+      }
+
+      const now = new Date();
+
+      // Check for active bookings (PENDING or CONFIRMED)
+      const activeBookings = room.bookings.filter(
+        (booking) =>
+          booking.status === 'PENDING' || booking.status === 'CONFIRMED',
       );
-    }
 
-    // Delete from database
-    await prisma.room.delete({
-      where: { id: parseInt(id) },
-    });
-
-    // Clean up photo from Cloudinary if it exists
-    if (room.photo) {
-      try {
-        await cloudinaryService.deleteImage(room.photo);
-      } catch (cleanupError) {
-        console.warn(
-          'Failed to clean up room photo from Cloudinary:',
-          cleanupError,
+      if (activeBookings.length > 0) {
+        throw new BadRequestError(
+          `Cannot delete room with ${activeBookings.length} active booking(s). Please cancel or complete all bookings first.`,
         );
       }
-    }
 
-    res.status(HTTP_STATUS_CODES.OK).json({
-      message: 'Room deleted successfully',
-    });
+      const ongoingBookings = room.bookings.filter(
+        (booking) => booking.status === 'CONFIRMED',
+      );
+
+      if (ongoingBookings.length > 0) {
+        throw new BadRequestError(
+          `Cannot delete room with ${ongoingBookings.length} ongoing booking(s). Guests are currently checked in.`,
+        );
+      }
+
+      const hotelRoomsCount = await prisma.room.count({
+        where: {
+          hotelId: room.hotelId,
+        },
+      });
+
+      // Warn if deleting the last room or one of few rooms
+      if (hotelRoomsCount <= 1) {
+        logger.warn(
+          `Deleting the last room (ID: ${parsedId}) for hotel "${room.hotel.name}" (ID: ${room.hotelId})`,
+        );
+      } else if (hotelRoomsCount <= 3) {
+        logger.warn(
+          `Deleting room (ID: ${parsedId}) - only ${hotelRoomsCount - 1} room(s) will remain for hotel "${room.hotel.name}"`,
+        );
+      }
+
+      // Check if there are historical bookings (for record-keeping)
+      const completedBookings = room.bookings.filter(
+        (booking) =>
+          booking.status === 'COMPLETED' || booking.status === 'CANCELLED',
+      );
+
+      if (completedBookings.length > 0) {
+        logger.info(
+          `Deleting room (ID: ${parsedId}) with ${completedBookings.length} historical booking(s). Bookings will be orphaned.`,
+        );
+      }
+
+      await prisma.room.delete({
+        where: { id: parsedId },
+      });
+
+      if (room.photo) {
+        try {
+          await cloudinaryService.deleteImage(room.photo);
+        } catch (cleanupError) {
+          console.warn(
+            'Failed to clean up room photo from Cloudinary:',
+            cleanupError,
+          );
+        }
+      }
+
+      logger.info(
+        `Room deleted successfully - ID: ${parsedId}, Type: ${room.roomType}, Hotel: ${room.hotel.name} (ID: ${room.hotelId})`,
+      );
+
+      res.status(HTTP_STATUS_CODES.OK).json({
+        message: 'Room deleted successfully',
+        data: {
+          id: room.id,
+          roomType: room.roomType,
+          hotelName: room.hotel.name,
+          deletedAt: new Date().toISOString(),
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
   },
 );
-
 /**
  * Get all rooms with pagination and filtering
  */
@@ -466,7 +617,8 @@ const getAllRooms = asyncHandler(
       description: room.description,
       amenities: room.amenities,
       photo: room.photo,
-      available: room.available,
+      totalRooms: room.totalRooms,
+      roomsAvailable: room.roomsAvailable,
       hotel: room.hotel,
       createdAt: room.createdAt,
       updatedAt: room.updatedAt,
@@ -490,17 +642,6 @@ const getAllRooms = asyncHandler(
  */
 const deleteAllRooms = asyncHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const user = req.user;
-
-    if (!user) {
-      throw new UnauthorizedError('Unauthorized, no user provided');
-    }
-
-    if (user.role !== 'ADMIN') {
-      throw new UnauthorizedError('Only admins can delete all rooms');
-    }
-
-    // Get all rooms with bookings + photos
     const rooms = await prisma.room.findMany({
       include: {
         bookings: true,

@@ -14,10 +14,6 @@ exports.registerUserValidation = [
         required: true,
         minLength: 4,
         maxLength: 255,
-        // requireUppercase: true,
-        // requireLowercase: true,
-        // requireNumbers: true,
-        // requireSpecialChars: true,
         customMessage: 'Password must be a strong password',
     }),
     validation_factory_ts_1.validator.string('address', {

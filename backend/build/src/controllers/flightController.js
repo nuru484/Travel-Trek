@@ -18,15 +18,8 @@ const flight_validation_1 = require("../validations/flight-validation");
  * Create a new flight
  */
 const handleCreateFlight = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
-    const { flightNumber, airline, departure, arrival, originId, destinationId, price, flightClass, duration, stops, seatsAvailable, } = req.body;
+    const { flightNumber, airline, departure, arrival, originId, destinationId, price, flightClass, stops, capacity, } = req.body;
     const user = req.user;
-    if (!user) {
-        throw new error_handler_1.UnauthorizedError('Unauthorized, no user provided');
-    }
-    if (user.role !== 'ADMIN' && user.role !== 'AGENT') {
-        throw new error_handler_1.UnauthorizedError('Only admins and agents can create flights');
-    }
-    // Check if origin and destination exist
     const [origin, destination] = await Promise.all([
         prismaClient_1.default.destination.findUnique({ where: { id: Number(originId) } }),
         prismaClient_1.default.destination.findUnique({ where: { id: Number(destinationId) } }),
@@ -34,22 +27,28 @@ const handleCreateFlight = (0, error_handler_1.asyncHandler)(async (req, res, ne
     if (!origin || !destination) {
         throw new error_handler_1.NotFoundError('Origin or destination not found');
     }
-    // Get photo URL from middleware processing
+    const departureDate = new Date(departure);
+    const arrivalDate = new Date(arrival);
+    const durationInMinutes = Math.round((arrivalDate.getTime() - departureDate.getTime()) / (1000 * 60));
+    if (durationInMinutes <= 0) {
+        throw new error_handler_1.BadRequestError('Arrival time must be after departure time');
+    }
     const photoUrl = req.body.flightPhoto;
     const flight = await prismaClient_1.default.flight.create({
         data: {
             flightNumber,
             airline,
-            departure: new Date(departure),
-            arrival: new Date(arrival),
+            departure: departureDate,
+            arrival: arrivalDate,
             origin: { connect: { id: Number(originId) } },
             destination: { connect: { id: Number(destinationId) } },
             price: +price,
             flightClass,
-            duration: Number(duration),
+            duration: durationInMinutes,
             stops: stops ? Number(stops) : 0,
             photo: typeof photoUrl === 'string' ? photoUrl : null,
-            seatsAvailable: Number(seatsAvailable),
+            seatsAvailable: capacity,
+            capacity: capacity,
         },
     });
     const response = {
@@ -66,6 +65,7 @@ const handleCreateFlight = (0, error_handler_1.asyncHandler)(async (req, res, ne
         stops: flight.stops,
         photo: flight.photo,
         seatsAvailable: flight.seatsAvailable,
+        capacity: flight.capacity,
         createdAt: flight.createdAt,
         updatedAt: flight.updatedAt,
     };
@@ -119,6 +119,7 @@ const handleGetFlight = (0, error_handler_1.asyncHandler)(async (req, res, next)
         stops: flight.stops,
         photo: flight.photo,
         seatsAvailable: flight.seatsAvailable,
+        capacity: flight.capacity,
         createdAt: flight.createdAt,
         updatedAt: flight.updatedAt,
     };
@@ -132,85 +133,92 @@ const handleGetFlight = (0, error_handler_1.asyncHandler)(async (req, res, next)
  */
 const handleUpdateFlight = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const { id } = req.params;
-    const { flightNumber, airline, departure, arrival, originId, destinationId, price, flightClass, duration, stops, seatsAvailable, } = req.body;
+    const { flightNumber, airline, departure, arrival, originId, destinationId, price, flightClass, stops, capacity, } = req.body;
     const user = req.user;
-    if (!user) {
-        throw new error_handler_1.UnauthorizedError('Unauthorized, no user provided');
-    }
-    if (user.role !== 'ADMIN' && user.role !== 'AGENT') {
-        throw new error_handler_1.UnauthorizedError('Only admins and agents can update flights');
-    }
     if (!id) {
         throw new error_handler_1.NotFoundError('Flight ID is required');
     }
     // Parse numeric values to integers
     const parsedId = parseInt(id);
-    const parsedOriginId = originId ? parseInt(String(originId)) : undefined;
-    const parsedDestinationId = destinationId
-        ? parseInt(String(destinationId))
-        : undefined;
-    const parsedPrice = price !== undefined ? parseFloat(String(price)) : undefined;
-    const parsedDuration = duration !== undefined ? parseInt(String(duration)) : undefined;
-    const parsedStops = stops !== undefined ? parseInt(String(stops)) : undefined;
-    const parsedSeatsAvailable = seatsAvailable !== undefined
-        ? parseInt(String(seatsAvailable))
-        : undefined;
     // Validate parsed ID
     if (isNaN(parsedId)) {
         throw new error_handler_1.NotFoundError('Invalid flight ID');
-    }
-    // Validate parsed numeric fields
-    if (parsedOriginId !== undefined && isNaN(parsedOriginId)) {
-        throw new error_handler_1.BadRequestError('Invalid origin ID');
-    }
-    if (parsedDestinationId !== undefined && isNaN(parsedDestinationId)) {
-        throw new error_handler_1.BadRequestError('Invalid destination ID');
-    }
-    if (parsedPrice !== undefined && isNaN(parsedPrice)) {
-        throw new error_handler_1.BadRequestError('Invalid price value');
-    }
-    if (parsedDuration !== undefined && isNaN(parsedDuration)) {
-        throw new error_handler_1.BadRequestError('Invalid duration value');
-    }
-    if (parsedStops !== undefined && isNaN(parsedStops)) {
-        throw new error_handler_1.BadRequestError('Invalid stops value');
-    }
-    if (parsedSeatsAvailable !== undefined && isNaN(parsedSeatsAvailable)) {
-        throw new error_handler_1.BadRequestError('Invalid seats available value');
     }
     // Track the uploaded image URL for cleanup if needed
     let uploadedImageUrl;
     let oldPhoto = null;
     try {
-        // First, get the current flight to check for existing photo
+        // Get the current flight with booking information
         const existingFlight = await prismaClient_1.default.flight.findUnique({
             where: { id: parsedId },
-            select: { photo: true },
+            include: {
+                bookings: {
+                    select: { id: true },
+                },
+            },
         });
         if (!existingFlight) {
             throw new error_handler_1.NotFoundError('Flight not found');
         }
         oldPhoto = existingFlight.photo;
-        // Check if origin and destination exist if provided
-        if (parsedOriginId || parsedDestinationId) {
+        const now = new Date();
+        const bookedSeats = existingFlight.capacity - existingFlight.seatsAvailable;
+        const hasBookings = existingFlight.bookings.length > 0;
+        if (existingFlight.departure <= now) {
+            throw new error_handler_1.BadRequestError('Cannot update flight that has already departed');
+        }
+        if (existingFlight.arrival <= now) {
+            throw new error_handler_1.BadRequestError('Cannot update flight that has already arrived');
+        }
+        const newDeparture = departure
+            ? new Date(departure)
+            : existingFlight.departure;
+        const newArrival = arrival ? new Date(arrival) : existingFlight.arrival;
+        if (departure && new Date(departure) <= now) {
+            throw new error_handler_1.BadRequestError('Departure time must be in the future');
+        }
+        if (arrival && new Date(arrival) <= now) {
+            throw new error_handler_1.BadRequestError('Arrival time must be in the future');
+        }
+        if (newArrival <= newDeparture) {
+            throw new error_handler_1.BadRequestError('Arrival time must be after departure time');
+        }
+        if (hasBookings &&
+            (originId !== undefined || destinationId !== undefined)) {
+            if (originId !== existingFlight.originId ||
+                destinationId !== existingFlight.destinationId) {
+                throw new error_handler_1.BadRequestError('Cannot change flight route (origin/destination) when bookings exist. Please cancel all bookings first or create a new flight.');
+            }
+        }
+        if (capacity !== undefined) {
+            if (capacity < bookedSeats) {
+                throw new error_handler_1.BadRequestError(`Cannot reduce capacity to ${capacity}. ${bookedSeats} seats are already booked. Minimum capacity allowed is ${bookedSeats}.`);
+            }
+            if (capacity > existingFlight.capacity) {
+                const additionalSeats = capacity - existingFlight.capacity;
+            }
+        }
+        if (originId || destinationId) {
             const [origin, destination] = await Promise.all([
-                parsedOriginId
-                    ? prismaClient_1.default.destination.findUnique({ where: { id: parsedOriginId } })
+                originId
+                    ? prismaClient_1.default.destination.findUnique({ where: { id: originId } })
                     : null,
-                parsedDestinationId
+                destinationId
                     ? prismaClient_1.default.destination.findUnique({
-                        where: { id: parsedDestinationId },
+                        where: { id: destinationId },
                     })
                     : null,
             ]);
-            if ((parsedOriginId && !origin) ||
-                (parsedDestinationId && !destination)) {
+            if ((originId && !origin) || (destinationId && !destination)) {
                 throw new error_handler_1.NotFoundError('Origin or destination not found');
             }
         }
-        // Prepare update data
+        let calculatedDuration;
+        if (departure !== undefined || arrival !== undefined) {
+            const durationInMinutes = Math.round((newArrival.getTime() - newDeparture.getTime()) / (1000 * 60));
+            calculatedDuration = durationInMinutes;
+        }
         const updateData = {};
-        // Only update fields that are provided
         if (flightNumber !== undefined) {
             updateData.flightNumber = flightNumber;
         }
@@ -218,43 +226,41 @@ const handleUpdateFlight = (0, error_handler_1.asyncHandler)(async (req, res, ne
             updateData.airline = airline;
         }
         if (departure !== undefined) {
-            updateData.departure = new Date(departure);
+            updateData.departure = newDeparture;
         }
         if (arrival !== undefined) {
-            updateData.arrival = new Date(arrival);
+            updateData.arrival = newArrival;
         }
-        if (parsedOriginId !== undefined) {
-            updateData.origin = { connect: { id: parsedOriginId } };
+        if (calculatedDuration !== undefined) {
+            updateData.duration = calculatedDuration;
         }
-        if (parsedDestinationId !== undefined) {
-            updateData.destination = { connect: { id: parsedDestinationId } };
+        if (originId !== undefined) {
+            updateData.origin = { connect: { id: originId } };
         }
-        if (parsedPrice !== undefined) {
-            updateData.price = parsedPrice;
+        if (destinationId !== undefined) {
+            updateData.destination = { connect: { id: destinationId } };
+        }
+        if (prismaClient_1.default !== undefined) {
+            updateData.price = price;
         }
         if (flightClass !== undefined) {
             updateData.flightClass = flightClass;
         }
-        if (parsedDuration !== undefined) {
-            updateData.duration = parsedDuration;
+        if (stops !== undefined) {
+            updateData.stops = stops;
         }
-        if (parsedStops !== undefined) {
-            updateData.stops = parsedStops;
+        if (capacity !== undefined) {
+            updateData.capacity = capacity;
+            updateData.seatsAvailable = capacity - bookedSeats;
         }
-        if (parsedSeatsAvailable !== undefined) {
-            updateData.seatsAvailable = parsedSeatsAvailable;
-        }
-        // Handle photo - it should be a string URL after middleware processing
         if (req.body.flightPhoto && typeof req.body.flightPhoto === 'string') {
             updateData.photo = req.body.flightPhoto;
             uploadedImageUrl = req.body.flightPhoto;
         }
-        // Update flight in database
         const updatedFlight = await prismaClient_1.default.flight.update({
             where: { id: parsedId },
             data: updateData,
         });
-        // If we successfully updated with a new photo, clean up the old one
         if (uploadedImageUrl && oldPhoto && oldPhoto !== uploadedImageUrl) {
             try {
                 await claudinary_1.cloudinaryService.deleteImage(oldPhoto);
@@ -277,6 +283,7 @@ const handleUpdateFlight = (0, error_handler_1.asyncHandler)(async (req, res, ne
             stops: updatedFlight.stops,
             photo: updatedFlight.photo,
             seatsAvailable: updatedFlight.seatsAvailable,
+            capacity: updatedFlight.capacity,
             createdAt: updatedFlight.createdAt,
             updatedAt: updatedFlight.updatedAt,
         };
@@ -286,7 +293,6 @@ const handleUpdateFlight = (0, error_handler_1.asyncHandler)(async (req, res, ne
         });
     }
     catch (error) {
-        // If Cloudinary upload succeeded but DB update failed, clean up uploaded image
         if (uploadedImageUrl) {
             try {
                 await claudinary_1.cloudinaryService.deleteImage(uploadedImageUrl);
@@ -336,7 +342,6 @@ const handleDeleteFlight = (0, error_handler_1.asyncHandler)(async (req, res, ne
         }
         catch (cleanupError) {
             console.warn('Failed to clean up flight photo from Cloudinary:', cleanupError);
-            // Not throwing here since deletion succeeded
         }
     }
     res.status(constants_1.HTTP_STATUS_CODES.OK).json({

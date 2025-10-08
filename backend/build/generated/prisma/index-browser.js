@@ -142,6 +142,7 @@ exports.Prisma.TourScalarFieldEnum = {
   duration: 'duration',
   price: 'price',
   maxGuests: 'maxGuests',
+  guestsBooked: 'guestsBooked',
   startDate: 'startDate',
   endDate: 'endDate',
   location: 'location',
@@ -209,10 +210,11 @@ exports.Prisma.RoomScalarFieldEnum = {
   roomType: 'roomType',
   price: 'price',
   capacity: 'capacity',
+  totalRooms: 'totalRooms',
+  roomsAvailable: 'roomsAvailable',
   photo: 'photo',
   description: 'description',
   amenities: 'amenities',
-  available: 'available',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -230,6 +232,7 @@ exports.Prisma.FlightScalarFieldEnum = {
   flightClass: 'flightClass',
   duration: 'duration',
   stops: 'stops',
+  capacity: 'capacity',
   seatsAvailable: 'seatsAvailable',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'

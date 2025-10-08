@@ -70,9 +70,7 @@ const getDashboardStats = asyncHandler(
 
         // Hotels stats
         prisma.hotel.count(),
-        prisma.room.count({
-          where: { available: true },
-        }),
+        prisma.room.count({}),
 
         // Flights stats
         prisma.flight.count(),

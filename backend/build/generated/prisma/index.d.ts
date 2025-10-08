@@ -3973,6 +3973,7 @@ export namespace Prisma {
     duration: number | null
     price: number | null
     maxGuests: number | null
+    guestsBooked: number | null
   }
 
   export type TourSumAggregateOutputType = {
@@ -3980,6 +3981,7 @@ export namespace Prisma {
     duration: number | null
     price: number | null
     maxGuests: number | null
+    guestsBooked: number | null
   }
 
   export type TourMinAggregateOutputType = {
@@ -3991,6 +3993,7 @@ export namespace Prisma {
     duration: number | null
     price: number | null
     maxGuests: number | null
+    guestsBooked: number | null
     startDate: Date | null
     endDate: Date | null
     location: string | null
@@ -4007,6 +4010,7 @@ export namespace Prisma {
     duration: number | null
     price: number | null
     maxGuests: number | null
+    guestsBooked: number | null
     startDate: Date | null
     endDate: Date | null
     location: string | null
@@ -4023,6 +4027,7 @@ export namespace Prisma {
     duration: number
     price: number
     maxGuests: number
+    guestsBooked: number
     startDate: number
     endDate: number
     location: number
@@ -4037,6 +4042,7 @@ export namespace Prisma {
     duration?: true
     price?: true
     maxGuests?: true
+    guestsBooked?: true
   }
 
   export type TourSumAggregateInputType = {
@@ -4044,6 +4050,7 @@ export namespace Prisma {
     duration?: true
     price?: true
     maxGuests?: true
+    guestsBooked?: true
   }
 
   export type TourMinAggregateInputType = {
@@ -4055,6 +4062,7 @@ export namespace Prisma {
     duration?: true
     price?: true
     maxGuests?: true
+    guestsBooked?: true
     startDate?: true
     endDate?: true
     location?: true
@@ -4071,6 +4079,7 @@ export namespace Prisma {
     duration?: true
     price?: true
     maxGuests?: true
+    guestsBooked?: true
     startDate?: true
     endDate?: true
     location?: true
@@ -4087,6 +4096,7 @@ export namespace Prisma {
     duration?: true
     price?: true
     maxGuests?: true
+    guestsBooked?: true
     startDate?: true
     endDate?: true
     location?: true
@@ -4190,6 +4200,7 @@ export namespace Prisma {
     duration: number
     price: number
     maxGuests: number
+    guestsBooked: number
     startDate: Date
     endDate: Date
     location: string
@@ -4225,6 +4236,7 @@ export namespace Prisma {
     duration?: boolean
     price?: boolean
     maxGuests?: boolean
+    guestsBooked?: boolean
     startDate?: boolean
     endDate?: boolean
     location?: boolean
@@ -4249,6 +4261,7 @@ export namespace Prisma {
     duration?: boolean
     price?: boolean
     maxGuests?: boolean
+    guestsBooked?: boolean
     startDate?: boolean
     endDate?: boolean
     location?: boolean
@@ -4265,6 +4278,7 @@ export namespace Prisma {
     duration?: boolean
     price?: boolean
     maxGuests?: boolean
+    guestsBooked?: boolean
     startDate?: boolean
     endDate?: boolean
     location?: boolean
@@ -4281,6 +4295,7 @@ export namespace Prisma {
     duration?: boolean
     price?: boolean
     maxGuests?: boolean
+    guestsBooked?: boolean
     startDate?: boolean
     endDate?: boolean
     location?: boolean
@@ -4288,7 +4303,7 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type TourOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "description" | "type" | "status" | "duration" | "price" | "maxGuests" | "startDate" | "endDate" | "location" | "createdAt" | "updatedAt", ExtArgs["result"]["tour"]>
+  export type TourOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "description" | "type" | "status" | "duration" | "price" | "maxGuests" | "guestsBooked" | "startDate" | "endDate" | "location" | "createdAt" | "updatedAt", ExtArgs["result"]["tour"]>
   export type TourInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     itinerary?: boolean | Tour$itineraryArgs<ExtArgs>
     bookings?: boolean | Tour$bookingsArgs<ExtArgs>
@@ -4322,6 +4337,7 @@ export namespace Prisma {
       duration: number
       price: number
       maxGuests: number
+      guestsBooked: number
       startDate: Date
       endDate: Date
       location: string
@@ -4765,6 +4781,7 @@ export namespace Prisma {
     readonly duration: FieldRef<"Tour", 'Int'>
     readonly price: FieldRef<"Tour", 'Float'>
     readonly maxGuests: FieldRef<"Tour", 'Int'>
+    readonly guestsBooked: FieldRef<"Tour", 'Int'>
     readonly startDate: FieldRef<"Tour", 'DateTime'>
     readonly endDate: FieldRef<"Tour", 'DateTime'>
     readonly location: FieldRef<"Tour", 'String'>
@@ -11149,6 +11166,8 @@ export namespace Prisma {
     hotelId: number | null
     price: number | null
     capacity: number | null
+    totalRooms: number | null
+    roomsAvailable: number | null
   }
 
   export type RoomSumAggregateOutputType = {
@@ -11156,6 +11175,8 @@ export namespace Prisma {
     hotelId: number | null
     price: number | null
     capacity: number | null
+    totalRooms: number | null
+    roomsAvailable: number | null
   }
 
   export type RoomMinAggregateOutputType = {
@@ -11164,9 +11185,10 @@ export namespace Prisma {
     roomType: string | null
     price: number | null
     capacity: number | null
+    totalRooms: number | null
+    roomsAvailable: number | null
     photo: string | null
     description: string | null
-    available: boolean | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -11177,9 +11199,10 @@ export namespace Prisma {
     roomType: string | null
     price: number | null
     capacity: number | null
+    totalRooms: number | null
+    roomsAvailable: number | null
     photo: string | null
     description: string | null
-    available: boolean | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -11190,10 +11213,11 @@ export namespace Prisma {
     roomType: number
     price: number
     capacity: number
+    totalRooms: number
+    roomsAvailable: number
     photo: number
     description: number
     amenities: number
-    available: number
     createdAt: number
     updatedAt: number
     _all: number
@@ -11205,6 +11229,8 @@ export namespace Prisma {
     hotelId?: true
     price?: true
     capacity?: true
+    totalRooms?: true
+    roomsAvailable?: true
   }
 
   export type RoomSumAggregateInputType = {
@@ -11212,6 +11238,8 @@ export namespace Prisma {
     hotelId?: true
     price?: true
     capacity?: true
+    totalRooms?: true
+    roomsAvailable?: true
   }
 
   export type RoomMinAggregateInputType = {
@@ -11220,9 +11248,10 @@ export namespace Prisma {
     roomType?: true
     price?: true
     capacity?: true
+    totalRooms?: true
+    roomsAvailable?: true
     photo?: true
     description?: true
-    available?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -11233,9 +11262,10 @@ export namespace Prisma {
     roomType?: true
     price?: true
     capacity?: true
+    totalRooms?: true
+    roomsAvailable?: true
     photo?: true
     description?: true
-    available?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -11246,10 +11276,11 @@ export namespace Prisma {
     roomType?: true
     price?: true
     capacity?: true
+    totalRooms?: true
+    roomsAvailable?: true
     photo?: true
     description?: true
     amenities?: true
-    available?: true
     createdAt?: true
     updatedAt?: true
     _all?: true
@@ -11347,10 +11378,11 @@ export namespace Prisma {
     roomType: string
     price: number
     capacity: number
+    totalRooms: number
+    roomsAvailable: number
     photo: string | null
     description: string | null
     amenities: string[]
-    available: boolean
     createdAt: Date
     updatedAt: Date
     _count: RoomCountAggregateOutputType | null
@@ -11380,10 +11412,11 @@ export namespace Prisma {
     roomType?: boolean
     price?: boolean
     capacity?: boolean
+    totalRooms?: boolean
+    roomsAvailable?: boolean
     photo?: boolean
     description?: boolean
     amenities?: boolean
-    available?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     hotel?: boolean | HotelDefaultArgs<ExtArgs>
@@ -11397,10 +11430,11 @@ export namespace Prisma {
     roomType?: boolean
     price?: boolean
     capacity?: boolean
+    totalRooms?: boolean
+    roomsAvailable?: boolean
     photo?: boolean
     description?: boolean
     amenities?: boolean
-    available?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     hotel?: boolean | HotelDefaultArgs<ExtArgs>
@@ -11412,10 +11446,11 @@ export namespace Prisma {
     roomType?: boolean
     price?: boolean
     capacity?: boolean
+    totalRooms?: boolean
+    roomsAvailable?: boolean
     photo?: boolean
     description?: boolean
     amenities?: boolean
-    available?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     hotel?: boolean | HotelDefaultArgs<ExtArgs>
@@ -11427,15 +11462,16 @@ export namespace Prisma {
     roomType?: boolean
     price?: boolean
     capacity?: boolean
+    totalRooms?: boolean
+    roomsAvailable?: boolean
     photo?: boolean
     description?: boolean
     amenities?: boolean
-    available?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type RoomOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "hotelId" | "roomType" | "price" | "capacity" | "photo" | "description" | "amenities" | "available" | "createdAt" | "updatedAt", ExtArgs["result"]["room"]>
+  export type RoomOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "hotelId" | "roomType" | "price" | "capacity" | "totalRooms" | "roomsAvailable" | "photo" | "description" | "amenities" | "createdAt" | "updatedAt", ExtArgs["result"]["room"]>
   export type RoomInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     hotel?: boolean | HotelDefaultArgs<ExtArgs>
     bookings?: boolean | Room$bookingsArgs<ExtArgs>
@@ -11460,10 +11496,11 @@ export namespace Prisma {
       roomType: string
       price: number
       capacity: number
+      totalRooms: number
+      roomsAvailable: number
       photo: string | null
       description: string | null
       amenities: string[]
-      available: boolean
       createdAt: Date
       updatedAt: Date
     }, ExtArgs["result"]["room"]>
@@ -11896,10 +11933,11 @@ export namespace Prisma {
     readonly roomType: FieldRef<"Room", 'String'>
     readonly price: FieldRef<"Room", 'Float'>
     readonly capacity: FieldRef<"Room", 'Int'>
+    readonly totalRooms: FieldRef<"Room", 'Int'>
+    readonly roomsAvailable: FieldRef<"Room", 'Int'>
     readonly photo: FieldRef<"Room", 'String'>
     readonly description: FieldRef<"Room", 'String'>
     readonly amenities: FieldRef<"Room", 'String[]'>
-    readonly available: FieldRef<"Room", 'Boolean'>
     readonly createdAt: FieldRef<"Room", 'DateTime'>
     readonly updatedAt: FieldRef<"Room", 'DateTime'>
   }
@@ -12359,6 +12397,7 @@ export namespace Prisma {
     price: number | null
     duration: number | null
     stops: number | null
+    capacity: number | null
     seatsAvailable: number | null
   }
 
@@ -12369,6 +12408,7 @@ export namespace Prisma {
     price: number | null
     duration: number | null
     stops: number | null
+    capacity: number | null
     seatsAvailable: number | null
   }
 
@@ -12385,6 +12425,7 @@ export namespace Prisma {
     flightClass: string | null
     duration: number | null
     stops: number | null
+    capacity: number | null
     seatsAvailable: number | null
     createdAt: Date | null
     updatedAt: Date | null
@@ -12403,6 +12444,7 @@ export namespace Prisma {
     flightClass: string | null
     duration: number | null
     stops: number | null
+    capacity: number | null
     seatsAvailable: number | null
     createdAt: Date | null
     updatedAt: Date | null
@@ -12421,6 +12463,7 @@ export namespace Prisma {
     flightClass: number
     duration: number
     stops: number
+    capacity: number
     seatsAvailable: number
     createdAt: number
     updatedAt: number
@@ -12435,6 +12478,7 @@ export namespace Prisma {
     price?: true
     duration?: true
     stops?: true
+    capacity?: true
     seatsAvailable?: true
   }
 
@@ -12445,6 +12489,7 @@ export namespace Prisma {
     price?: true
     duration?: true
     stops?: true
+    capacity?: true
     seatsAvailable?: true
   }
 
@@ -12461,6 +12506,7 @@ export namespace Prisma {
     flightClass?: true
     duration?: true
     stops?: true
+    capacity?: true
     seatsAvailable?: true
     createdAt?: true
     updatedAt?: true
@@ -12479,6 +12525,7 @@ export namespace Prisma {
     flightClass?: true
     duration?: true
     stops?: true
+    capacity?: true
     seatsAvailable?: true
     createdAt?: true
     updatedAt?: true
@@ -12497,6 +12544,7 @@ export namespace Prisma {
     flightClass?: true
     duration?: true
     stops?: true
+    capacity?: true
     seatsAvailable?: true
     createdAt?: true
     updatedAt?: true
@@ -12602,6 +12650,7 @@ export namespace Prisma {
     flightClass: string
     duration: number
     stops: number
+    capacity: number
     seatsAvailable: number
     createdAt: Date
     updatedAt: Date
@@ -12639,6 +12688,7 @@ export namespace Prisma {
     flightClass?: boolean
     duration?: boolean
     stops?: boolean
+    capacity?: boolean
     seatsAvailable?: boolean
     createdAt?: boolean
     updatedAt?: boolean
@@ -12661,6 +12711,7 @@ export namespace Prisma {
     flightClass?: boolean
     duration?: boolean
     stops?: boolean
+    capacity?: boolean
     seatsAvailable?: boolean
     createdAt?: boolean
     updatedAt?: boolean
@@ -12681,6 +12732,7 @@ export namespace Prisma {
     flightClass?: boolean
     duration?: boolean
     stops?: boolean
+    capacity?: boolean
     seatsAvailable?: boolean
     createdAt?: boolean
     updatedAt?: boolean
@@ -12701,12 +12753,13 @@ export namespace Prisma {
     flightClass?: boolean
     duration?: boolean
     stops?: boolean
+    capacity?: boolean
     seatsAvailable?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type FlightOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "flightNumber" | "airline" | "departure" | "arrival" | "originId" | "destinationId" | "price" | "photo" | "flightClass" | "duration" | "stops" | "seatsAvailable" | "createdAt" | "updatedAt", ExtArgs["result"]["flight"]>
+  export type FlightOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "flightNumber" | "airline" | "departure" | "arrival" | "originId" | "destinationId" | "price" | "photo" | "flightClass" | "duration" | "stops" | "capacity" | "seatsAvailable" | "createdAt" | "updatedAt", ExtArgs["result"]["flight"]>
   export type FlightInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     origin?: boolean | DestinationDefaultArgs<ExtArgs>
     destination?: boolean | DestinationDefaultArgs<ExtArgs>
@@ -12742,6 +12795,7 @@ export namespace Prisma {
       flightClass: string
       duration: number
       stops: number
+      capacity: number
       seatsAvailable: number
       createdAt: Date
       updatedAt: Date
@@ -13183,6 +13237,7 @@ export namespace Prisma {
     readonly flightClass: FieldRef<"Flight", 'String'>
     readonly duration: FieldRef<"Flight", 'Int'>
     readonly stops: FieldRef<"Flight", 'Int'>
+    readonly capacity: FieldRef<"Flight", 'Int'>
     readonly seatsAvailable: FieldRef<"Flight", 'Int'>
     readonly createdAt: FieldRef<"Flight", 'DateTime'>
     readonly updatedAt: FieldRef<"Flight", 'DateTime'>
@@ -21678,6 +21733,7 @@ export namespace Prisma {
     duration: 'duration',
     price: 'price',
     maxGuests: 'maxGuests',
+    guestsBooked: 'guestsBooked',
     startDate: 'startDate',
     endDate: 'endDate',
     location: 'location',
@@ -21763,10 +21819,11 @@ export namespace Prisma {
     roomType: 'roomType',
     price: 'price',
     capacity: 'capacity',
+    totalRooms: 'totalRooms',
+    roomsAvailable: 'roomsAvailable',
     photo: 'photo',
     description: 'description',
     amenities: 'amenities',
-    available: 'available',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
   };
@@ -21787,6 +21844,7 @@ export namespace Prisma {
     flightClass: 'flightClass',
     duration: 'duration',
     stops: 'stops',
+    capacity: 'capacity',
     seatsAvailable: 'seatsAvailable',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
@@ -22018,13 +22076,6 @@ export namespace Prisma {
 
 
   /**
-   * Reference to a field of type 'Boolean'
-   */
-  export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
-    
-
-
-  /**
    * Reference to a field of type 'BookingStatus'
    */
   export type EnumBookingStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'BookingStatus'>
@@ -22077,6 +22128,13 @@ export namespace Prisma {
    * Reference to a field of type 'InquiryStatus[]'
    */
   export type ListEnumInquiryStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'InquiryStatus[]'>
+    
+
+
+  /**
+   * Reference to a field of type 'Boolean'
+   */
+  export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
     
   /**
    * Deep Input Types
@@ -22192,6 +22250,7 @@ export namespace Prisma {
     duration?: IntFilter<"Tour"> | number
     price?: FloatFilter<"Tour"> | number
     maxGuests?: IntFilter<"Tour"> | number
+    guestsBooked?: IntFilter<"Tour"> | number
     startDate?: DateTimeFilter<"Tour"> | Date | string
     endDate?: DateTimeFilter<"Tour"> | Date | string
     location?: StringFilter<"Tour"> | string
@@ -22215,6 +22274,7 @@ export namespace Prisma {
     duration?: SortOrder
     price?: SortOrder
     maxGuests?: SortOrder
+    guestsBooked?: SortOrder
     startDate?: SortOrder
     endDate?: SortOrder
     location?: SortOrder
@@ -22241,6 +22301,7 @@ export namespace Prisma {
     duration?: IntFilter<"Tour"> | number
     price?: FloatFilter<"Tour"> | number
     maxGuests?: IntFilter<"Tour"> | number
+    guestsBooked?: IntFilter<"Tour"> | number
     startDate?: DateTimeFilter<"Tour"> | Date | string
     endDate?: DateTimeFilter<"Tour"> | Date | string
     location?: StringFilter<"Tour"> | string
@@ -22264,6 +22325,7 @@ export namespace Prisma {
     duration?: SortOrder
     price?: SortOrder
     maxGuests?: SortOrder
+    guestsBooked?: SortOrder
     startDate?: SortOrder
     endDate?: SortOrder
     location?: SortOrder
@@ -22288,6 +22350,7 @@ export namespace Prisma {
     duration?: IntWithAggregatesFilter<"Tour"> | number
     price?: FloatWithAggregatesFilter<"Tour"> | number
     maxGuests?: IntWithAggregatesFilter<"Tour"> | number
+    guestsBooked?: IntWithAggregatesFilter<"Tour"> | number
     startDate?: DateTimeWithAggregatesFilter<"Tour"> | Date | string
     endDate?: DateTimeWithAggregatesFilter<"Tour"> | Date | string
     location?: StringWithAggregatesFilter<"Tour"> | string
@@ -22671,10 +22734,11 @@ export namespace Prisma {
     roomType?: StringFilter<"Room"> | string
     price?: FloatFilter<"Room"> | number
     capacity?: IntFilter<"Room"> | number
+    totalRooms?: IntFilter<"Room"> | number
+    roomsAvailable?: IntFilter<"Room"> | number
     photo?: StringNullableFilter<"Room"> | string | null
     description?: StringNullableFilter<"Room"> | string | null
     amenities?: StringNullableListFilter<"Room">
-    available?: BoolFilter<"Room"> | boolean
     createdAt?: DateTimeFilter<"Room"> | Date | string
     updatedAt?: DateTimeFilter<"Room"> | Date | string
     hotel?: XOR<HotelScalarRelationFilter, HotelWhereInput>
@@ -22687,10 +22751,11 @@ export namespace Prisma {
     roomType?: SortOrder
     price?: SortOrder
     capacity?: SortOrder
+    totalRooms?: SortOrder
+    roomsAvailable?: SortOrder
     photo?: SortOrderInput | SortOrder
     description?: SortOrderInput | SortOrder
     amenities?: SortOrder
-    available?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     hotel?: HotelOrderByWithRelationInput
@@ -22706,10 +22771,11 @@ export namespace Prisma {
     roomType?: StringFilter<"Room"> | string
     price?: FloatFilter<"Room"> | number
     capacity?: IntFilter<"Room"> | number
+    totalRooms?: IntFilter<"Room"> | number
+    roomsAvailable?: IntFilter<"Room"> | number
     photo?: StringNullableFilter<"Room"> | string | null
     description?: StringNullableFilter<"Room"> | string | null
     amenities?: StringNullableListFilter<"Room">
-    available?: BoolFilter<"Room"> | boolean
     createdAt?: DateTimeFilter<"Room"> | Date | string
     updatedAt?: DateTimeFilter<"Room"> | Date | string
     hotel?: XOR<HotelScalarRelationFilter, HotelWhereInput>
@@ -22722,10 +22788,11 @@ export namespace Prisma {
     roomType?: SortOrder
     price?: SortOrder
     capacity?: SortOrder
+    totalRooms?: SortOrder
+    roomsAvailable?: SortOrder
     photo?: SortOrderInput | SortOrder
     description?: SortOrderInput | SortOrder
     amenities?: SortOrder
-    available?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: RoomCountOrderByAggregateInput
@@ -22744,10 +22811,11 @@ export namespace Prisma {
     roomType?: StringWithAggregatesFilter<"Room"> | string
     price?: FloatWithAggregatesFilter<"Room"> | number
     capacity?: IntWithAggregatesFilter<"Room"> | number
+    totalRooms?: IntWithAggregatesFilter<"Room"> | number
+    roomsAvailable?: IntWithAggregatesFilter<"Room"> | number
     photo?: StringNullableWithAggregatesFilter<"Room"> | string | null
     description?: StringNullableWithAggregatesFilter<"Room"> | string | null
     amenities?: StringNullableListFilter<"Room">
-    available?: BoolWithAggregatesFilter<"Room"> | boolean
     createdAt?: DateTimeWithAggregatesFilter<"Room"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Room"> | Date | string
   }
@@ -22768,6 +22836,7 @@ export namespace Prisma {
     flightClass?: StringFilter<"Flight"> | string
     duration?: IntFilter<"Flight"> | number
     stops?: IntFilter<"Flight"> | number
+    capacity?: IntFilter<"Flight"> | number
     seatsAvailable?: IntFilter<"Flight"> | number
     createdAt?: DateTimeFilter<"Flight"> | Date | string
     updatedAt?: DateTimeFilter<"Flight"> | Date | string
@@ -22789,6 +22858,7 @@ export namespace Prisma {
     flightClass?: SortOrder
     duration?: SortOrder
     stops?: SortOrder
+    capacity?: SortOrder
     seatsAvailable?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -22813,6 +22883,7 @@ export namespace Prisma {
     flightClass?: StringFilter<"Flight"> | string
     duration?: IntFilter<"Flight"> | number
     stops?: IntFilter<"Flight"> | number
+    capacity?: IntFilter<"Flight"> | number
     seatsAvailable?: IntFilter<"Flight"> | number
     createdAt?: DateTimeFilter<"Flight"> | Date | string
     updatedAt?: DateTimeFilter<"Flight"> | Date | string
@@ -22834,6 +22905,7 @@ export namespace Prisma {
     flightClass?: SortOrder
     duration?: SortOrder
     stops?: SortOrder
+    capacity?: SortOrder
     seatsAvailable?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -22860,6 +22932,7 @@ export namespace Prisma {
     flightClass?: StringWithAggregatesFilter<"Flight"> | string
     duration?: IntWithAggregatesFilter<"Flight"> | number
     stops?: IntWithAggregatesFilter<"Flight"> | number
+    capacity?: IntWithAggregatesFilter<"Flight"> | number
     seatsAvailable?: IntWithAggregatesFilter<"Flight"> | number
     createdAt?: DateTimeWithAggregatesFilter<"Flight"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Flight"> | Date | string
@@ -23496,6 +23569,7 @@ export namespace Prisma {
     duration: number
     price: number
     maxGuests: number
+    guestsBooked?: number
     startDate: Date | string
     endDate: Date | string
     location: string
@@ -23519,6 +23593,7 @@ export namespace Prisma {
     duration: number
     price: number
     maxGuests: number
+    guestsBooked?: number
     startDate: Date | string
     endDate: Date | string
     location: string
@@ -23541,6 +23616,7 @@ export namespace Prisma {
     duration?: IntFieldUpdateOperationsInput | number
     price?: FloatFieldUpdateOperationsInput | number
     maxGuests?: IntFieldUpdateOperationsInput | number
+    guestsBooked?: IntFieldUpdateOperationsInput | number
     startDate?: DateTimeFieldUpdateOperationsInput | Date | string
     endDate?: DateTimeFieldUpdateOperationsInput | Date | string
     location?: StringFieldUpdateOperationsInput | string
@@ -23564,6 +23640,7 @@ export namespace Prisma {
     duration?: IntFieldUpdateOperationsInput | number
     price?: FloatFieldUpdateOperationsInput | number
     maxGuests?: IntFieldUpdateOperationsInput | number
+    guestsBooked?: IntFieldUpdateOperationsInput | number
     startDate?: DateTimeFieldUpdateOperationsInput | Date | string
     endDate?: DateTimeFieldUpdateOperationsInput | Date | string
     location?: StringFieldUpdateOperationsInput | string
@@ -23587,6 +23664,7 @@ export namespace Prisma {
     duration: number
     price: number
     maxGuests: number
+    guestsBooked?: number
     startDate: Date | string
     endDate: Date | string
     location: string
@@ -23602,6 +23680,7 @@ export namespace Prisma {
     duration?: IntFieldUpdateOperationsInput | number
     price?: FloatFieldUpdateOperationsInput | number
     maxGuests?: IntFieldUpdateOperationsInput | number
+    guestsBooked?: IntFieldUpdateOperationsInput | number
     startDate?: DateTimeFieldUpdateOperationsInput | Date | string
     endDate?: DateTimeFieldUpdateOperationsInput | Date | string
     location?: StringFieldUpdateOperationsInput | string
@@ -23618,6 +23697,7 @@ export namespace Prisma {
     duration?: IntFieldUpdateOperationsInput | number
     price?: FloatFieldUpdateOperationsInput | number
     maxGuests?: IntFieldUpdateOperationsInput | number
+    guestsBooked?: IntFieldUpdateOperationsInput | number
     startDate?: DateTimeFieldUpdateOperationsInput | Date | string
     endDate?: DateTimeFieldUpdateOperationsInput | Date | string
     location?: StringFieldUpdateOperationsInput | string
@@ -24008,10 +24088,11 @@ export namespace Prisma {
     roomType: string
     price: number
     capacity: number
+    totalRooms: number
+    roomsAvailable?: number
     photo?: string | null
     description?: string | null
     amenities?: RoomCreateamenitiesInput | string[]
-    available?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     hotel: HotelCreateNestedOneWithoutRoomsInput
@@ -24024,10 +24105,11 @@ export namespace Prisma {
     roomType: string
     price: number
     capacity: number
+    totalRooms: number
+    roomsAvailable?: number
     photo?: string | null
     description?: string | null
     amenities?: RoomCreateamenitiesInput | string[]
-    available?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     bookings?: BookingUncheckedCreateNestedManyWithoutRoomInput
@@ -24037,10 +24119,11 @@ export namespace Prisma {
     roomType?: StringFieldUpdateOperationsInput | string
     price?: FloatFieldUpdateOperationsInput | number
     capacity?: IntFieldUpdateOperationsInput | number
+    totalRooms?: IntFieldUpdateOperationsInput | number
+    roomsAvailable?: IntFieldUpdateOperationsInput | number
     photo?: NullableStringFieldUpdateOperationsInput | string | null
     description?: NullableStringFieldUpdateOperationsInput | string | null
     amenities?: RoomUpdateamenitiesInput | string[]
-    available?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     hotel?: HotelUpdateOneRequiredWithoutRoomsNestedInput
@@ -24053,10 +24136,11 @@ export namespace Prisma {
     roomType?: StringFieldUpdateOperationsInput | string
     price?: FloatFieldUpdateOperationsInput | number
     capacity?: IntFieldUpdateOperationsInput | number
+    totalRooms?: IntFieldUpdateOperationsInput | number
+    roomsAvailable?: IntFieldUpdateOperationsInput | number
     photo?: NullableStringFieldUpdateOperationsInput | string | null
     description?: NullableStringFieldUpdateOperationsInput | string | null
     amenities?: RoomUpdateamenitiesInput | string[]
-    available?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     bookings?: BookingUncheckedUpdateManyWithoutRoomNestedInput
@@ -24068,10 +24152,11 @@ export namespace Prisma {
     roomType: string
     price: number
     capacity: number
+    totalRooms: number
+    roomsAvailable?: number
     photo?: string | null
     description?: string | null
     amenities?: RoomCreateamenitiesInput | string[]
-    available?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -24080,10 +24165,11 @@ export namespace Prisma {
     roomType?: StringFieldUpdateOperationsInput | string
     price?: FloatFieldUpdateOperationsInput | number
     capacity?: IntFieldUpdateOperationsInput | number
+    totalRooms?: IntFieldUpdateOperationsInput | number
+    roomsAvailable?: IntFieldUpdateOperationsInput | number
     photo?: NullableStringFieldUpdateOperationsInput | string | null
     description?: NullableStringFieldUpdateOperationsInput | string | null
     amenities?: RoomUpdateamenitiesInput | string[]
-    available?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -24094,10 +24180,11 @@ export namespace Prisma {
     roomType?: StringFieldUpdateOperationsInput | string
     price?: FloatFieldUpdateOperationsInput | number
     capacity?: IntFieldUpdateOperationsInput | number
+    totalRooms?: IntFieldUpdateOperationsInput | number
+    roomsAvailable?: IntFieldUpdateOperationsInput | number
     photo?: NullableStringFieldUpdateOperationsInput | string | null
     description?: NullableStringFieldUpdateOperationsInput | string | null
     amenities?: RoomUpdateamenitiesInput | string[]
-    available?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -24112,7 +24199,8 @@ export namespace Prisma {
     flightClass: string
     duration: number
     stops?: number
-    seatsAvailable: number
+    capacity: number
+    seatsAvailable?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     origin: DestinationCreateNestedOneWithoutOriginFlightsInput
@@ -24133,7 +24221,8 @@ export namespace Prisma {
     flightClass: string
     duration: number
     stops?: number
-    seatsAvailable: number
+    capacity: number
+    seatsAvailable?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     bookings?: BookingUncheckedCreateNestedManyWithoutFlightInput
@@ -24149,6 +24238,7 @@ export namespace Prisma {
     flightClass?: StringFieldUpdateOperationsInput | string
     duration?: IntFieldUpdateOperationsInput | number
     stops?: IntFieldUpdateOperationsInput | number
+    capacity?: IntFieldUpdateOperationsInput | number
     seatsAvailable?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -24170,6 +24260,7 @@ export namespace Prisma {
     flightClass?: StringFieldUpdateOperationsInput | string
     duration?: IntFieldUpdateOperationsInput | number
     stops?: IntFieldUpdateOperationsInput | number
+    capacity?: IntFieldUpdateOperationsInput | number
     seatsAvailable?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -24189,7 +24280,8 @@ export namespace Prisma {
     flightClass: string
     duration: number
     stops?: number
-    seatsAvailable: number
+    capacity: number
+    seatsAvailable?: number
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -24204,6 +24296,7 @@ export namespace Prisma {
     flightClass?: StringFieldUpdateOperationsInput | string
     duration?: IntFieldUpdateOperationsInput | number
     stops?: IntFieldUpdateOperationsInput | number
+    capacity?: IntFieldUpdateOperationsInput | number
     seatsAvailable?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -24222,6 +24315,7 @@ export namespace Prisma {
     flightClass?: StringFieldUpdateOperationsInput | string
     duration?: IntFieldUpdateOperationsInput | number
     stops?: IntFieldUpdateOperationsInput | number
+    capacity?: IntFieldUpdateOperationsInput | number
     seatsAvailable?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -25037,6 +25131,7 @@ export namespace Prisma {
     duration?: SortOrder
     price?: SortOrder
     maxGuests?: SortOrder
+    guestsBooked?: SortOrder
     startDate?: SortOrder
     endDate?: SortOrder
     location?: SortOrder
@@ -25049,6 +25144,7 @@ export namespace Prisma {
     duration?: SortOrder
     price?: SortOrder
     maxGuests?: SortOrder
+    guestsBooked?: SortOrder
   }
 
   export type TourMaxOrderByAggregateInput = {
@@ -25060,6 +25156,7 @@ export namespace Prisma {
     duration?: SortOrder
     price?: SortOrder
     maxGuests?: SortOrder
+    guestsBooked?: SortOrder
     startDate?: SortOrder
     endDate?: SortOrder
     location?: SortOrder
@@ -25076,6 +25173,7 @@ export namespace Prisma {
     duration?: SortOrder
     price?: SortOrder
     maxGuests?: SortOrder
+    guestsBooked?: SortOrder
     startDate?: SortOrder
     endDate?: SortOrder
     location?: SortOrder
@@ -25088,6 +25186,7 @@ export namespace Prisma {
     duration?: SortOrder
     price?: SortOrder
     maxGuests?: SortOrder
+    guestsBooked?: SortOrder
   }
 
   export type EnumTourTypeWithAggregatesFilter<$PrismaModel = never> = {
@@ -25396,11 +25495,6 @@ export namespace Prisma {
     destinationId?: SortOrder
   }
 
-  export type BoolFilter<$PrismaModel = never> = {
-    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
-    not?: NestedBoolFilter<$PrismaModel> | boolean
-  }
-
   export type HotelScalarRelationFilter = {
     is?: HotelWhereInput
     isNot?: HotelWhereInput
@@ -25412,10 +25506,11 @@ export namespace Prisma {
     roomType?: SortOrder
     price?: SortOrder
     capacity?: SortOrder
+    totalRooms?: SortOrder
+    roomsAvailable?: SortOrder
     photo?: SortOrder
     description?: SortOrder
     amenities?: SortOrder
-    available?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -25425,6 +25520,8 @@ export namespace Prisma {
     hotelId?: SortOrder
     price?: SortOrder
     capacity?: SortOrder
+    totalRooms?: SortOrder
+    roomsAvailable?: SortOrder
   }
 
   export type RoomMaxOrderByAggregateInput = {
@@ -25433,9 +25530,10 @@ export namespace Prisma {
     roomType?: SortOrder
     price?: SortOrder
     capacity?: SortOrder
+    totalRooms?: SortOrder
+    roomsAvailable?: SortOrder
     photo?: SortOrder
     description?: SortOrder
-    available?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -25446,9 +25544,10 @@ export namespace Prisma {
     roomType?: SortOrder
     price?: SortOrder
     capacity?: SortOrder
+    totalRooms?: SortOrder
+    roomsAvailable?: SortOrder
     photo?: SortOrder
     description?: SortOrder
-    available?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -25458,14 +25557,8 @@ export namespace Prisma {
     hotelId?: SortOrder
     price?: SortOrder
     capacity?: SortOrder
-  }
-
-  export type BoolWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
-    not?: NestedBoolWithAggregatesFilter<$PrismaModel> | boolean
-    _count?: NestedIntFilter<$PrismaModel>
-    _min?: NestedBoolFilter<$PrismaModel>
-    _max?: NestedBoolFilter<$PrismaModel>
+    totalRooms?: SortOrder
+    roomsAvailable?: SortOrder
   }
 
   export type FlightCountOrderByAggregateInput = {
@@ -25481,6 +25574,7 @@ export namespace Prisma {
     flightClass?: SortOrder
     duration?: SortOrder
     stops?: SortOrder
+    capacity?: SortOrder
     seatsAvailable?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -25493,6 +25587,7 @@ export namespace Prisma {
     price?: SortOrder
     duration?: SortOrder
     stops?: SortOrder
+    capacity?: SortOrder
     seatsAvailable?: SortOrder
   }
 
@@ -25509,6 +25604,7 @@ export namespace Prisma {
     flightClass?: SortOrder
     duration?: SortOrder
     stops?: SortOrder
+    capacity?: SortOrder
     seatsAvailable?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -25527,6 +25623,7 @@ export namespace Prisma {
     flightClass?: SortOrder
     duration?: SortOrder
     stops?: SortOrder
+    capacity?: SortOrder
     seatsAvailable?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -25539,6 +25636,7 @@ export namespace Prisma {
     price?: SortOrder
     duration?: SortOrder
     stops?: SortOrder
+    capacity?: SortOrder
     seatsAvailable?: SortOrder
   }
 
@@ -25989,6 +26087,11 @@ export namespace Prisma {
     tourId?: SortOrder
   }
 
+  export type BoolFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
+    not?: NestedBoolFilter<$PrismaModel> | boolean
+  }
+
   export type NotificationCountOrderByAggregateInput = {
     id?: SortOrder
     userId?: SortOrder
@@ -26024,6 +26127,14 @@ export namespace Prisma {
   export type NotificationSumOrderByAggregateInput = {
     id?: SortOrder
     userId?: SortOrder
+  }
+
+  export type BoolWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
+    not?: NestedBoolWithAggregatesFilter<$PrismaModel> | boolean
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedBoolFilter<$PrismaModel>
+    _max?: NestedBoolFilter<$PrismaModel>
   }
 
   export type BookingCreateNestedManyWithoutUserInput = {
@@ -26908,10 +27019,6 @@ export namespace Prisma {
     push?: string | string[]
   }
 
-  export type BoolFieldUpdateOperationsInput = {
-    set?: boolean
-  }
-
   export type HotelUpdateOneRequiredWithoutRoomsNestedInput = {
     create?: XOR<HotelCreateWithoutRoomsInput, HotelUncheckedCreateWithoutRoomsInput>
     connectOrCreate?: HotelCreateOrConnectWithoutRoomsInput
@@ -27244,6 +27351,10 @@ export namespace Prisma {
     connect?: UserWhereUniqueInput
   }
 
+  export type BoolFieldUpdateOperationsInput = {
+    set?: boolean
+  }
+
   export type UserUpdateOneRequiredWithoutNotificationNestedInput = {
     create?: XOR<UserCreateWithoutNotificationInput, UserUncheckedCreateWithoutNotificationInput>
     connectOrCreate?: UserCreateOrConnectWithoutNotificationInput
@@ -27455,19 +27566,6 @@ export namespace Prisma {
     _max?: NestedFloatFilter<$PrismaModel>
   }
 
-  export type NestedBoolFilter<$PrismaModel = never> = {
-    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
-    not?: NestedBoolFilter<$PrismaModel> | boolean
-  }
-
-  export type NestedBoolWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
-    not?: NestedBoolWithAggregatesFilter<$PrismaModel> | boolean
-    _count?: NestedIntFilter<$PrismaModel>
-    _min?: NestedBoolFilter<$PrismaModel>
-    _max?: NestedBoolFilter<$PrismaModel>
-  }
-
   export type NestedEnumBookingStatusFilter<$PrismaModel = never> = {
     equals?: $Enums.BookingStatus | EnumBookingStatusFieldRefInput<$PrismaModel>
     in?: $Enums.BookingStatus[] | ListEnumBookingStatusFieldRefInput<$PrismaModel>
@@ -27586,6 +27684,19 @@ export namespace Prisma {
     _count?: NestedIntFilter<$PrismaModel>
     _min?: NestedEnumInquiryStatusFilter<$PrismaModel>
     _max?: NestedEnumInquiryStatusFilter<$PrismaModel>
+  }
+
+  export type NestedBoolFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
+    not?: NestedBoolFilter<$PrismaModel> | boolean
+  }
+
+  export type NestedBoolWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
+    not?: NestedBoolWithAggregatesFilter<$PrismaModel> | boolean
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedBoolFilter<$PrismaModel>
+    _max?: NestedBoolFilter<$PrismaModel>
   }
 
   export type BookingCreateWithoutUserInput = {
@@ -28295,6 +28406,7 @@ export namespace Prisma {
     duration: number
     price: number
     maxGuests: number
+    guestsBooked?: number
     startDate: Date | string
     endDate: Date | string
     location: string
@@ -28317,6 +28429,7 @@ export namespace Prisma {
     duration: number
     price: number
     maxGuests: number
+    guestsBooked?: number
     startDate: Date | string
     endDate: Date | string
     location: string
@@ -28386,7 +28499,8 @@ export namespace Prisma {
     flightClass: string
     duration: number
     stops?: number
-    seatsAvailable: number
+    capacity: number
+    seatsAvailable?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     destination: DestinationCreateNestedOneWithoutDestinationFlightsInput
@@ -28405,7 +28519,8 @@ export namespace Prisma {
     flightClass: string
     duration: number
     stops?: number
-    seatsAvailable: number
+    capacity: number
+    seatsAvailable?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     bookings?: BookingUncheckedCreateNestedManyWithoutFlightInput
@@ -28431,7 +28546,8 @@ export namespace Prisma {
     flightClass: string
     duration: number
     stops?: number
-    seatsAvailable: number
+    capacity: number
+    seatsAvailable?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     origin: DestinationCreateNestedOneWithoutOriginFlightsInput
@@ -28450,7 +28566,8 @@ export namespace Prisma {
     flightClass: string
     duration: number
     stops?: number
-    seatsAvailable: number
+    capacity: number
+    seatsAvailable?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     bookings?: BookingUncheckedCreateNestedManyWithoutFlightInput
@@ -28494,6 +28611,7 @@ export namespace Prisma {
     duration?: IntFilter<"Tour"> | number
     price?: FloatFilter<"Tour"> | number
     maxGuests?: IntFilter<"Tour"> | number
+    guestsBooked?: IntFilter<"Tour"> | number
     startDate?: DateTimeFilter<"Tour"> | Date | string
     endDate?: DateTimeFilter<"Tour"> | Date | string
     location?: StringFilter<"Tour"> | string
@@ -28568,6 +28686,7 @@ export namespace Prisma {
     flightClass?: StringFilter<"Flight"> | string
     duration?: IntFilter<"Flight"> | number
     stops?: IntFilter<"Flight"> | number
+    capacity?: IntFilter<"Flight"> | number
     seatsAvailable?: IntFilter<"Flight"> | number
     createdAt?: DateTimeFilter<"Flight"> | Date | string
     updatedAt?: DateTimeFilter<"Flight"> | Date | string
@@ -28597,6 +28716,7 @@ export namespace Prisma {
     duration: number
     price: number
     maxGuests: number
+    guestsBooked?: number
     startDate: Date | string
     endDate: Date | string
     location: string
@@ -28619,6 +28739,7 @@ export namespace Prisma {
     duration: number
     price: number
     maxGuests: number
+    guestsBooked?: number
     startDate: Date | string
     endDate: Date | string
     location: string
@@ -28656,6 +28777,7 @@ export namespace Prisma {
     duration?: IntFieldUpdateOperationsInput | number
     price?: FloatFieldUpdateOperationsInput | number
     maxGuests?: IntFieldUpdateOperationsInput | number
+    guestsBooked?: IntFieldUpdateOperationsInput | number
     startDate?: DateTimeFieldUpdateOperationsInput | Date | string
     endDate?: DateTimeFieldUpdateOperationsInput | Date | string
     location?: StringFieldUpdateOperationsInput | string
@@ -28678,6 +28800,7 @@ export namespace Prisma {
     duration?: IntFieldUpdateOperationsInput | number
     price?: FloatFieldUpdateOperationsInput | number
     maxGuests?: IntFieldUpdateOperationsInput | number
+    guestsBooked?: IntFieldUpdateOperationsInput | number
     startDate?: DateTimeFieldUpdateOperationsInput | Date | string
     endDate?: DateTimeFieldUpdateOperationsInput | Date | string
     location?: StringFieldUpdateOperationsInput | string
@@ -28699,6 +28822,7 @@ export namespace Prisma {
     duration: number
     price: number
     maxGuests: number
+    guestsBooked?: number
     startDate: Date | string
     endDate: Date | string
     location: string
@@ -28721,6 +28845,7 @@ export namespace Prisma {
     duration: number
     price: number
     maxGuests: number
+    guestsBooked?: number
     startDate: Date | string
     endDate: Date | string
     location: string
@@ -28758,6 +28883,7 @@ export namespace Prisma {
     duration?: IntFieldUpdateOperationsInput | number
     price?: FloatFieldUpdateOperationsInput | number
     maxGuests?: IntFieldUpdateOperationsInput | number
+    guestsBooked?: IntFieldUpdateOperationsInput | number
     startDate?: DateTimeFieldUpdateOperationsInput | Date | string
     endDate?: DateTimeFieldUpdateOperationsInput | Date | string
     location?: StringFieldUpdateOperationsInput | string
@@ -28780,6 +28906,7 @@ export namespace Prisma {
     duration?: IntFieldUpdateOperationsInput | number
     price?: FloatFieldUpdateOperationsInput | number
     maxGuests?: IntFieldUpdateOperationsInput | number
+    guestsBooked?: IntFieldUpdateOperationsInput | number
     startDate?: DateTimeFieldUpdateOperationsInput | Date | string
     endDate?: DateTimeFieldUpdateOperationsInput | Date | string
     location?: StringFieldUpdateOperationsInput | string
@@ -28801,6 +28928,7 @@ export namespace Prisma {
     duration: number
     price: number
     maxGuests: number
+    guestsBooked?: number
     startDate: Date | string
     endDate: Date | string
     location: string
@@ -28823,6 +28951,7 @@ export namespace Prisma {
     duration: number
     price: number
     maxGuests: number
+    guestsBooked?: number
     startDate: Date | string
     endDate: Date | string
     location: string
@@ -28860,6 +28989,7 @@ export namespace Prisma {
     duration?: IntFieldUpdateOperationsInput | number
     price?: FloatFieldUpdateOperationsInput | number
     maxGuests?: IntFieldUpdateOperationsInput | number
+    guestsBooked?: IntFieldUpdateOperationsInput | number
     startDate?: DateTimeFieldUpdateOperationsInput | Date | string
     endDate?: DateTimeFieldUpdateOperationsInput | Date | string
     location?: StringFieldUpdateOperationsInput | string
@@ -28882,6 +29012,7 @@ export namespace Prisma {
     duration?: IntFieldUpdateOperationsInput | number
     price?: FloatFieldUpdateOperationsInput | number
     maxGuests?: IntFieldUpdateOperationsInput | number
+    guestsBooked?: IntFieldUpdateOperationsInput | number
     startDate?: DateTimeFieldUpdateOperationsInput | Date | string
     endDate?: DateTimeFieldUpdateOperationsInput | Date | string
     location?: StringFieldUpdateOperationsInput | string
@@ -28931,10 +29062,11 @@ export namespace Prisma {
     roomType: string
     price: number
     capacity: number
+    totalRooms: number
+    roomsAvailable?: number
     photo?: string | null
     description?: string | null
     amenities?: RoomCreateamenitiesInput | string[]
-    available?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     bookings?: BookingCreateNestedManyWithoutRoomInput
@@ -28945,10 +29077,11 @@ export namespace Prisma {
     roomType: string
     price: number
     capacity: number
+    totalRooms: number
+    roomsAvailable?: number
     photo?: string | null
     description?: string | null
     amenities?: RoomCreateamenitiesInput | string[]
-    available?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     bookings?: BookingUncheckedCreateNestedManyWithoutRoomInput
@@ -29027,10 +29160,11 @@ export namespace Prisma {
     roomType?: StringFilter<"Room"> | string
     price?: FloatFilter<"Room"> | number
     capacity?: IntFilter<"Room"> | number
+    totalRooms?: IntFilter<"Room"> | number
+    roomsAvailable?: IntFilter<"Room"> | number
     photo?: StringNullableFilter<"Room"> | string | null
     description?: StringNullableFilter<"Room"> | string | null
     amenities?: StringNullableListFilter<"Room">
-    available?: BoolFilter<"Room"> | boolean
     createdAt?: DateTimeFilter<"Room"> | Date | string
     updatedAt?: DateTimeFilter<"Room"> | Date | string
   }
@@ -29403,6 +29537,7 @@ export namespace Prisma {
     duration: number
     price: number
     maxGuests: number
+    guestsBooked?: number
     startDate: Date | string
     endDate: Date | string
     location: string
@@ -29425,6 +29560,7 @@ export namespace Prisma {
     duration: number
     price: number
     maxGuests: number
+    guestsBooked?: number
     startDate: Date | string
     endDate: Date | string
     location: string
@@ -29447,10 +29583,11 @@ export namespace Prisma {
     roomType: string
     price: number
     capacity: number
+    totalRooms: number
+    roomsAvailable?: number
     photo?: string | null
     description?: string | null
     amenities?: RoomCreateamenitiesInput | string[]
-    available?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     hotel: HotelCreateNestedOneWithoutRoomsInput
@@ -29462,10 +29599,11 @@ export namespace Prisma {
     roomType: string
     price: number
     capacity: number
+    totalRooms: number
+    roomsAvailable?: number
     photo?: string | null
     description?: string | null
     amenities?: RoomCreateamenitiesInput | string[]
-    available?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -29485,7 +29623,8 @@ export namespace Prisma {
     flightClass: string
     duration: number
     stops?: number
-    seatsAvailable: number
+    capacity: number
+    seatsAvailable?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     origin: DestinationCreateNestedOneWithoutOriginFlightsInput
@@ -29505,7 +29644,8 @@ export namespace Prisma {
     flightClass: string
     duration: number
     stops?: number
-    seatsAvailable: number
+    capacity: number
+    seatsAvailable?: number
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -29610,6 +29750,7 @@ export namespace Prisma {
     duration?: IntFieldUpdateOperationsInput | number
     price?: FloatFieldUpdateOperationsInput | number
     maxGuests?: IntFieldUpdateOperationsInput | number
+    guestsBooked?: IntFieldUpdateOperationsInput | number
     startDate?: DateTimeFieldUpdateOperationsInput | Date | string
     endDate?: DateTimeFieldUpdateOperationsInput | Date | string
     location?: StringFieldUpdateOperationsInput | string
@@ -29632,6 +29773,7 @@ export namespace Prisma {
     duration?: IntFieldUpdateOperationsInput | number
     price?: FloatFieldUpdateOperationsInput | number
     maxGuests?: IntFieldUpdateOperationsInput | number
+    guestsBooked?: IntFieldUpdateOperationsInput | number
     startDate?: DateTimeFieldUpdateOperationsInput | Date | string
     endDate?: DateTimeFieldUpdateOperationsInput | Date | string
     location?: StringFieldUpdateOperationsInput | string
@@ -29660,10 +29802,11 @@ export namespace Prisma {
     roomType?: StringFieldUpdateOperationsInput | string
     price?: FloatFieldUpdateOperationsInput | number
     capacity?: IntFieldUpdateOperationsInput | number
+    totalRooms?: IntFieldUpdateOperationsInput | number
+    roomsAvailable?: IntFieldUpdateOperationsInput | number
     photo?: NullableStringFieldUpdateOperationsInput | string | null
     description?: NullableStringFieldUpdateOperationsInput | string | null
     amenities?: RoomUpdateamenitiesInput | string[]
-    available?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     hotel?: HotelUpdateOneRequiredWithoutRoomsNestedInput
@@ -29675,10 +29818,11 @@ export namespace Prisma {
     roomType?: StringFieldUpdateOperationsInput | string
     price?: FloatFieldUpdateOperationsInput | number
     capacity?: IntFieldUpdateOperationsInput | number
+    totalRooms?: IntFieldUpdateOperationsInput | number
+    roomsAvailable?: IntFieldUpdateOperationsInput | number
     photo?: NullableStringFieldUpdateOperationsInput | string | null
     description?: NullableStringFieldUpdateOperationsInput | string | null
     amenities?: RoomUpdateamenitiesInput | string[]
-    available?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -29704,6 +29848,7 @@ export namespace Prisma {
     flightClass?: StringFieldUpdateOperationsInput | string
     duration?: IntFieldUpdateOperationsInput | number
     stops?: IntFieldUpdateOperationsInput | number
+    capacity?: IntFieldUpdateOperationsInput | number
     seatsAvailable?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -29724,6 +29869,7 @@ export namespace Prisma {
     flightClass?: StringFieldUpdateOperationsInput | string
     duration?: IntFieldUpdateOperationsInput | number
     stops?: IntFieldUpdateOperationsInput | number
+    capacity?: IntFieldUpdateOperationsInput | number
     seatsAvailable?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -29965,6 +30111,7 @@ export namespace Prisma {
     duration: number
     price: number
     maxGuests: number
+    guestsBooked?: number
     startDate: Date | string
     endDate: Date | string
     location: string
@@ -29987,6 +30134,7 @@ export namespace Prisma {
     duration: number
     price: number
     maxGuests: number
+    guestsBooked?: number
     startDate: Date | string
     endDate: Date | string
     location: string
@@ -30070,6 +30218,7 @@ export namespace Prisma {
     duration?: IntFieldUpdateOperationsInput | number
     price?: FloatFieldUpdateOperationsInput | number
     maxGuests?: IntFieldUpdateOperationsInput | number
+    guestsBooked?: IntFieldUpdateOperationsInput | number
     startDate?: DateTimeFieldUpdateOperationsInput | Date | string
     endDate?: DateTimeFieldUpdateOperationsInput | Date | string
     location?: StringFieldUpdateOperationsInput | string
@@ -30092,6 +30241,7 @@ export namespace Prisma {
     duration?: IntFieldUpdateOperationsInput | number
     price?: FloatFieldUpdateOperationsInput | number
     maxGuests?: IntFieldUpdateOperationsInput | number
+    guestsBooked?: IntFieldUpdateOperationsInput | number
     startDate?: DateTimeFieldUpdateOperationsInput | Date | string
     endDate?: DateTimeFieldUpdateOperationsInput | Date | string
     location?: StringFieldUpdateOperationsInput | string
@@ -30239,6 +30389,7 @@ export namespace Prisma {
     duration: number
     price: number
     maxGuests: number
+    guestsBooked?: number
     startDate: Date | string
     endDate: Date | string
     location: string
@@ -30261,6 +30412,7 @@ export namespace Prisma {
     duration: number
     price: number
     maxGuests: number
+    guestsBooked?: number
     startDate: Date | string
     endDate: Date | string
     location: string
@@ -30344,6 +30496,7 @@ export namespace Prisma {
     duration?: IntFieldUpdateOperationsInput | number
     price?: FloatFieldUpdateOperationsInput | number
     maxGuests?: IntFieldUpdateOperationsInput | number
+    guestsBooked?: IntFieldUpdateOperationsInput | number
     startDate?: DateTimeFieldUpdateOperationsInput | Date | string
     endDate?: DateTimeFieldUpdateOperationsInput | Date | string
     location?: StringFieldUpdateOperationsInput | string
@@ -30366,6 +30519,7 @@ export namespace Prisma {
     duration?: IntFieldUpdateOperationsInput | number
     price?: FloatFieldUpdateOperationsInput | number
     maxGuests?: IntFieldUpdateOperationsInput | number
+    guestsBooked?: IntFieldUpdateOperationsInput | number
     startDate?: DateTimeFieldUpdateOperationsInput | Date | string
     endDate?: DateTimeFieldUpdateOperationsInput | Date | string
     location?: StringFieldUpdateOperationsInput | string
@@ -30954,7 +31108,8 @@ export namespace Prisma {
     flightClass: string
     duration: number
     stops?: number
-    seatsAvailable: number
+    capacity: number
+    seatsAvailable?: number
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -30971,7 +31126,8 @@ export namespace Prisma {
     flightClass: string
     duration: number
     stops?: number
-    seatsAvailable: number
+    capacity: number
+    seatsAvailable?: number
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -30984,6 +31140,7 @@ export namespace Prisma {
     duration?: IntFieldUpdateOperationsInput | number
     price?: FloatFieldUpdateOperationsInput | number
     maxGuests?: IntFieldUpdateOperationsInput | number
+    guestsBooked?: IntFieldUpdateOperationsInput | number
     startDate?: DateTimeFieldUpdateOperationsInput | Date | string
     endDate?: DateTimeFieldUpdateOperationsInput | Date | string
     location?: StringFieldUpdateOperationsInput | string
@@ -31006,6 +31163,7 @@ export namespace Prisma {
     duration?: IntFieldUpdateOperationsInput | number
     price?: FloatFieldUpdateOperationsInput | number
     maxGuests?: IntFieldUpdateOperationsInput | number
+    guestsBooked?: IntFieldUpdateOperationsInput | number
     startDate?: DateTimeFieldUpdateOperationsInput | Date | string
     endDate?: DateTimeFieldUpdateOperationsInput | Date | string
     location?: StringFieldUpdateOperationsInput | string
@@ -31028,6 +31186,7 @@ export namespace Prisma {
     duration?: IntFieldUpdateOperationsInput | number
     price?: FloatFieldUpdateOperationsInput | number
     maxGuests?: IntFieldUpdateOperationsInput | number
+    guestsBooked?: IntFieldUpdateOperationsInput | number
     startDate?: DateTimeFieldUpdateOperationsInput | Date | string
     endDate?: DateTimeFieldUpdateOperationsInput | Date | string
     location?: StringFieldUpdateOperationsInput | string
@@ -31091,6 +31250,7 @@ export namespace Prisma {
     flightClass?: StringFieldUpdateOperationsInput | string
     duration?: IntFieldUpdateOperationsInput | number
     stops?: IntFieldUpdateOperationsInput | number
+    capacity?: IntFieldUpdateOperationsInput | number
     seatsAvailable?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -31110,6 +31270,7 @@ export namespace Prisma {
     flightClass?: StringFieldUpdateOperationsInput | string
     duration?: IntFieldUpdateOperationsInput | number
     stops?: IntFieldUpdateOperationsInput | number
+    capacity?: IntFieldUpdateOperationsInput | number
     seatsAvailable?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -31128,6 +31289,7 @@ export namespace Prisma {
     flightClass?: StringFieldUpdateOperationsInput | string
     duration?: IntFieldUpdateOperationsInput | number
     stops?: IntFieldUpdateOperationsInput | number
+    capacity?: IntFieldUpdateOperationsInput | number
     seatsAvailable?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -31143,6 +31305,7 @@ export namespace Prisma {
     flightClass?: StringFieldUpdateOperationsInput | string
     duration?: IntFieldUpdateOperationsInput | number
     stops?: IntFieldUpdateOperationsInput | number
+    capacity?: IntFieldUpdateOperationsInput | number
     seatsAvailable?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -31162,6 +31325,7 @@ export namespace Prisma {
     flightClass?: StringFieldUpdateOperationsInput | string
     duration?: IntFieldUpdateOperationsInput | number
     stops?: IntFieldUpdateOperationsInput | number
+    capacity?: IntFieldUpdateOperationsInput | number
     seatsAvailable?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -31180,6 +31344,7 @@ export namespace Prisma {
     flightClass?: StringFieldUpdateOperationsInput | string
     duration?: IntFieldUpdateOperationsInput | number
     stops?: IntFieldUpdateOperationsInput | number
+    capacity?: IntFieldUpdateOperationsInput | number
     seatsAvailable?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -31190,10 +31355,11 @@ export namespace Prisma {
     roomType: string
     price: number
     capacity: number
+    totalRooms: number
+    roomsAvailable?: number
     photo?: string | null
     description?: string | null
     amenities?: RoomCreateamenitiesInput | string[]
-    available?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -31202,10 +31368,11 @@ export namespace Prisma {
     roomType?: StringFieldUpdateOperationsInput | string
     price?: FloatFieldUpdateOperationsInput | number
     capacity?: IntFieldUpdateOperationsInput | number
+    totalRooms?: IntFieldUpdateOperationsInput | number
+    roomsAvailable?: IntFieldUpdateOperationsInput | number
     photo?: NullableStringFieldUpdateOperationsInput | string | null
     description?: NullableStringFieldUpdateOperationsInput | string | null
     amenities?: RoomUpdateamenitiesInput | string[]
-    available?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     bookings?: BookingUpdateManyWithoutRoomNestedInput
@@ -31216,10 +31383,11 @@ export namespace Prisma {
     roomType?: StringFieldUpdateOperationsInput | string
     price?: FloatFieldUpdateOperationsInput | number
     capacity?: IntFieldUpdateOperationsInput | number
+    totalRooms?: IntFieldUpdateOperationsInput | number
+    roomsAvailable?: IntFieldUpdateOperationsInput | number
     photo?: NullableStringFieldUpdateOperationsInput | string | null
     description?: NullableStringFieldUpdateOperationsInput | string | null
     amenities?: RoomUpdateamenitiesInput | string[]
-    available?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     bookings?: BookingUncheckedUpdateManyWithoutRoomNestedInput
@@ -31230,10 +31398,11 @@ export namespace Prisma {
     roomType?: StringFieldUpdateOperationsInput | string
     price?: FloatFieldUpdateOperationsInput | number
     capacity?: IntFieldUpdateOperationsInput | number
+    totalRooms?: IntFieldUpdateOperationsInput | number
+    roomsAvailable?: IntFieldUpdateOperationsInput | number
     photo?: NullableStringFieldUpdateOperationsInput | string | null
     description?: NullableStringFieldUpdateOperationsInput | string | null
     amenities?: RoomUpdateamenitiesInput | string[]
-    available?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }

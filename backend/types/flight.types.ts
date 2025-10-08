@@ -7,10 +7,9 @@ export interface IFlightInput {
   destinationId: number;
   price: number;
   flightClass: string;
-  duration: number;
   stops?: number;
   flightPhoto?: string | Express.Multer.File;
-  seatsAvailable: number;
+  capacity: number;
 }
 
 export interface IFlightResponse {
@@ -27,6 +26,7 @@ export interface IFlightResponse {
   stops: number;
   photo: string | null;
   seatsAvailable: number;
+  capacity: number;
   createdAt: Date;
   updatedAt: Date;
 }

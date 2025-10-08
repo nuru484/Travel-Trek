@@ -3,10 +3,10 @@ export interface IRoomInput {
   roomType: string;
   price: number;
   capacity: number;
+  totalRooms: number;
   description?: string;
   amenities?: string[];
   roomPhoto?: string | Express.Multer.File;
-  available?: boolean;
 }
 
 export interface IRoomUpdateInput extends Partial<IRoomInput> {
@@ -27,7 +27,8 @@ export interface IRoom {
   description: string | null;
   amenities: string[];
   photo: string | null;
-  available: boolean;
+  totalRooms: number;
+  roomsAvailable: number;
   hotel: IRoomHotel | null;
   createdAt: Date;
   updatedAt: Date;
