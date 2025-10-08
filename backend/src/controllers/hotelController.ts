@@ -6,7 +6,6 @@ import validationMiddleware from '../middlewares/validation';
 import {
   asyncHandler,
   NotFoundError,
-  UnauthorizedError,
   BadRequestError,
 } from '../middlewares/error-handler';
 import { HTTP_STATUS_CODES } from '../config/constants';
@@ -48,7 +47,6 @@ const handleCreateHotel = asyncHandler(
       destinationId,
     } = req.body;
 
-    // Check if destination exists
     const destination = await prisma.destination.findUnique({
       where: { id: Number(destinationId) },
     });
@@ -57,20 +55,9 @@ const handleCreateHotel = asyncHandler(
       throw new NotFoundError('Destination not found');
     }
 
-    // Get photo URL from middleware processing
     const photoUrl = req.body.hotelPhoto;
 
-    // Convert starRating to number and provide default
     const parsedStarRating = starRating ? Number(starRating) : 3;
-
-    // Validate the star rating is within valid range (1-5)
-    if (
-      parsedStarRating < 1 ||
-      parsedStarRating > 5 ||
-      isNaN(parsedStarRating)
-    ) {
-      throw new Error('Star rating must be a number between 1 and 5');
-    }
 
     const hotel = await prisma.hotel.create({
       data: {
@@ -135,6 +122,16 @@ const handleCreateHotel = asyncHandler(
     res.status(HTTP_STATUS_CODES.CREATED).json(response);
   },
 );
+
+export const createHotel: RequestHandler[] = [
+  multerUpload.single('hotelPhoto'),
+  ...validationMiddleware.create([
+    ...createHotelValidation,
+    ...hotelPhotoValidation,
+  ]),
+  conditionalCloudinaryUpload(CLOUDINARY_UPLOAD_OPTIONS, 'hotelPhoto'),
+  handleCreateHotel,
+];
 
 /**
  * Get a single hotel by ID
@@ -710,17 +707,6 @@ const handleDeleteAllHotels = asyncHandler(
     });
   },
 );
-
-// Middleware arrays with validations
-export const createHotel: RequestHandler[] = [
-  multerUpload.single('hotelPhoto'),
-  ...validationMiddleware.create([
-    ...createHotelValidation,
-    ...hotelPhotoValidation,
-  ]),
-  conditionalCloudinaryUpload(CLOUDINARY_UPLOAD_OPTIONS, 'hotelPhoto'),
-  handleCreateHotel,
-];
 
 export const getHotel: RequestHandler[] = [
   param('id')

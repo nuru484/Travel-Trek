@@ -1,5 +1,5 @@
 // src/validations/destination-validation.ts
-import { validator } from '../validations/validation-factory.ts';
+import { validator } from '../validations/validation-factory';
 import { ValidationChain } from 'express-validator';
 import prisma from '../config/prismaClient';
 

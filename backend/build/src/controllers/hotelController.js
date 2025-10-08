@@ -19,23 +19,14 @@ const hotel_validation_1 = require("../validations/hotel-validation");
  */
 const handleCreateHotel = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const { name, description, address, city, country, phone, starRating, amenities, destinationId, } = req.body;
-    // Check if destination exists
     const destination = await prismaClient_1.default.destination.findUnique({
         where: { id: Number(destinationId) },
     });
     if (!destination) {
         throw new error_handler_1.NotFoundError('Destination not found');
     }
-    // Get photo URL from middleware processing
     const photoUrl = req.body.hotelPhoto;
-    // Convert starRating to number and provide default
     const parsedStarRating = starRating ? Number(starRating) : 3;
-    // Validate the star rating is within valid range (1-5)
-    if (parsedStarRating < 1 ||
-        parsedStarRating > 5 ||
-        isNaN(parsedStarRating)) {
-        throw new Error('Star rating must be a number between 1 and 5');
-    }
     const hotel = await prismaClient_1.default.hotel.create({
         data: {
             name,
@@ -95,6 +86,15 @@ const handleCreateHotel = (0, error_handler_1.asyncHandler)(async (req, res, nex
     };
     res.status(constants_1.HTTP_STATUS_CODES.CREATED).json(response);
 });
+exports.createHotel = [
+    multer_1.default.single('hotelPhoto'),
+    ...validation_1.default.create([
+        ...hotel_validation_1.createHotelValidation,
+        ...hotel_validation_1.hotelPhotoValidation,
+    ]),
+    (0, conditional_cloudinary_upload_1.default)(constants_2.CLOUDINARY_UPLOAD_OPTIONS, 'hotelPhoto'),
+    handleCreateHotel,
+];
 /**
  * Get a single hotel by ID
  */
@@ -559,16 +559,6 @@ const handleDeleteAllHotels = (0, error_handler_1.asyncHandler)(async (req, res,
         skipped: hotels.length - deletableHotels.length,
     });
 });
-// Middleware arrays with validations
-exports.createHotel = [
-    multer_1.default.single('hotelPhoto'),
-    ...validation_1.default.create([
-        ...hotel_validation_1.createHotelValidation,
-        ...hotel_validation_1.hotelPhotoValidation,
-    ]),
-    (0, conditional_cloudinary_upload_1.default)(constants_2.CLOUDINARY_UPLOAD_OPTIONS, 'hotelPhoto'),
-    handleCreateHotel,
-];
 exports.getHotel = [
     (0, express_validator_1.param)('id')
         .isInt({ min: 1 })

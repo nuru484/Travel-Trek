@@ -6,11 +6,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteAllTourExclusions = exports.getAllTourExclusions = exports.deleteTourExclusion = exports.updateTourExclusion = exports.getTourExclusion = exports.createTourExclusion = void 0;
 const prismaClient_1 = __importDefault(require("../config/prismaClient"));
 const error_handler_1 = require("../middlewares/error-handler");
+const validation_1 = __importDefault(require("../middlewares/validation"));
 const constants_1 = require("../config/constants");
+const tour_exlusion_validation_1 = require("../validations/tour-exlusion-validation");
 /**
  * Create a new tour exclusion
  */
-const createTourExclusion = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
+const handlerCreateTourExclusion = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const { tourId, description } = req.body;
     const user = req.user;
     if (!user) {
@@ -44,11 +46,14 @@ const createTourExclusion = (0, error_handler_1.asyncHandler)(async (req, res, n
         data: response,
     });
 });
-exports.createTourExclusion = createTourExclusion;
+exports.createTourExclusion = [
+    ...validation_1.default.create([tour_exlusion_validation_1.createTourExclusionValidation]),
+    handlerCreateTourExclusion,
+];
 /**
  * Get a single tour exclusion by ID
  */
-const getTourExclusion = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
+exports.getTourExclusion = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const { id } = req.params;
     const tourExclusion = await prismaClient_1.default.tourExclusion.findUnique({
         where: { id: parseInt(id) },
@@ -68,11 +73,10 @@ const getTourExclusion = (0, error_handler_1.asyncHandler)(async (req, res, next
         data: response,
     });
 });
-exports.getTourExclusion = getTourExclusion;
 /**
  * Update a tour exclusion
  */
-const updateTourExclusion = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
+exports.updateTourExclusion = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const { id } = req.params;
     const { tourId, description } = req.body;
     const user = req.user;
@@ -119,11 +123,10 @@ const updateTourExclusion = (0, error_handler_1.asyncHandler)(async (req, res, n
         data: response,
     });
 });
-exports.updateTourExclusion = updateTourExclusion;
 /**
  * Delete a tour exclusion
  */
-const deleteTourExclusion = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
+exports.deleteTourExclusion = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const { id } = req.params;
     const user = req.user;
     if (!user) {
@@ -148,11 +151,10 @@ const deleteTourExclusion = (0, error_handler_1.asyncHandler)(async (req, res, n
         message: 'Tour exclusion deleted successfully',
     });
 });
-exports.deleteTourExclusion = deleteTourExclusion;
 /**
  * Get all tour exclusions with pagination
  */
-const getAllTourExclusions = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
+exports.getAllTourExclusions = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
@@ -182,11 +184,10 @@ const getAllTourExclusions = (0, error_handler_1.asyncHandler)(async (req, res, 
         },
     });
 });
-exports.getAllTourExclusions = getAllTourExclusions;
 /**
  * Delete all tour exclusions
  */
-const deleteAllTourExclusions = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
+exports.deleteAllTourExclusions = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const user = req.user;
     if (!user) {
         throw new error_handler_1.UnauthorizedError('Unauthorized, no user provided');
@@ -199,4 +200,3 @@ const deleteAllTourExclusions = (0, error_handler_1.asyncHandler)(async (req, re
         message: 'All tour exclusions deleted successfully',
     });
 });
-exports.deleteAllTourExclusions = deleteAllTourExclusions;

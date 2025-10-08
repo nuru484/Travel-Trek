@@ -1,5 +1,5 @@
 // src/validations/auth-validations.ts
-import { validator } from './validation-factory.ts';
+import { validator } from './validation-factory';
 import { ValidationChain } from 'express-validator';
 
 // Validator for creating a new user

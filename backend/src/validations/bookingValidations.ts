@@ -1,5 +1,5 @@
 // src/validations/bookingValidations.ts
-import { validator } from './validation-factory.ts';
+import { validator } from './validation-factory';
 import { ValidationChain } from 'express-validator';
 
 // Validation for creating a new booking

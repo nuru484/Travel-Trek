@@ -366,109 +366,153 @@ const handleUpdateBooking = asyncHandler(
     }
 
     if (!id) {
-      throw new NotFoundError('Booking ID is required');
+      throw new BadRequestError('Booking ID is required');
+    }
+
+    const bookingId = parseInt(id);
+    if (isNaN(bookingId)) {
+      throw new BadRequestError('Invalid booking ID format');
     }
 
     const existingBooking = await prisma.booking.findUnique({
-      where: { id: parseInt(id) },
+      where: { id: bookingId },
+      include: {
+        payment: true,
+      },
     });
 
     if (!existingBooking) {
       throw new NotFoundError('Booking not found');
     }
 
-    if (userId) {
-      const targetUser = await prisma.user.findUnique({
-        where: { id: userId },
-      });
-      if (!targetUser) throw new NotFoundError('User not found');
+    if (
+      status === 'PENDING' &&
+      existingBooking.payment?.status === 'COMPLETED'
+    ) {
+      throw new BadRequestError(
+        'Cannot change booking status to PENDING when payment is completed',
+      );
     }
 
-    if (tourId && tourId !== existingBooking.tourId) {
-      const tour = await prisma.tour.findUnique({ where: { id: tourId } });
-      if (!tour) throw new NotFoundError('Tour not found');
+    if (
+      status === 'CANCELLED' &&
+      existingBooking.payment?.status === 'COMPLETED'
+    ) {
+      throw new BadRequestError(
+        'Cannot change booking status to CANCELLED when payment is completed',
+      );
+    }
 
-      const availableSlots = tour.maxGuests - tour.guestsBooked;
-      if (availableSlots <= 0) {
-        throw new BadRequestError('No available slots for this tour');
-      }
+    if (status && status !== existingBooking.status) {
+      const validTransitions: Record<string, string[]> = {
+        PENDING: ['CONFIRMED', 'CANCELLED'],
+        CONFIRMED: ['COMPLETED', 'CANCELLED'],
+        CANCELLED: [],
+        COMPLETED: [],
+      };
 
-      if (tour.status === 'CANCELLED') {
-        throw new BadRequestError('This tour has been cancelled');
-      }
-      if (tour.status === 'COMPLETED') {
-        throw new BadRequestError('This tour has already been completed');
+      const allowedStatuses = validTransitions[existingBooking.status] || [];
+      if (!allowedStatuses.includes(status)) {
+        throw new BadRequestError(
+          `Cannot transition booking status from ${existingBooking.status} to ${status}`,
+        );
       }
     }
 
-    if (roomId && roomId !== existingBooking.roomId) {
-      const room = await prisma.room.findUnique({ where: { id: roomId } });
-      if (!room) throw new NotFoundError('Room not found');
-
-      if (room.roomsAvailable <= 0) {
-        throw new BadRequestError('No rooms available of this type');
-      }
-    }
-
-    if (flightId && flightId !== existingBooking.flightId) {
-      const flight = await prisma.flight.findUnique({
-        where: { id: flightId },
-      });
-      if (!flight) throw new NotFoundError('Flight not found');
-
-      if (flight.seatsAvailable <= 0) {
-        throw new BadRequestError('No seats available on this flight');
-      }
+    if (
+      (existingBooking.status === 'COMPLETED' ||
+        existingBooking.status === 'CANCELLED') &&
+      (tourId || roomId || flightId || userId)
+    ) {
+      throw new BadRequestError(
+        `Cannot modify ${existingBooking.status.toLowerCase()} bookings`,
+      );
     }
 
     const updatedBooking = await prisma.$transaction(async (tx) => {
-      if (
-        tourId &&
-        existingBooking.tourId &&
-        tourId !== existingBooking.tourId
-      ) {
-        await tx.tour.update({
-          where: { id: existingBooking.tourId },
-          data: { guestsBooked: { decrement: 1 } },
+      if (userId) {
+        const targetUser = await tx.user.findUnique({
+          where: { id: userId },
         });
+        if (!targetUser) throw new NotFoundError('User not found');
+      }
+
+      if (tourId && tourId !== existingBooking.tourId) {
+        const tour = await tx.tour.findUnique({ where: { id: tourId } });
+        if (!tour) throw new NotFoundError('Tour not found');
+
+        const availableSlots = tour.maxGuests - tour.guestsBooked;
+        if (availableSlots <= 0) {
+          throw new BadRequestError('No available slots for this tour');
+        }
+
+        if (tour.status === 'CANCELLED') {
+          throw new BadRequestError('This tour has been cancelled');
+        }
+        if (tour.status === 'COMPLETED') {
+          throw new BadRequestError('This tour has already been completed');
+        }
+
+        if (existingBooking.tourId) {
+          await tx.tour.update({
+            where: { id: existingBooking.tourId },
+            data: { guestsBooked: { decrement: 1 } },
+          });
+        }
         await tx.tour.update({
           where: { id: tourId },
           data: { guestsBooked: { increment: 1 } },
         });
       }
 
-      if (
-        roomId &&
-        existingBooking.roomId &&
-        roomId !== existingBooking.roomId
-      ) {
-        await tx.room.update({
-          where: { id: existingBooking.roomId },
-          data: { roomsAvailable: { increment: 1 } },
-        });
+      if (roomId && roomId !== existingBooking.roomId) {
+        const room = await tx.room.findUnique({ where: { id: roomId } });
+        if (!room) throw new NotFoundError('Room not found');
+
+        if (room.roomsAvailable <= 0) {
+          throw new BadRequestError('No rooms available of this type');
+        }
+
+        // Update availabilities
+        if (existingBooking.roomId) {
+          await tx.room.update({
+            where: { id: existingBooking.roomId },
+            data: { roomsAvailable: { increment: 1 } },
+          });
+        }
         await tx.room.update({
           where: { id: roomId },
           data: { roomsAvailable: { decrement: 1 } },
         });
       }
 
-      if (
-        flightId &&
-        existingBooking.flightId &&
-        flightId !== existingBooking.flightId
-      ) {
-        await tx.flight.update({
-          where: { id: existingBooking.flightId },
-          data: { seatsAvailable: { increment: 1 } },
+      // Handle flight changes
+      if (flightId && flightId !== existingBooking.flightId) {
+        const flight = await tx.flight.findUnique({
+          where: { id: flightId },
         });
+        if (!flight) throw new NotFoundError('Flight not found');
+
+        if (flight.seatsAvailable <= 0) {
+          throw new BadRequestError('No seats available on this flight');
+        }
+
+        // Update availabilities
+        if (existingBooking.flightId) {
+          await tx.flight.update({
+            where: { id: existingBooking.flightId },
+            data: { seatsAvailable: { increment: 1 } },
+          });
+        }
         await tx.flight.update({
           where: { id: flightId },
           data: { seatsAvailable: { decrement: 1 } },
         });
       }
 
+      // Update the booking
       return await tx.booking.update({
-        where: { id: parseInt(id) },
+        where: { id: bookingId },
         data: {
           user: userId ? { connect: { id: userId } } : undefined,
           tour: tourId ? { connect: { id: tourId } } : undefined,
@@ -513,6 +557,7 @@ const handleUpdateBooking = asyncHandler(
       });
     });
 
+    // Response building logic remains the same...
     const baseResponse = {
       id: updatedBooking.id,
       userId: updatedBooking.userId,
@@ -583,14 +628,33 @@ const handleDeleteBooking = asyncHandler(
     next: NextFunction,
   ): Promise<void> => {
     const { id } = req.params;
+    const user = req.user;
+
+    if (!user) {
+      throw new UnauthorizedError('Unauthorized, no user provided');
+    }
+
+    if (user.role !== 'ADMIN' && user.role !== 'AGENT') {
+      throw new UnauthorizedError('Only admins and agents can delete bookings');
+    }
 
     if (!id) {
-      throw new NotFoundError('Booking ID is required');
+      throw new BadRequestError('Booking ID is required');
+    }
+
+    const bookingId = parseInt(id);
+    if (isNaN(bookingId)) {
+      throw new BadRequestError('Invalid booking ID format');
     }
 
     const booking = await prisma.booking.findUnique({
-      where: { id: parseInt(id) },
-      include: { payment: true },
+      where: { id: bookingId },
+      include: {
+        payment: true,
+        user: {
+          select: { id: true, name: true, email: true },
+        },
+      },
     });
 
     if (!booking) {
@@ -601,41 +665,103 @@ const handleDeleteBooking = asyncHandler(
       throw new BadRequestError('Completed bookings cannot be deleted');
     }
 
-    if (booking.payment && booking.payment.status !== 'REFUNDED') {
-      throw new BadRequestError(
-        `Cannot delete booking with payment status "${booking.payment.status}". Refund required first.`,
-      );
+    if (booking.payment) {
+      const paymentStatus = booking.payment.status;
+
+      if (paymentStatus === 'COMPLETED') {
+        throw new BadRequestError(
+          'Cannot delete booking with completed payment. Please process a refund first or update payment status to PENDING.',
+        );
+      }
+
+      const allowedPaymentStatuses = [
+        'PENDING',
+        'FAILED',
+        'CANCELLED',
+        'REFUNDED',
+      ];
+      if (!allowedPaymentStatuses.includes(paymentStatus)) {
+        throw new BadRequestError(
+          `Cannot delete booking with payment status "${paymentStatus}". Allowed statuses: ${allowedPaymentStatuses.join(', ')}`,
+        );
+      }
+    }
+
+    if (booking.status === 'CONFIRMED' && booking.bookingDate) {
+      const bookingDate = new Date(booking.bookingDate);
+      const currentDate = new Date();
+
+      if (bookingDate < currentDate) {
+        throw new BadRequestError(
+          'Cannot delete past confirmed bookings. Please cancel the booking instead.',
+        );
+      }
     }
 
     await prisma.$transaction(async (tx) => {
       if (booking.tourId) {
-        await tx.tour.update({
+        const tour = await tx.tour.findUnique({
           where: { id: booking.tourId },
-          data: { guestsBooked: { decrement: 1 } },
         });
+
+        if (tour) {
+          await tx.tour.update({
+            where: { id: booking.tourId },
+            data: { guestsBooked: { decrement: 1 } },
+          });
+        }
       }
 
       if (booking.roomId) {
-        await tx.room.update({
+        const room = await tx.room.findUnique({
           where: { id: booking.roomId },
-          data: { roomsAvailable: { increment: 1 } },
         });
+
+        if (room) {
+          await tx.room.update({
+            where: { id: booking.roomId },
+            data: { roomsAvailable: { increment: 1 } },
+          });
+        }
       }
 
       if (booking.flightId) {
-        await tx.flight.update({
+        const flight = await tx.flight.findUnique({
           where: { id: booking.flightId },
-          data: { seatsAvailable: { increment: 1 } },
+        });
+
+        if (flight) {
+          await tx.flight.update({
+            where: { id: booking.flightId },
+            data: { seatsAvailable: { increment: 1 } },
+          });
+        }
+      }
+
+      if (
+        booking.payment &&
+        ['PENDING', 'FAILED', 'CANCELLED'].includes(booking.payment.status)
+      ) {
+        await tx.payment.delete({
+          where: { id: booking.payment.id },
         });
       }
 
       await tx.booking.delete({
-        where: { id: parseInt(id) },
+        where: { id: bookingId },
       });
     });
 
     res.status(HTTP_STATUS_CODES.OK).json({
       message: 'Booking deleted successfully',
+      data: {
+        deletedBookingId: bookingId,
+        restoredAvailability: {
+          tour: booking.tourId ? true : false,
+          room: booking.roomId ? true : false,
+          flight: booking.flightId ? true : false,
+        },
+      },
     });
   },
 );

@@ -30,7 +30,6 @@ const createTour = asyncHandler(
     } = req.body;
     const user = req.user;
 
-    // Convert dates and calculate duration in days
     const start = new Date(startDate);
     const end = new Date(endDate);
     const durationInDays = Math.ceil(

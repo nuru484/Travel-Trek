@@ -1,21 +1,23 @@
 // src/controllers/tourExclusionController.ts
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
 import prisma from '../config/prismaClient';
 import {
   asyncHandler,
   NotFoundError,
   UnauthorizedError,
 } from '../middlewares/error-handler';
+import validationMiddleware from '../middlewares/validation';
 import { HTTP_STATUS_CODES } from '../config/constants';
 import {
   ITourExclusionInput,
   ITourExclusionResponse,
 } from 'types/tourExclusion.types';
+import { createTourExclusionValidation } from '../validations/tour-exlusion-validation';
 
 /**
  * Create a new tour exclusion
  */
-const createTourExclusion = asyncHandler(
+const handlerCreateTourExclusion = asyncHandler(
   async (
     req: Request<{}, {}, ITourExclusionInput>,
     res: Response,
@@ -64,10 +66,15 @@ const createTourExclusion = asyncHandler(
   },
 );
 
+export const createTourExclusion: RequestHandler[] = [
+  ...validationMiddleware.create([createTourExclusionValidation]),
+  handlerCreateTourExclusion,
+];
+
 /**
  * Get a single tour exclusion by ID
  */
-const getTourExclusion = asyncHandler(
+export const getTourExclusion = asyncHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { id } = req.params;
 
@@ -97,7 +104,7 @@ const getTourExclusion = asyncHandler(
 /**
  * Update a tour exclusion
  */
-const updateTourExclusion = asyncHandler(
+export const updateTourExclusion = asyncHandler(
   async (
     req: Request<{ id?: string }, {}, Partial<ITourExclusionInput>>,
     res: Response,
@@ -165,7 +172,7 @@ const updateTourExclusion = asyncHandler(
 /**
  * Delete a tour exclusion
  */
-const deleteTourExclusion = asyncHandler(
+export const deleteTourExclusion = asyncHandler(
   async (
     req: Request<{ id?: string }>,
     res: Response,
@@ -209,7 +216,7 @@ const deleteTourExclusion = asyncHandler(
 /**
  * Get all tour exclusions with pagination
  */
-const getAllTourExclusions = asyncHandler(
+export const getAllTourExclusions = asyncHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
@@ -250,7 +257,7 @@ const getAllTourExclusions = asyncHandler(
 /**
  * Delete all tour exclusions
  */
-const deleteAllTourExclusions = asyncHandler(
+export const deleteAllTourExclusions = asyncHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const user = req.user;
 
@@ -269,12 +276,3 @@ const deleteAllTourExclusions = asyncHandler(
     });
   },
 );
-
-export {
-  createTourExclusion,
-  getTourExclusion,
-  updateTourExclusion,
-  deleteTourExclusion,
-  getAllTourExclusions,
-  deleteAllTourExclusions,
-};

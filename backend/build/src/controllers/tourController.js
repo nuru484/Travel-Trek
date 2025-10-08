@@ -13,7 +13,6 @@ const constants_1 = require("../config/constants");
 const createTour = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const { name, description, type, price, maxGuests, startDate, endDate, location, } = req.body;
     const user = req.user;
-    // Convert dates and calculate duration in days
     const start = new Date(startDate);
     const end = new Date(endDate);
     const durationInDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
