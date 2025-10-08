@@ -20,6 +20,10 @@ interface IENV {
   COOKIE_DOMAIN?: string;
   PAYSTACK_SECRET_KEY: string;
   PAYSTACK_CALLBACK_URL?: string;
+  ADMIN_EMAIL: string;
+  ADMIN_PASSWORD: string;
+  ADMIN_NAME: string;
+  ADMIN_PHONE: string;
 }
 
 const ENV: IENV = {
@@ -49,6 +53,10 @@ const ENV: IENV = {
     'PAYSTACK_SECRET_KEY',
   ),
   PAYSTACK_CALLBACK_URL: process.env.PAYSTACK_CALLBACK_URL,
+  ADMIN_EMAIL: assertEnv(process.env.ADMIN_EMAIL, 'ADMIN_EMAIL'),
+  ADMIN_PASSWORD: assertEnv(process.env.ADMIN_PASSWORD, 'ADMIN_PASSWORD'),
+  ADMIN_NAME: assertEnv(process.env.ADMIN_NAME, 'ADMIN_NAME'),
+  ADMIN_PHONE: assertEnv(process.env.ADMIN_PHONE, 'ADMIN_PHONE'),
 };
 
 export default ENV;
