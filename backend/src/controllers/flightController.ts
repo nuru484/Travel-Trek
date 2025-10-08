@@ -110,6 +110,16 @@ const handleCreateFlight = asyncHandler(
   },
 );
 
+export const createFlight: RequestHandler[] = [
+  multerUpload.single('flightPhoto'),
+  ...validationMiddleware.create([
+    ...createFlightValidation,
+    ...flightPhotoValidation,
+  ]),
+  conditionalCloudinaryUpload(CLOUDINARY_UPLOAD_OPTIONS, 'flightPhoto'),
+  handleCreateFlight,
+];
+
 /**
  * Get a single flight by ID
  */
@@ -171,6 +181,13 @@ const handleGetFlight = asyncHandler(
   },
 );
 
+export const getFlight: RequestHandler[] = [
+  param('id')
+    .isInt({ min: 1 })
+    .withMessage('Flight ID must be a positive integer'),
+  handleGetFlight,
+];
+
 /**
  * Update a flight with photo handling
  */
@@ -193,26 +210,13 @@ const handleUpdateFlight = asyncHandler(
       stops,
       capacity,
     } = req.body;
-    const user = req.user;
 
-    if (!id) {
-      throw new NotFoundError('Flight ID is required');
-    }
+    const parsedId = parseInt(id!);
 
-    // Parse numeric values to integers
-    const parsedId = parseInt(id);
-
-    // Validate parsed ID
-    if (isNaN(parsedId)) {
-      throw new NotFoundError('Invalid flight ID');
-    }
-
-    // Track the uploaded image URL for cleanup if needed
     let uploadedImageUrl: string | undefined;
     let oldPhoto: string | null = null;
 
     try {
-      // Get the current flight with booking information
       const existingFlight = await prisma.flight.findUnique({
         where: { id: parsedId },
         include: {
@@ -403,6 +407,19 @@ const handleUpdateFlight = asyncHandler(
   },
 );
 
+export const updateFlight: RequestHandler[] = [
+  multerUpload.single('flightPhoto'),
+  param('id')
+    .isInt({ min: 1 })
+    .withMessage('Flight ID must be an integer greater than or equal to 1'),
+  ...validationMiddleware.create([
+    ...updateFlightValidation,
+    ...flightPhotoValidation,
+  ]),
+  conditionalCloudinaryUpload(CLOUDINARY_UPLOAD_OPTIONS, 'flightPhoto'),
+  handleUpdateFlight,
+];
+
 /**
  * Delete a flight with photo cleanup
  */
@@ -477,7 +494,6 @@ const handleGetAllFlights = asyncHandler(
     const limit = parseInt(req.query.limit as string) || 10;
     const skip = (page - 1) * limit;
 
-    // Extract search and filter parameters
     const {
       search,
       airline,
@@ -495,7 +511,6 @@ const handleGetAllFlights = asyncHandler(
       sortOrder = 'asc',
     } = req.query;
 
-    // Build where clause for filtering
     const where: any = {};
 
     if (search) {
@@ -654,7 +669,6 @@ const handleDeleteAllFlights = asyncHandler(
       throw new UnauthorizedError('Only admins can delete all flights');
     }
 
-    // Fetch all flights with bookings
     const flights = await prisma.flight.findMany({
       include: { bookings: true },
     });
@@ -666,7 +680,6 @@ const handleDeleteAllFlights = asyncHandler(
       return;
     }
 
-    // Identify flights with bookings
     const blocked: {
       id: number;
       flightNumber: string;
@@ -696,7 +709,6 @@ const handleDeleteAllFlights = asyncHandler(
       );
     }
 
-    // Collect photos before deleting
     const photos = flights
       .map((flight) => flight.photo)
       .filter((photo): photo is string => Boolean(photo));
@@ -704,7 +716,6 @@ const handleDeleteAllFlights = asyncHandler(
     // Delete all flights
     await prisma.flight.deleteMany({});
 
-    // Clean up photos from Cloudinary
     const cleanupPromises = photos.map(async (photo) => {
       try {
         await cloudinaryService.deleteImage(photo);
@@ -801,38 +812,6 @@ const getFlightStats = asyncHandler(
     });
   },
 );
-
-// Middleware arrays with validations
-export const createFlight: RequestHandler[] = [
-  multerUpload.single('flightPhoto'),
-  ...validationMiddleware.create([
-    ...createFlightValidation,
-    ...flightPhotoValidation,
-  ]),
-  conditionalCloudinaryUpload(CLOUDINARY_UPLOAD_OPTIONS, 'flightPhoto'),
-  handleCreateFlight,
-];
-
-export const getFlight: RequestHandler[] = [
-  param('id')
-    .isInt({ min: 1 })
-    .withMessage('Flight ID must be a positive integer'),
-  ...validationMiddleware.create([]),
-  handleGetFlight,
-];
-
-export const updateFlight: RequestHandler[] = [
-  multerUpload.single('flightPhoto'),
-  param('id')
-    .isInt({ min: 1 })
-    .withMessage('Flight ID must be a positive integer'),
-  ...validationMiddleware.create([
-    ...updateFlightValidation,
-    ...flightPhotoValidation,
-  ]),
-  conditionalCloudinaryUpload(CLOUDINARY_UPLOAD_OPTIONS, 'flightPhoto'),
-  handleUpdateFlight,
-];
 
 export const deleteFlight: RequestHandler[] = [
   param('id')
