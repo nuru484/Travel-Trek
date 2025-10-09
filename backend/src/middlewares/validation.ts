@@ -40,6 +40,7 @@ export const validateRequest = (
 
     const validationError = new CustomValidationError('Validation Error', {
       layer: 'Request Validation',
+      code: 'VALIDATION_ERROR',
       context: {
         errors: formattedErrors,
       },
