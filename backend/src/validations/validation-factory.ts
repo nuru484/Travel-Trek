@@ -64,7 +64,7 @@ class ValidationFactory {
    */
   string(
     fieldName: string,
-    options: StringValidationOptions = {}
+    options: StringValidationOptions = {},
   ): ValidationChain {
     const {
       required = true,
@@ -88,7 +88,7 @@ class ValidationFactory {
       validation
         .isLength({ min: minLength })
         .withMessage(
-          `${fieldName} must be at least ${minLength} characters long`
+          `${fieldName} must be at least ${minLength} characters long`,
         );
     }
 
@@ -112,7 +112,7 @@ class ValidationFactory {
    */
   username(
     fieldName: string,
-    options: StringValidationOptions = {}
+    options: StringValidationOptions = {},
   ): ValidationChain {
     const {
       required = true,
@@ -140,7 +140,7 @@ class ValidationFactory {
    */
   email(
     fieldName: string,
-    options: EmailValidationOptions = {}
+    options: EmailValidationOptions = {},
   ): ValidationChain {
     const {
       required = true,
@@ -188,7 +188,7 @@ class ValidationFactory {
    */
   password(
     fieldName: string = 'password',
-    options: PasswordValidationOptions = {}
+    options: PasswordValidationOptions = {},
   ): ValidationChain {
     const {
       required = true,
@@ -240,7 +240,7 @@ class ValidationFactory {
    */
   confirmPassword(
     confirmFieldName: string = 'confirmPassword',
-    passwordFieldName: string = 'password'
+    passwordFieldName: string = 'password',
   ): ValidationChain {
     return body(confirmFieldName)
       .exists({ checkFalsy: true })
@@ -256,7 +256,7 @@ class ValidationFactory {
    */
   date(
     fieldName: string,
-    options: DateValidationOptions = {}
+    options: DateValidationOptions = {},
   ): ValidationChain {
     const {
       required = true,
@@ -286,7 +286,7 @@ class ValidationFactory {
           throw new Error(
             `${fieldName} must be on or after ${
               minDate.toISOString().split('T')[0]
-            }`
+            }`,
           );
         }
         return true;
@@ -300,7 +300,7 @@ class ValidationFactory {
           throw new Error(
             `${fieldName} must be on or before ${
               maxDate.toISOString().split('T')[0]
-            }`
+            }`,
           );
         }
         return true;
@@ -321,7 +321,7 @@ class ValidationFactory {
           case 'before':
             if (value >= compareDate) {
               throw new Error(
-                `${fieldName} must be before ${compareDateField}`
+                `${fieldName} must be before ${compareDateField}`,
               );
             }
             break;
@@ -333,21 +333,21 @@ class ValidationFactory {
           case 'same':
             if (value.getTime() !== compareDate.getTime()) {
               throw new Error(
-                `${fieldName} must be the same as ${compareDateField}`
+                `${fieldName} must be the same as ${compareDateField}`,
               );
             }
             break;
           case 'before-or-same':
             if (value > compareDate) {
               throw new Error(
-                `${fieldName} must be before or the same as ${compareDateField}`
+                `${fieldName} must be before or the same as ${compareDateField}`,
               );
             }
             break;
           case 'after-or-same':
             if (value < compareDate) {
               throw new Error(
-                `${fieldName} must be after or the same as ${compareDateField}`
+                `${fieldName} must be after or the same as ${compareDateField}`,
               );
             }
             break;
@@ -367,7 +367,7 @@ class ValidationFactory {
    */
   number(
     fieldName: string,
-    options: NumberValidationOptions = {}
+    options: NumberValidationOptions = {},
   ): ValidationChain {
     const { required = true, min, max, allowDecimals = true } = options;
 
@@ -407,7 +407,7 @@ class ValidationFactory {
    */
   integer(
     fieldName: string,
-    options: NumberValidationOptions = {}
+    options: NumberValidationOptions = {},
   ): ValidationChain {
     return this.number(fieldName, { ...options, allowDecimals: false });
   }
@@ -419,7 +419,7 @@ class ValidationFactory {
    */
   boolean(
     fieldName: string,
-    options: BaseValidationOptions = {}
+    options: BaseValidationOptions = {},
   ): ValidationChain {
     const { required = true } = options;
 
@@ -443,7 +443,7 @@ class ValidationFactory {
    */
   array(
     fieldName: string,
-    options: ArrayValidationOptions = {}
+    options: ArrayValidationOptions = {},
   ): ValidationChain {
     const {
       required = true,
@@ -479,7 +479,7 @@ class ValidationFactory {
       validation
         .custom((array: any[]) => {
           const uniqueItems = new Set(
-            array.map((item) => JSON.stringify(item))
+            array.map((item) => JSON.stringify(item)),
           );
           return uniqueItems.size === array.length;
         })
@@ -517,7 +517,7 @@ class ValidationFactory {
    */
   object(
     fieldName: string,
-    options: ObjectValidationOptions = {}
+    options: ObjectValidationOptions = {},
   ): ValidationChain {
     const {
       required = true,
@@ -548,13 +548,13 @@ class ValidationFactory {
             (field) =>
               Object.prototype.hasOwnProperty.call(obj, field) &&
               obj[field] !== null &&
-              obj[field] !== undefined
+              obj[field] !== undefined,
           );
         })
         .withMessage(
           `${fieldName} must include required fields: ${requiredFields.join(
-            ', '
-          )}`
+            ', ',
+          )}`,
         );
     }
 
@@ -568,7 +568,7 @@ class ValidationFactory {
    */
   url(
     fieldName: string,
-    options: StringValidationOptions & { protocols?: string[] } = {}
+    options: StringValidationOptions & { protocols?: string[] } = {},
   ): ValidationChain {
     const {
       required = true,
@@ -580,8 +580,8 @@ class ValidationFactory {
       .isURL({ protocols })
       .withMessage(
         `${fieldName} must be a valid URL with protocols: ${protocols.join(
-          ', '
-        )}`
+          ', ',
+        )}`,
       );
 
     return validation;
@@ -594,14 +594,14 @@ class ValidationFactory {
    */
   phone(
     fieldName: string,
-    options: StringValidationOptions = {}
+    options: StringValidationOptions = {},
   ): ValidationChain {
     const { required = true, pattern = /^\+?[0-9]{10,15}$/ } = options;
 
     return this.string(fieldName, {
       required,
       pattern,
-      customMessage: 'Must be a valid phone number',
+      customMessage: 'Must be a valid phone number (10–15 digits)',
     });
   }
 
@@ -614,7 +614,7 @@ class ValidationFactory {
   enum<T>(
     fieldName: string,
     allowedValues: T[],
-    options: BaseValidationOptions = {}
+    options: BaseValidationOptions = {},
   ): ValidationChain {
     const { required = true } = options;
 
@@ -644,7 +644,7 @@ class ValidationFactory {
     fieldName: string,
     validationFn: (value: any, req: any) => boolean | Promise<boolean>,
     errorMessage: string,
-    options: BaseValidationOptions = {}
+    options: BaseValidationOptions = {},
   ): ValidationChain {
     const { required = true } = options;
 

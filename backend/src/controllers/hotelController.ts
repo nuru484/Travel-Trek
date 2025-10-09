@@ -47,6 +47,18 @@ const handleCreateHotel = asyncHandler(
       destinationId,
     } = req.body;
 
+    console.log(
+      name,
+      description,
+      address,
+      city,
+      country,
+      phone,
+      starRating,
+      amenities,
+      destinationId,
+    );
+
     const destination = await prisma.destination.findUnique({
       where: { id: Number(destinationId) },
     });
@@ -213,6 +225,18 @@ const handleUpdateHotel = asyncHandler(
       destinationId,
     } = req.body;
 
+    console.log(
+      name,
+      description,
+      address,
+      city,
+      country,
+      phone,
+      starRating,
+      amenities,
+      destinationId,
+    );
+
     if (!id) {
       throw new NotFoundError('Hotel ID is required');
     }
@@ -378,6 +402,19 @@ const handleUpdateHotel = asyncHandler(
     }
   },
 );
+
+export const updateHotel: RequestHandler[] = [
+  multerUpload.single('hotelPhoto'),
+  param('id')
+    .isInt({ min: 1 })
+    .withMessage('Hotel ID must be a positive integer'),
+  ...validationMiddleware.create([
+    ...updateHotelValidation,
+    ...hotelPhotoValidation,
+  ]),
+  conditionalCloudinaryUpload(CLOUDINARY_UPLOAD_OPTIONS, 'hotelPhoto'),
+  handleUpdateHotel,
+];
 
 /**
  * Delete a hotel with photo cleanup
@@ -714,19 +751,6 @@ export const getHotel: RequestHandler[] = [
     .withMessage('Hotel ID must be a positive integer'),
   ...validationMiddleware.create([]),
   handleGetHotel,
-];
-
-export const updateHotel: RequestHandler[] = [
-  multerUpload.single('hotelPhoto'),
-  param('id')
-    .isInt({ min: 1 })
-    .withMessage('Hotel ID must be a positive integer'),
-  ...validationMiddleware.create([
-    ...updateHotelValidation,
-    ...hotelPhotoValidation,
-  ]),
-  conditionalCloudinaryUpload(CLOUDINARY_UPLOAD_OPTIONS, 'hotelPhoto'),
-  handleUpdateHotel,
 ];
 
 export const deleteHotel: RequestHandler[] = [

@@ -45,7 +45,6 @@ export const createHotelValidation: ValidationChain[] = [
 
   validator.phone('phone', {
     required: false,
-    pattern: /^\+?[0-9\s\-\(\)]+$/,
   }),
 
   validator.integer('starRating', {
@@ -140,7 +139,6 @@ export const updateHotelValidation: ValidationChain[] = [
 
   validator.phone('phone', {
     required: false,
-    pattern: /^\+?[0-9\s\-\(\)]+$/,
   }),
 
   validator.integer('starRating', {
