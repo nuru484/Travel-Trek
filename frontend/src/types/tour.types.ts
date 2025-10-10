@@ -36,6 +36,18 @@ export interface ITourResponse {
   data: ITour;
 }
 
+// Add query params interface
+export interface IToursQueryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  type?: TourType;
+  status?: TourStatus;
+  minPrice?: number;
+  maxPrice?: number;
+  location?: string;
+}
+
 export interface IToursPaginatedResponse {
   message: string;
   data: ITour[];

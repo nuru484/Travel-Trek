@@ -1,5 +1,9 @@
 import { apiSlice } from "./apiSlice";
-import { ITourResponse, IToursPaginatedResponse } from "../types/tour.types";
+import {
+  ITourResponse,
+  IToursPaginatedResponse,
+  IToursQueryParams,
+} from "../types/tour.types";
 import { IApiResponse } from "@/types/api";
 
 // Type for the tour creation/update payload
@@ -16,15 +20,30 @@ export interface ITourPayload {
 
 export const tourApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
-    getAllTours: builder.query<
-      IToursPaginatedResponse,
-      { page?: number; limit?: number }
-    >({
-      query: ({ page = 1, limit = 10 }) => ({
-        url: `/tours?page=${page}&limit=${limit}`,
-        method: "GET",
-      }),
-      providesTags: ["Tour"],
+    getAllTours: builder.query<IToursPaginatedResponse, IToursQueryParams>({
+      query: (params = {}) => {
+        const searchParams = new URLSearchParams();
+
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined && value !== null && value !== "") {
+            searchParams.append(key, String(value));
+          }
+        });
+
+        return {
+          url: `/tours${
+            searchParams.toString() ? `?${searchParams.toString()}` : ""
+          }`,
+          method: "GET",
+        };
+      },
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.data.map(({ id }) => ({ type: "Tour" as const, id })),
+              "Tours",
+            ]
+          : ["Tours"],
     }),
 
     getTour: builder.query<ITourResponse, number>({

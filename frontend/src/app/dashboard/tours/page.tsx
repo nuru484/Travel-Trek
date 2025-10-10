@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 import { TourList } from "@/components/tours/tour-list";
@@ -7,17 +7,68 @@ import { Button } from "@/components/ui/button";
 import { CardTitle } from "@/components/ui/card";
 import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useDeleteAllToursMutation } from "@/redux/tourApi";
+import {
+  useDeleteAllToursMutation,
+  useGetAllToursQuery,
+} from "@/redux/tourApi";
 import toast from "react-hot-toast";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { IToursQueryParams } from "@/types/tour.types";
 
 export default function AdminToursPage() {
   const router = useRouter();
   const user = useSelector((state: RootState) => state.auth.user);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const isAdmin = user?.role === "ADMIN" || user?.role === "AGENT";
+
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [filters, setFilters] = useState<
+    Omit<IToursQueryParams, "page" | "limit">
+  >({
+    search: undefined,
+    type: undefined,
+    status: undefined,
+    location: undefined,
+  });
+
   const [deleteAllTours, { isLoading: isDeletingAll }] =
     useDeleteAllToursMutation();
+
+  // Build query parameters
+  const queryParams: IToursQueryParams = {
+    page,
+    limit,
+    ...Object.fromEntries(
+      Object.entries(filters).filter(([, value]) => value !== undefined)
+    ),
+  };
+
+  const {
+    data: toursData,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useGetAllToursQuery(queryParams);
+
+  const handlePageChange = (newPage: number) => setPage(newPage);
+
+  const handleLimitChange = (newLimit: number) => {
+    setLimit(newLimit);
+    setPage(1);
+  };
+
+  const handleFiltersChange = useCallback(
+    (newFilters: Partial<typeof filters>) => {
+      setFilters((prev) => ({
+        ...prev,
+        ...newFilters,
+      }));
+      setPage(1);
+    },
+    []
+  );
 
   const handleCreateTour = () => {
     router.push("/dashboard/tours/create");
@@ -27,6 +78,7 @@ export default function AdminToursPage() {
     try {
       await deleteAllTours().unwrap();
       toast.success("All tours deleted successfully");
+      setShowDeleteDialog(false);
     } catch (error) {
       console.error("Failed to delete all tours:", error);
       toast.error("Failed to delete all tours");
@@ -43,7 +95,7 @@ export default function AdminToursPage() {
               variant="outline"
               size="sm"
               onClick={handleCreateTour}
-              className="flex-1 sm:flex-none"
+              className="flex-1 sm:flex-none cursor-pointer"
             >
               <Plus className="mr-2 h-4 w-4 hidden sm:inline-block" />
               <span className="text-xs sm:text-sm">Create Tour</span>
@@ -53,16 +105,33 @@ export default function AdminToursPage() {
               size="sm"
               onClick={() => setShowDeleteDialog(true)}
               disabled={isDeletingAll}
-              className="flex-1 sm:flex-none text-destructive hover:text-destructive"
+              className="flex-1 sm:flex-none text-destructive hover:text-destructive cursor-pointer"
             >
               <span className="text-xs sm:text-sm">Delete All</span>
             </Button>
           </div>
         )}
       </div>
-      <div>
-        <TourList />
-      </div>
+
+      <TourList
+        data={toursData?.data || []}
+        isLoading={isLoading}
+        isError={isError}
+        error={error}
+        meta={
+          toursData?.meta || {
+            total: 0,
+            page: 1,
+            limit: 10,
+            totalPages: 0,
+          }
+        }
+        filters={filters}
+        onPageChange={handlePageChange}
+        onLimitChange={handleLimitChange}
+        onFiltersChange={handleFiltersChange}
+        onRefetch={refetch}
+      />
 
       <ConfirmationDialog
         open={showDeleteDialog}

@@ -1,26 +1,57 @@
-// src/components/tours/tour-list.tsx
 "use client";
-import { useGetAllToursQuery } from "@/redux/tourApi";
 import { TourListItem } from "./tour-list-item";
-import { ITour } from "@/types/tour.types";
+import { ITour, IToursQueryParams } from "@/types/tour.types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Calendar, AlertCircle, Search } from "lucide-react";
+import { Calendar, Search } from "lucide-react";
+import ErrorMessage from "../ui/ErrorMessage";
 import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
+import Pagination from "../ui/Pagination";
+import { TourFilters } from "./TourFilters";
+import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
+import type { SerializedError } from "@reduxjs/toolkit";
 
-export function TourList() {
-  const { data, error, isError, isLoading, isFetching } = useGetAllToursQuery(
-    {}
-  );
+interface TourListProps {
+  data: ITour[];
+  isLoading: boolean;
+  isError: boolean;
+  error: FetchBaseQueryError | SerializedError | undefined;
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+  filters: Omit<IToursQueryParams, "page" | "limit">;
+  onPageChange: (page: number) => void;
+  onLimitChange: (limit: number) => void;
+  onFiltersChange: (
+    filters: Partial<Omit<IToursQueryParams, "page" | "limit">>
+  ) => void;
+  onRefetch: () => void;
+}
 
-  const { message } = extractApiErrorMessage(error);
-
+export function TourList({
+  data,
+  isLoading,
+  isError,
+  error,
+  meta,
+  filters,
+  onPageChange,
+  onLimitChange,
+  onFiltersChange,
+  onRefetch,
+}: TourListProps) {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        {/* Header Skeleton */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-6 w-24" />
+        {/* Filters Skeleton */}
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-full" />
+          <div className="flex gap-3">
+            <Skeleton className="h-10 w-[180px]" />
+            <Skeleton className="h-10 w-[180px]" />
+          </div>
         </div>
 
         {/* Tour List Skeletons */}
@@ -34,50 +65,19 @@ export function TourList() {
   }
 
   if (isError) {
-    return (
-      <div className="text-center py-16">
-        <div className="max-w-md mx-auto px-4">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-destructive/10 flex items-center justify-center">
-            <AlertCircle className="h-8 w-8 text-destructive" />
-          </div>
-          <h3 className="text-lg font-semibold text-foreground mb-2">
-            Failed to Load Tours
-          </h3>
-          <p className="text-sm sm:text-base text-muted-foreground mb-4">
-            {message ||
-              `We couldn&apos;t load the tour information. Please check your
-            connection and try again.`}
-          </p>
-        </div>
-      </div>
-    );
+    const errorMessage = extractApiErrorMessage(error).message;
+    return <ErrorMessage error={errorMessage} onRetry={onRefetch} />;
   }
 
-  if (!data?.data || !data.data.length) {
-    return (
-      <div className="text-center py-16">
-        <div className="max-w-md mx-auto px-4">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
-            <Search className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <h3 className="text-lg font-semibold text-foreground mb-2">
-            No Tours Found
-          </h3>
-          <p className="text-sm sm:text-base text-muted-foreground mb-4">
-            There are currently no tours available. Please check back later or
-            adjust your search criteria.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const tourCount = data.data.length;
+  const tourCount = data?.length || 0;
 
   return (
     <div className="space-y-6">
-      {/* Header Section */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      {/* Filters */}
+      <TourFilters filters={filters} onFiltersChange={onFiltersChange} />
+
+      {/* Results Info */}
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="w-8 h-8 rounded-lg bg-primary/10 items-center justify-center hidden sm:flex">
             <Calendar className="h-4 w-4 text-primary" />
@@ -87,38 +87,43 @@ export function TourList() {
               Available Tours
             </h2>
             <p className="text-xs sm:text-sm text-muted-foreground">
-              Choose from our selection of tours
+              {meta.total} tour{meta.total !== 1 ? "s" : ""} found
             </p>
           </div>
         </div>
       </div>
 
       {/* Tour List */}
-      <div className="space-y-4">
-        {data.data.map((tour: ITour) => (
-          <TourListItem key={tour.id} tour={tour} />
-        ))}
-
-        {/* Loading indicator for additional tours */}
-        {isFetching && (
+      {tourCount > 0 ? (
+        <>
           <div className="space-y-4">
-            {Array.from({ length: 2 }).map((_, i) => (
-              <Skeleton
-                key={`loading-${i}`}
-                className="h-36 w-full rounded-lg"
-              />
+            {data.map((tour: ITour) => (
+              <TourListItem key={tour.id} tour={tour} />
             ))}
           </div>
-        )}
-      </div>
 
-      {/* Footer Info */}
-      {tourCount > 0 && (
-        <div className="text-center pt-4 border-t border-border/40">
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            Showing all {tourCount} available tour
-            {tourCount !== 1 ? "s" : ""}
-          </p>
+          {/* Pagination */}
+          <Pagination
+            meta={meta}
+            onPageChange={onPageChange}
+            onLimitChange={onLimitChange}
+            showPageSizeSelector={true}
+            pageSizeOptions={[10, 25, 50]}
+          />
+        </>
+      ) : (
+        <div className="text-center py-16">
+          <div className="max-w-md mx-auto px-4">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
+              <Search className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              No Tours Found
+            </h3>
+            <p className="text-sm sm:text-base text-muted-foreground mb-4">
+              No tours match your search criteria. Try adjusting your filters.
+            </p>
+          </div>
         </div>
       )}
     </div>
