@@ -13,26 +13,26 @@ import { UserRole } from '../../types/user-profile.types';
 const tourRoutes = Router();
 
 // Create a new tour
-tourRoutes.post('/tours', authorizeRole([UserRole.ADMIN]), createTour);
+tourRoutes.post('/tours', authorizeRole([UserRole.ADMIN]), ...createTour);
 
 // Get a single tour by ID
 tourRoutes.get(
   '/tours/:id',
   authorizeRole([UserRole.ADMIN, UserRole.AGENT, UserRole.CUSTOMER]),
-  getTour,
+  ...getTour,
 );
 
 // Update a tour by ID
-tourRoutes.put('/tours/:id', authorizeRole([UserRole.ADMIN]), updateTour);
+tourRoutes.put('/tours/:id', authorizeRole([UserRole.ADMIN]), ...updateTour);
 
 // Delete a tour by ID
-tourRoutes.delete('/tours/:id', authorizeRole([UserRole.ADMIN]), deleteTour);
+tourRoutes.delete('/tours/:id', authorizeRole([UserRole.ADMIN]), ...deleteTour);
 
 // Get all tours
 tourRoutes.get(
   '/tours',
   authorizeRole([UserRole.ADMIN, UserRole.AGENT, UserRole.CUSTOMER]),
-  getAllTours,
+  ...getAllTours,
 );
 
 // Delete all tours

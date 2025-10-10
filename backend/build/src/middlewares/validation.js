@@ -27,6 +27,7 @@ const validateRequest = (req, res, next) => {
         });
         const validationError = new error_handler_1.ValidationError('Validation Error', {
             layer: 'Request Validation',
+            code: 'VALIDATION_ERROR',
             context: {
                 errors: formattedErrors,
             },

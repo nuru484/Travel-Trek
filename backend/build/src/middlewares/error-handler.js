@@ -144,12 +144,14 @@ const errorHandler = (error, req, res, next) => {
             ? 'Internal Server Error'
             : processedError.message || 'Internal Server Error',
     };
-    // Extra details for non-production
+    if (context && code === 'VALIDATION_ERROR') {
+        errorResponse.details = context;
+    }
     if (!isProduction) {
         errorResponse.errorId = errorId;
         if (code)
             errorResponse.code = code;
-        if (context)
+        if (context && !errorResponse.details)
             errorResponse.details = context;
     }
     res.status(status).json(errorResponse);

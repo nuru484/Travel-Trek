@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteAllHotels = exports.getHotelsByDestination = exports.getAllHotels = exports.deleteHotel = exports.updateHotel = exports.getHotel = exports.createHotel = void 0;
+exports.deleteAllHotels = exports.getHotelsByDestination = exports.getAllHotels = exports.deleteHotel = exports.getHotel = exports.updateHotel = exports.createHotel = void 0;
 const express_validator_1 = require("express-validator");
 const prismaClient_1 = __importDefault(require("../config/prismaClient"));
 const validation_1 = __importDefault(require("../middlewares/validation"));
@@ -19,6 +19,7 @@ const hotel_validation_1 = require("../validations/hotel-validation");
  */
 const handleCreateHotel = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const { name, description, address, city, country, phone, starRating, amenities, destinationId, } = req.body;
+    console.log(name, description, address, city, country, phone, starRating, amenities, destinationId);
     const destination = await prismaClient_1.default.destination.findUnique({
         where: { id: Number(destinationId) },
     });
@@ -55,6 +56,7 @@ const handleCreateHotel = (0, error_handler_1.asyncHandler)(async (req, res, nex
                     id: true,
                     roomType: true,
                     description: true,
+                    photo: true,
                     price: true,
                 },
             },
@@ -117,6 +119,7 @@ const handleGetHotel = (0, error_handler_1.asyncHandler)(async (req, res, next) 
                     id: true,
                     roomType: true,
                     description: true,
+                    photo: true,
                     price: true,
                 },
             },
@@ -152,6 +155,7 @@ const handleGetHotel = (0, error_handler_1.asyncHandler)(async (req, res, next) 
 const handleUpdateHotel = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const { id } = req.params;
     const { name, description, address, city, country, phone, starRating, amenities, destinationId, } = req.body;
+    console.log(name, description, address, city, country, phone, starRating, amenities, destinationId);
     if (!id) {
         throw new error_handler_1.NotFoundError('Hotel ID is required');
     }
@@ -254,6 +258,7 @@ const handleUpdateHotel = (0, error_handler_1.asyncHandler)(async (req, res, nex
                     select: {
                         id: true,
                         roomType: true,
+                        photo: true,
                         description: true,
                         price: true,
                     },
@@ -303,6 +308,18 @@ const handleUpdateHotel = (0, error_handler_1.asyncHandler)(async (req, res, nex
         next(error);
     }
 });
+exports.updateHotel = [
+    multer_1.default.single('hotelPhoto'),
+    (0, express_validator_1.param)('id')
+        .isInt({ min: 1 })
+        .withMessage('Hotel ID must be a positive integer'),
+    ...validation_1.default.create([
+        ...hotel_validation_1.updateHotelValidation,
+        ...hotel_validation_1.hotelPhotoValidation,
+    ]),
+    (0, conditional_cloudinary_upload_1.default)(constants_2.CLOUDINARY_UPLOAD_OPTIONS, 'hotelPhoto'),
+    handleUpdateHotel,
+];
 /**
  * Delete a hotel with photo cleanup
  */
@@ -412,6 +429,7 @@ const handleGetAllHotels = (0, error_handler_1.asyncHandler)(async (req, res, ne
                         id: true,
                         roomType: true,
                         description: true,
+                        photo: true,
                         price: true,
                     },
                 },
@@ -483,6 +501,7 @@ const handleGetHotelsByDestination = (0, error_handler_1.asyncHandler)(async (re
                         id: true,
                         roomType: true,
                         description: true,
+                        photo: true,
                         price: true,
                     },
                 },
@@ -565,18 +584,6 @@ exports.getHotel = [
         .withMessage('Hotel ID must be a positive integer'),
     ...validation_1.default.create([]),
     handleGetHotel,
-];
-exports.updateHotel = [
-    multer_1.default.single('hotelPhoto'),
-    (0, express_validator_1.param)('id')
-        .isInt({ min: 1 })
-        .withMessage('Hotel ID must be a positive integer'),
-    ...validation_1.default.create([
-        ...hotel_validation_1.updateHotelValidation,
-        ...hotel_validation_1.hotelPhotoValidation,
-    ]),
-    (0, conditional_cloudinary_upload_1.default)(constants_2.CLOUDINARY_UPLOAD_OPTIONS, 'hotelPhoto'),
-    handleUpdateHotel,
 ];
 exports.deleteHotel = [
     (0, express_validator_1.param)('id')

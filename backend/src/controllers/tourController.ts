@@ -1,4 +1,5 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
+import { param } from 'express-validator';
 import prisma from '../config/prismaClient';
 import {
   asyncHandler,
@@ -8,11 +9,18 @@ import {
 } from '../middlewares/error-handler';
 import { HTTP_STATUS_CODES } from '../config/constants';
 import { ITourInput, ITourResponse } from 'types/tour.types';
+import {
+  createTourValidation,
+  updateTourValidation,
+  getAllToursValidation,
+  tourIdParamValidation,
+} from '../validations/tour-validation';
+import validationMiddleware from '../middlewares/validation';
 
 /**
  * Create a new tour
  */
-const createTour = asyncHandler(
+const handleCreateTour = asyncHandler(
   async (
     req: Request<{}, {}, ITourInput>,
     res: Response,
@@ -74,10 +82,15 @@ const createTour = asyncHandler(
   },
 );
 
+export const createTour: RequestHandler[] = [
+  ...validationMiddleware.create(createTourValidation),
+  handleCreateTour,
+];
+
 /**
  * Get a single tour by ID
  */
-const getTour = asyncHandler(
+const handleGetTour = asyncHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { id } = req.params;
 
@@ -113,10 +126,18 @@ const getTour = asyncHandler(
   },
 );
 
+export const getTour: RequestHandler[] = [
+  param('id')
+    .isInt({ min: 1 })
+    .withMessage('Tour ID must be a positive integer'),
+  ...validationMiddleware.create([]),
+  handleGetTour,
+];
+
 /**
  * Update a tour
  */
-const updateTour = asyncHandler(
+const handleUpdateTour = asyncHandler(
   async (
     req: Request<{ id?: string }, {}, Partial<ITourInput>>,
     res: Response,
@@ -277,10 +298,18 @@ const updateTour = asyncHandler(
   },
 );
 
+export const updateTour: RequestHandler[] = [
+  param('id')
+    .isInt({ min: 1 })
+    .withMessage('Tour ID must be a positive integer'),
+  ...validationMiddleware.create(updateTourValidation),
+  handleUpdateTour,
+];
+
 /**
  * Delete a tour
  */
-const deleteTour = asyncHandler(
+const handleDeleteTour = asyncHandler(
   async (
     req: Request<{ id?: string }>,
     res: Response,
@@ -356,10 +385,18 @@ const deleteTour = asyncHandler(
   },
 );
 
+export const deleteTour: RequestHandler[] = [
+  param('id')
+    .isInt({ min: 1 })
+    .withMessage('Tour ID must be a positive integer'),
+  ...validationMiddleware.create([]),
+  handleDeleteTour,
+];
+
 /**
  * Get all tours with pagination
  */
-const getAllTours = asyncHandler(
+const handleGetAllTours = asyncHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
@@ -592,10 +629,15 @@ const getAllTours = asyncHandler(
   },
 );
 
+export const getAllTours: RequestHandler[] = [
+  ...validationMiddleware.create(getAllToursValidation),
+  handleGetAllTours,
+];
+
 /**
  * Delete all tours
  */
-const deleteAllTours = asyncHandler(
+export const deleteAllTours = asyncHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const tours = await prisma.tour.findMany({
       include: { bookings: true },
@@ -758,12 +800,3 @@ const deleteAllTours = asyncHandler(
     });
   },
 );
-
-export {
-  createTour,
-  getTour,
-  updateTour,
-  deleteTour,
-  getAllTours,
-  deleteAllTours,
-};

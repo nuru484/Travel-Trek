@@ -4,13 +4,16 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteAllTours = exports.getAllTours = exports.deleteTour = exports.updateTour = exports.getTour = exports.createTour = void 0;
+const express_validator_1 = require("express-validator");
 const prismaClient_1 = __importDefault(require("../config/prismaClient"));
 const error_handler_1 = require("../middlewares/error-handler");
 const constants_1 = require("../config/constants");
+const tour_validation_1 = require("../validations/tour-validation");
+const validation_1 = __importDefault(require("../middlewares/validation"));
 /**
  * Create a new tour
  */
-const createTour = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
+const handleCreateTour = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const { name, description, type, price, maxGuests, startDate, endDate, location, } = req.body;
     const user = req.user;
     const start = new Date(startDate);
@@ -50,11 +53,14 @@ const createTour = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
         data: response,
     });
 });
-exports.createTour = createTour;
+exports.createTour = [
+    ...validation_1.default.create(tour_validation_1.createTourValidation),
+    handleCreateTour,
+];
 /**
  * Get a single tour by ID
  */
-const getTour = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
+const handleGetTour = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const { id } = req.params;
     const tour = await prismaClient_1.default.tour.findUnique({
         where: { id: parseInt(id) },
@@ -83,11 +89,17 @@ const getTour = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
         data: response,
     });
 });
-exports.getTour = getTour;
+exports.getTour = [
+    (0, express_validator_1.param)('id')
+        .isInt({ min: 1 })
+        .withMessage('Tour ID must be a positive integer'),
+    ...validation_1.default.create([]),
+    handleGetTour,
+];
 /**
  * Update a tour
  */
-const updateTour = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
+const handleUpdateTour = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const { id } = req.params;
     const { name, description, type, price, maxGuests, startDate, endDate, location, } = req.body;
     if (!id) {
@@ -204,11 +216,17 @@ const updateTour = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
         next(error);
     }
 });
-exports.updateTour = updateTour;
+exports.updateTour = [
+    (0, express_validator_1.param)('id')
+        .isInt({ min: 1 })
+        .withMessage('Tour ID must be a positive integer'),
+    ...validation_1.default.create(tour_validation_1.updateTourValidation),
+    handleUpdateTour,
+];
 /**
  * Delete a tour
  */
-const deleteTour = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
+const handleDeleteTour = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const { id } = req.params;
     const user = req.user;
     if (!user) {
@@ -258,11 +276,17 @@ const deleteTour = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
         message: 'Tour deleted successfully',
     });
 });
-exports.deleteTour = deleteTour;
+exports.deleteTour = [
+    (0, express_validator_1.param)('id')
+        .isInt({ min: 1 })
+        .withMessage('Tour ID must be a positive integer'),
+    ...validation_1.default.create([]),
+    handleDeleteTour,
+];
 /**
  * Get all tours with pagination
  */
-const getAllTours = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
+const handleGetAllTours = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
@@ -472,11 +496,14 @@ const getAllTours = (0, error_handler_1.asyncHandler)(async (req, res, next) => 
     };
     res.status(constants_1.HTTP_STATUS_CODES.OK).json(paginatedResponse);
 });
-exports.getAllTours = getAllTours;
+exports.getAllTours = [
+    ...validation_1.default.create(tour_validation_1.getAllToursValidation),
+    handleGetAllTours,
+];
 /**
  * Delete all tours
  */
-const deleteAllTours = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
+exports.deleteAllTours = (0, error_handler_1.asyncHandler)(async (req, res, next) => {
     const tours = await prismaClient_1.default.tour.findMany({
         include: { bookings: true },
     });
@@ -594,4 +621,3 @@ const deleteAllTours = (0, error_handler_1.asyncHandler)(async (req, res, next) 
         totalProcessed: tours.length,
     });
 });
-exports.deleteAllTours = deleteAllTours;
