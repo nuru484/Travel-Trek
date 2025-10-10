@@ -22,7 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCreateRoomMutation, useUpdateRoomMutation } from "@/redux/roomApi";
@@ -38,9 +37,9 @@ const roomFormSchema = z.object({
   roomType: z.string().min(1, "Room type is required"),
   price: z.number().min(0, "Price must be a positive number"),
   capacity: z.number().min(1, "Capacity must be at least 1"),
+  totalRooms: z.number().min(1, "Total rooms must be at least 1"),
   description: z.string().optional().nullable(),
   amenities: z.array(z.string()).optional(),
-  available: z.boolean().optional(),
   roomPhoto: z.any().optional(),
 });
 
@@ -87,9 +86,9 @@ export function RoomForm({ room, mode, hotelId }: IRoomFormProps) {
       roomType: room?.roomType || "",
       price: room?.price || 0,
       capacity: room?.capacity || 1,
+      totalRooms: room?.totalRooms || 1,
       description: room?.description || null,
       amenities: room?.amenities || [],
-      available: room?.available ?? true,
       roomPhoto: undefined,
     },
   });
@@ -163,6 +162,7 @@ export function RoomForm({ room, mode, hotelId }: IRoomFormProps) {
       formData.append("roomType", values.roomType);
       formData.append("price", values.price.toString());
       formData.append("capacity", values.capacity.toString());
+      formData.append("totalRooms", values.totalRooms.toString());
       if (values.description)
         formData.append("description", values.description);
       if (values.amenities && values.amenities.length > 0) {
@@ -170,7 +170,6 @@ export function RoomForm({ room, mode, hotelId }: IRoomFormProps) {
           formData.append(`amenities[${index}]`, amenity);
         });
       }
-      formData.append("available", String(values.available ?? true));
       if (values.roomPhoto) formData.append("roomPhoto", values.roomPhoto);
 
       if (mode === "create") {
@@ -351,6 +350,28 @@ export function RoomForm({ room, mode, hotelId }: IRoomFormProps) {
 
               <FormField
                 control={form.control}
+                name="totalRooms"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Total Rooms</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="e.g., 10"
+                        min="1"
+                        {...field}
+                        onChange={(e) =>
+                          field.onChange(parseInt(e.target.value) || 1)
+                        }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="description"
                 render={({ field }) => (
                   <FormItem>
@@ -388,25 +409,6 @@ export function RoomForm({ room, mode, hotelId }: IRoomFormProps) {
                         }
                       />
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="available"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel>Available for Booking</FormLabel>
-                    </div>
                     <FormMessage />
                   </FormItem>
                 )}

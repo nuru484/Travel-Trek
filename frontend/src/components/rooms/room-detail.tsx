@@ -36,10 +36,12 @@ import {
   Building,
   CheckCircle,
   XCircle,
+  Bookmark,
 } from "lucide-react";
 import { ConfirmationDialog } from "../ui/confirmation-dialog";
 import toast from "react-hot-toast";
 import Image from "next/image";
+import { BookingButton } from "../bookings/BookingButton";
 
 interface IRoomDetailProps {
   room: IRoom;
@@ -53,6 +55,9 @@ export function RoomDetail({ room }: IRoomDetailProps) {
   const [createBooking, { isLoading: isBooking }] = useCreateBookingMutation();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBookDialog, setShowBookDialog] = useState(false);
+
+  // Check if room is available based on roomsAvailable
+  const isAvailable = room.roomsAvailable > 0;
 
   // Fetch user's bookings to check if this room is already booked
   const { data: bookingsData } = useGetAllUserBookingsQuery(
@@ -129,6 +134,24 @@ export function RoomDetail({ room }: IRoomDetailProps) {
     }).format(price);
   };
 
+  // Calculate availability percentage
+  const availabilityPercentage =
+    room.totalRooms > 0 ? (room.roomsAvailable / room.totalRooms) * 100 : 0;
+
+  const getAvailabilityStatus = () => {
+    if (room.roomsAvailable === 0) return "Fully booked";
+    if (availabilityPercentage > 50) return "Great availability";
+    if (availabilityPercentage > 20) return "Limited rooms";
+    return "Few rooms left";
+  };
+
+  const getAvailabilityColor = () => {
+    if (room.roomsAvailable === 0) return "bg-gray-500 w-0";
+    if (availabilityPercentage > 50) return "bg-green-500 w-full";
+    if (availabilityPercentage > 20) return "bg-yellow-500 w-3/4";
+    return "bg-red-500 w-1/4";
+  };
+
   return (
     <TooltipProvider>
       <div className="space-y-6">
@@ -147,7 +170,7 @@ export function RoomDetail({ room }: IRoomDetailProps) {
               {/* Action buttons - Admin and User */}
               <div className="absolute top-4 right-4 flex gap-2">
                 {/* Book Now Button for Users */}
-                {!isAdmin && room.available && (
+                {!isAdmin && isAvailable && (
                   <Button
                     onClick={handleBooking}
                     size="sm"
@@ -207,18 +230,18 @@ export function RoomDetail({ room }: IRoomDetailProps) {
                 <div className="space-y-2">
                   <div className="flex flex-wrap gap-2">
                     <Badge
-                      variant={room.available ? "default" : "destructive"}
+                      variant={isAvailable ? "default" : "destructive"}
                       className="bg-white/90 text-black"
                     >
-                      {room.available ? (
+                      {isAvailable ? (
                         <>
                           <CheckCircle className="h-3 w-3 mr-1" />
-                          Available
+                          {room.roomsAvailable} Available
                         </>
                       ) : (
                         <>
                           <XCircle className="h-3 w-3 mr-1" />
-                          Unavailable
+                          Fully Booked
                         </>
                       )}
                     </Badge>
@@ -288,12 +311,12 @@ export function RoomDetail({ room }: IRoomDetailProps) {
 
               <Card
                 className={`border-l-4 ${
-                  room.available ? "border-l-green-500" : "border-l-destructive"
+                  isAvailable ? "border-l-green-500" : "border-l-destructive"
                 }`}
               >
                 <CardContent className="pt-6">
                   <div className="flex items-start gap-3">
-                    {room.available ? (
+                    {isAvailable ? (
                       <CheckCircle className="h-5 w-5 text-green-500 mt-1 flex-shrink-0" />
                     ) : (
                       <XCircle className="h-5 w-5 text-destructive mt-1 flex-shrink-0" />
@@ -304,12 +327,12 @@ export function RoomDetail({ room }: IRoomDetailProps) {
                       </p>
                       <p
                         className={`text-sm ${
-                          room.available ? "text-green-600" : "text-destructive"
+                          isAvailable ? "text-green-600" : "text-destructive"
                         }`}
                       >
-                        {room.available
-                          ? "Available for booking"
-                          : "Currently unavailable"}
+                        {isAvailable
+                          ? `${room.roomsAvailable}/${room.totalRooms} rooms available`
+                          : "Fully booked"}
                       </p>
                     </div>
                   </div>
@@ -347,6 +370,15 @@ export function RoomDetail({ room }: IRoomDetailProps) {
                     <p className="text-sm text-muted-foreground flex items-center gap-1">
                       <Users className="h-4 w-4" />
                       {room.capacity} guest{room.capacity > 1 ? "s" : ""}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="font-medium text-foreground">
+                      Room Availability
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {room.roomsAvailable} of {room.totalRooms} rooms available
                     </p>
                   </div>
 
@@ -393,10 +425,10 @@ export function RoomDetail({ room }: IRoomDetailProps) {
                     <p className="font-medium text-foreground">Status</p>
                     <p
                       className={`text-sm flex items-center gap-2 ${
-                        room.available ? "text-green-600" : "text-destructive"
+                        isAvailable ? "text-green-600" : "text-destructive"
                       }`}
                     >
-                      {room.available ? (
+                      {isAvailable ? (
                         <>
                           <CheckCircle className="h-4 w-4" />
                           {isRoomBooked
@@ -406,66 +438,87 @@ export function RoomDetail({ room }: IRoomDetailProps) {
                       ) : (
                         <>
                           <XCircle className="h-4 w-4" />
-                          Not available
+                          Fully booked
                         </>
                       )}
                     </p>
                   </div>
 
+                  {/* Availability Indicator */}
+                  <div className="pt-2">
+                    <div className="w-full bg-muted rounded-full h-1.5">
+                      <div
+                        className={`h-1.5 rounded-full transition-all duration-500 ${getAvailabilityColor()}`}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1 text-center">
+                      {getAvailabilityStatus()}
+                    </p>
+                  </div>
+
                   {/* Action Buttons */}
                   <div className="space-y-3 pt-4">
-                    {!isAdmin && room.available && !isRoomBooked && (
-                      <Button
-                        onClick={handleBooking}
-                        className="w-full"
-                        size="lg"
-                        disabled={isBooking}
-                      >
-                        <Calendar className="h-4 w-4 mr-2" />
-                        {isBooking ? "Booking..." : "Book This Room"}
-                      </Button>
-                    )}
-
-                    {!isAdmin && room.available && isRoomBooked && (
-                      <Button
-                        variant="secondary"
-                        className="w-full"
-                        size="lg"
-                        disabled
-                      >
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Already Booked
-                      </Button>
-                    )}
-
-                    {!isAdmin && !room.available && (
-                      <Button disabled className="w-full" size="lg">
-                        <XCircle className="h-4 w-4 mr-2" />
-                        Room Unavailable
-                      </Button>
-                    )}
-
-                    {isAdmin && (
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={handleEdit}
-                          variant="outline"
-                          className="flex-1"
-                          disabled={isDeleting}
-                        >
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit
-                        </Button>
-                        <Button
-                          onClick={() => setShowDeleteDialog(true)}
-                          variant="destructive"
-                          className="flex-1"
-                          disabled={isDeleting}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </Button>
-                      </div>
+                    {isAdmin ? (
+                      <>
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={handleEdit}
+                            variant="outline"
+                            className="flex-1"
+                            disabled={isDeleting}
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
+                          </Button>
+                          <Button
+                            onClick={() => setShowDeleteDialog(true)}
+                            variant="destructive"
+                            className="flex-1"
+                            disabled={isDeleting}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </Button>
+                        </div>
+                        <BookingButton
+                          roomId={room.id}
+                          price={room.price}
+                          variant="default"
+                          size="lg"
+                          className="w-full cursor-pointer"
+                          disabled={isDeleting || !isAvailable}
+                          label={!isAvailable ? "Fully Booked" : undefined}
+                        />
+                      </>
+                    ) : (
+                      <>
+                        {!isAvailable ? (
+                          <Button disabled className="w-full" size="lg">
+                            <XCircle className="h-4 w-4 mr-2" />
+                            Fully Booked
+                          </Button>
+                        ) : isRoomBooked ? (
+                          <Button
+                            variant="secondary"
+                            className="w-full"
+                            size="lg"
+                            disabled
+                          >
+                            <Bookmark className="h-4 w-4 mr-2" />
+                            Already Booked
+                          </Button>
+                        ) : (
+                          <Button
+                            onClick={handleBooking}
+                            className="w-full"
+                            size="lg"
+                            disabled={isBooking}
+                          >
+                            <Calendar className="h-4 w-4 mr-2" />
+                            {isBooking ? "Booking..." : "Book This Room"}
+                          </Button>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -474,35 +527,45 @@ export function RoomDetail({ room }: IRoomDetailProps) {
 
             {/* Mobile-only action buttons */}
             <div className="block sm:hidden">
-              {!isAdmin && room.available && !isRoomBooked && (
-                <Button
-                  onClick={handleBooking}
-                  className="w-full"
+              {isAdmin ? (
+                <BookingButton
+                  roomId={room.id}
+                  price={room.price}
+                  variant="default"
                   size="lg"
-                  disabled={isBooking}
-                >
-                  <Calendar className="h-4 w-4 mr-2" />
-                  {isBooking ? "Booking..." : "Book This Room"}
-                </Button>
-              )}
-
-              {!isAdmin && room.available && isRoomBooked && (
-                <Button
-                  variant="secondary"
-                  className="w-full"
-                  size="lg"
-                  disabled
-                >
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Already Booked
-                </Button>
-              )}
-
-              {!isAdmin && !room.available && (
-                <Button disabled className="w-full" size="lg">
-                  <XCircle className="h-4 w-4 mr-2" />
-                  Room Unavailable
-                </Button>
+                  className="w-full cursor-pointer"
+                  disabled={isDeleting || !isAvailable}
+                  label={!isAvailable ? "Fully Booked" : undefined}
+                />
+              ) : (
+                <>
+                  {!isAvailable ? (
+                    <Button disabled className="w-full" size="lg">
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Fully Booked
+                    </Button>
+                  ) : isRoomBooked ? (
+                    <Button
+                      variant="secondary"
+                      className="w-full"
+                      size="lg"
+                      disabled
+                    >
+                      <Bookmark className="h-4 w-4 mr-2" />
+                      Already Booked
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={handleBooking}
+                      className="w-full"
+                      size="lg"
+                      disabled={isBooking}
+                    >
+                      <Calendar className="h-4 w-4 mr-2" />
+                      {isBooking ? "Booking..." : "Book This Room"}
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           </CardContent>

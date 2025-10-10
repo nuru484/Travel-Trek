@@ -1,10 +1,11 @@
 // src/components/hotels/hotel-detail.tsx
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 import { useDeleteHotelMutation } from "@/redux/hotelApi";
+import { useGetAllUserBookingsQuery } from "@/redux/bookingApi";
 import { IHotel } from "@/types/hotel.types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,15 +29,19 @@ import {
   Trash2,
   Star,
   Bed,
-  MousePointer,
   MoreHorizontal,
   Plus,
   Phone,
+  Users,
+  Eye,
+  Bookmark,
+  DoorOpen,
 } from "lucide-react";
 import { ConfirmationDialog } from "../ui/confirmation-dialog";
 import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
 import toast from "react-hot-toast";
 import Image from "next/image";
+import { BookingButton } from "../bookings/BookingButton";
 
 interface IHotelDetailProps {
   hotel: IHotel;
@@ -49,6 +54,23 @@ export function HotelDetail({ hotel }: IHotelDetailProps) {
   const isAdmin = user?.role === "ADMIN";
   const [deleteHotel, { isLoading: isDeleting }] = useDeleteHotelMutation();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  const {
+    data: bookingsData,
+    isError: isBookingsError,
+    error: bookingsError,
+  } = useGetAllUserBookingsQuery(
+    { userId: user?.id, params: { page: 1, limit: 1000 } },
+    { skip: !user }
+  );
+
+  useEffect(() => {
+    if (isBookingsError) {
+      const { message } = extractApiErrorMessage(bookingsError);
+      console.error("Failed to fetch Bookings:", bookingsError);
+      toast.error(message || "Failed to load bookings");
+    }
+  }, [isBookingsError, bookingsError]);
 
   const handleEdit = () => {
     router.push(`/admin-dashboard/hotels/${hotel.id}/edit`);
@@ -71,12 +93,20 @@ export function HotelDetail({ hotel }: IHotelDetailProps) {
     }
   };
 
-  const handleRoomClick = (roomId: number) => {
+  const handleRoomView = (roomId: number) => {
     router.push(`/dashboard/rooms/${roomId}/detail`);
   };
 
   const handleCreateRoom = () => {
     router.push(`/dashboard/hotels/${hotel.id}/create-room`);
+  };
+
+  const isRoomBooked = (roomId: number) => {
+    return bookingsData?.data.some(
+      (booking) =>
+        booking.room?.id === roomId &&
+        booking.userId === parseInt(user?.id || "0")
+    );
   };
 
   const truncatedHotelName =
@@ -318,36 +348,115 @@ export function HotelDetail({ hotel }: IHotelDetailProps) {
             </div>
 
             {hotel.rooms && hotel.rooms.length > 0 ? (
-              <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {hotel.rooms.map((room) => (
-                  <Tooltip key={room.id}>
-                    <TooltipTrigger asChild>
-                      <Card
-                        className="cursor-pointer hover:border-primary hover:shadow-md transition-all duration-200 hover:bg-muted/30 group"
-                        onClick={() => handleRoomClick(room.id)}
-                      >
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm group-hover:text-primary transition-colors truncate">
-                                {room.roomType}
-                              </p>
-                              {room.description && (
-                                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                                  {room.description}
+              <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+                {hotel.rooms.map((room) => {
+                  const roomBooked = isRoomBooked(room.id);
+
+                  return (
+                    <Card
+                      key={room.id}
+                      className="hover:shadow-lg transition-all duration-300 hover:scale-[1.01] group overflow-hidden"
+                    >
+                      <CardContent className="p-0">
+                        <div className="flex flex-col sm:flex-row h-full">
+                          {/* Room Image */}
+                          <div className="relative w-full sm:w-2/5 h-40 sm:h-auto flex-shrink-0">
+                            {room.photo ? (
+                              <Image
+                                src={room.photo}
+                                alt={room.roomType}
+                                fill
+                                className="object-cover"
+                                sizes="(max-width: 640px) 100vw, 40vw"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
+                                <DoorOpen className="h-8 w-8 text-muted-foreground" />
+                              </div>
+                            )}
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/10" />
+                          </div>
+
+                          {/* Room Information */}
+                          <div className="flex-1 p-4 flex flex-col">
+                            {/* Header */}
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-semibold text-foreground text-base mb-1 truncate">
+                                  {room.roomType}
+                                </h4>
+                                {room.description && (
+                                  <p className="text-xs text-muted-foreground line-clamp-2">
+                                    {room.description}
+                                  </p>
+                                )}
+                              </div>
+
+                              <div className="text-right flex-shrink-0 ml-4">
+                                <p className="text-lg font-bold text-primary">
+                                  ₵{room.price.toLocaleString()}
                                 </p>
+                                <p className="text-xs text-muted-foreground">
+                                  per night
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex gap-2 mt-auto flex-wrap">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleRoomView(room.id)}
+                                className="flex-1 sm:flex-none sm:min-w-[80px] group-hover:border-primary/50 transition-colors cursor-pointer"
+                              >
+                                <Eye className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                                <span className="hidden sm:inline">View</span>
+                                <span className="sm:hidden">Details</span>
+                              </Button>
+
+                              {isAdmin ? (
+                                <BookingButton
+                                  roomId={room.id}
+                                  price={room.price}
+                                  variant="outline"
+                                  size="sm"
+                                  className="flex-1 sm:flex-none sm:min-w-[100px] cursor-pointer"
+                                  disabled={isDeleting}
+                                  label="Book for User"
+                                />
+                              ) : (
+                                <>
+                                  {roomBooked ? (
+                                    <Button
+                                      variant="secondary"
+                                      size="sm"
+                                      className="flex-1 sm:flex-none sm:min-w-[100px]"
+                                      disabled
+                                    >
+                                      <Bookmark className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                                      Already Booked
+                                    </Button>
+                                  ) : (
+                                    <BookingButton
+                                      roomId={room.id}
+                                      price={room.price}
+                                      userId={parseInt(user?.id || "0")}
+                                      variant="default"
+                                      size="sm"
+                                      className="flex-1 sm:flex-none sm:min-w-[100px] cursor-pointer"
+                                      label="Book Now"
+                                    />
+                                  )}
+                                </>
                               )}
                             </div>
-                            <MousePointer className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors ml-2 flex-shrink-0" />
                           </div>
-                        </CardContent>
-                      </Card>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>View room details</p>
-                    </TooltipContent>
-                  </Tooltip>
-                ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-8 sm:py-12">

@@ -103,6 +103,8 @@ export const bookingApi = apiSlice.injectEndpoints({
         "Tour",
         "UserBooking",
         "UserBookings",
+        "Rooms",
+        "Room",
       ],
     }),
 
