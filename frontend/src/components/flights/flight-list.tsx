@@ -1,24 +1,62 @@
 // src/components/flights/flight-list.tsx
 "use client";
-import { useGetAllFlightsQuery } from "@/redux/flightApi";
 import { FlightListItem } from "./flight-list-item";
-import { IFlight } from "@/types/flight.types";
+import { IFlight, IFlightsQueryParams } from "@/types/flight.types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plane, Search } from "lucide-react";
 import ErrorMessage from "../ui/ErrorMessage";
 import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
+import Pagination from "../ui/Pagination";
+import { FlightFilters } from "./FlightFilters";
+import { IDestination } from "@/types/destination.types";
+import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
+import type { SerializedError } from "@reduxjs/toolkit";
 
-export function FlightList() {
-  const { data, isError, error, isLoading, isFetching, refetch } =
-    useGetAllFlightsQuery({});
+interface FlightListProps {
+  data: IFlight[];
+  isLoading: boolean;
+  isError: boolean;
+  error: FetchBaseQueryError | SerializedError | undefined;
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+  filters: Omit<IFlightsQueryParams, "page" | "limit">;
+  onPageChange: (page: number) => void;
+  onLimitChange: (limit: number) => void;
+  onFiltersChange: (
+    filters: Partial<Omit<IFlightsQueryParams, "page" | "limit">>
+  ) => void;
+  onRefetch: () => void;
+  destinations: IDestination[];
+}
 
+export function FlightList({
+  data,
+  isLoading,
+  isError,
+  error,
+  meta,
+  filters,
+  onPageChange,
+  onLimitChange,
+  onFiltersChange,
+  onRefetch,
+  destinations,
+}: FlightListProps) {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        {/* Header Skeleton */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-6 w-24" />
+        {/* Filters Skeleton */}
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-full" />
+          <div className="flex gap-3">
+            <Skeleton className="h-10 w-[180px]" />
+            <Skeleton className="h-10 w-[180px]" />
+            <Skeleton className="h-10 w-[150px]" />
+          </div>
         </div>
 
         {/* Flight List Skeletons */}
@@ -33,34 +71,22 @@ export function FlightList() {
 
   if (isError) {
     const errorMessage = extractApiErrorMessage(error).message;
-    return <ErrorMessage error={errorMessage} onRetry={refetch} />;
+    return <ErrorMessage error={errorMessage} onRetry={onRefetch} />;
   }
 
-  if (!data?.data || !data.data.length) {
-    return (
-      <div className="text-center py-16">
-        <div className="max-w-md mx-auto px-4">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
-            <Search className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <h3 className="text-lg font-semibold text-foreground mb-2">
-            No Flights Found
-          </h3>
-          <p className="text-sm sm:text-base text-muted-foreground mb-4">
-            There are currently no flights available. Please check back later or
-            adjust your search criteria.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const flightCount = data.data.length;
+  const flightCount = data?.length || 0;
 
   return (
     <div className="space-y-6">
-      {/* Header Section */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      {/* Filters */}
+      <FlightFilters
+        filters={filters}
+        onFiltersChange={onFiltersChange}
+        destinations={destinations}
+      />
+
+      {/* Results Info */}
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="w-8 h-8 rounded-lg bg-primary/10 items-center justify-center hidden sm:flex">
             <Plane className="h-4 w-4 text-primary" />
@@ -70,38 +96,43 @@ export function FlightList() {
               Available Flights
             </h2>
             <p className="text-xs sm:text-sm text-muted-foreground">
-              Choose from our selection of flights
+              {meta.total} flight{meta.total !== 1 ? "s" : ""} found
             </p>
           </div>
         </div>
       </div>
 
       {/* Flight List */}
-      <div className="space-y-4">
-        {data.data.map((flight: IFlight) => (
-          <FlightListItem key={flight.id} flight={flight} />
-        ))}
-
-        {/* Loading indicator for additional flights */}
-        {isFetching && (
+      {flightCount > 0 ? (
+        <>
           <div className="space-y-4">
-            {Array.from({ length: 2 }).map((_, i) => (
-              <Skeleton
-                key={`loading-${i}`}
-                className="h-36 w-full rounded-lg"
-              />
+            {data.map((flight: IFlight) => (
+              <FlightListItem key={flight.id} flight={flight} />
             ))}
           </div>
-        )}
-      </div>
 
-      {/* Footer Info */}
-      {flightCount > 0 && (
-        <div className="text-center pt-4 border-t border-border/40">
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            Showing all {flightCount} available flight
-            {flightCount !== 1 ? "s" : ""}
-          </p>
+          {/* Pagination */}
+          <Pagination
+            meta={meta}
+            onPageChange={onPageChange}
+            onLimitChange={onLimitChange}
+            showPageSizeSelector={true}
+            pageSizeOptions={[10, 25, 50]}
+          />
+        </>
+      ) : (
+        <div className="text-center py-16">
+          <div className="max-w-md mx-auto px-4">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
+              <Search className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              No Flights Found
+            </h3>
+            <p className="text-sm sm:text-base text-muted-foreground mb-4">
+              No flights match your search criteria. Try adjusting your filters.
+            </p>
+          </div>
         </div>
       )}
     </div>

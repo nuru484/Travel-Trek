@@ -32,7 +32,7 @@ import toast from "react-hot-toast";
 import { IFlight } from "@/types/flight.types";
 import Image from "next/image";
 import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
-import { FlightClass } from "@/types/flight.types";
+import { IFlightClass } from "@/types/flight.types";
 import { IDestination } from "@/types/destination.types";
 
 const flightFormSchema = z.object({
@@ -43,7 +43,7 @@ const flightFormSchema = z.object({
   originId: z.number().min(1, "Origin is required"),
   destinationId: z.number().min(1, "Destination is required"),
   price: z.number().min(0, "Price must be a positive number"),
-  flightClass: z.enum(FlightClass, {
+  flightClass: z.enum(IFlightClass, {
     message: "Flight class is required",
   }),
   stops: z.number().min(0, "Stops must be a non-negative number").optional(),
@@ -61,10 +61,11 @@ interface IFlightFormProps {
 }
 
 const flightClasses = [
+   "First",
   "Economy",
   "Premium Economy",
   "Business",
-  "First",
+ 
 ] as const;
 
 export function FlightForm({ flight, mode }: IFlightFormProps) {
@@ -101,7 +102,7 @@ export function FlightForm({ flight, mode }: IFlightFormProps) {
       originId: flight?.originId || 0,
       destinationId: flight?.destinationId || 0,
       price: flight?.price || 0,
-      flightClass: flight?.flightClass || FlightClass.ECONOMY,
+      flightClass: flight?.flightClass || IFlightClass.ECONOMY,
       stops: flight?.stops || 0,
       capacity: flight?.seatsAvailable || 0,
       flightPhoto: undefined,

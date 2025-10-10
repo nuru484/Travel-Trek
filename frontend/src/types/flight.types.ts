@@ -1,5 +1,5 @@
 // src/types/flight.types.ts
-export enum FlightClass {
+export enum IFlightClass {
   ECONOMY = "Economy",
   BUSINESS = "Business",
   FIRST_CLASS = "First Class",
@@ -15,7 +15,7 @@ export interface IFlight {
   originId: number;
   destinationId: number;
   price: number;
-  flightClass: FlightClass;
+  flightClass: IFlightClass;
   duration: number;
   stops: number;
   photo: string | null;
@@ -28,6 +28,18 @@ export interface IFlight {
 export interface IFlightResponse {
   message: string;
   data: IFlight;
+}
+
+export interface IFlightsQueryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  airline?: string;
+  flightClass?: IFlightClass;
+  minPrice?: number;
+  maxPrice?: number;
+  originId?: number;
+  destinationId?: number;
 }
 
 export interface IFlightsPaginatedResponse {
@@ -49,7 +61,7 @@ export interface IFlightInput {
   originId: number;
   destinationId: number;
   price: number;
-  flightClass: FlightClass;
+  flightClass: IFlightClass;
   stops?: number;
   capacity: number;
   flightPhoto?: string | File;

@@ -3,6 +3,7 @@ import { apiSlice } from "./apiSlice";
 import {
   IFlightResponse,
   IFlightsPaginatedResponse,
+  IFlightsQueryParams,
 } from "@/types/flight.types";
 import { IApiResponse } from "@/types/api";
 
@@ -10,13 +11,31 @@ export const flightApi = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
     getAllFlights: builder.query<
       IFlightsPaginatedResponse,
-      { page?: number; limit?: number }
+      IFlightsQueryParams
     >({
-      query: ({ page = 1, limit = 10 }) => ({
-        url: `/flights?page=${page}&limit=${limit}`,
-        method: "GET",
-      }),
-      providesTags: ["Flight"],
+      query: (params = {}) => {
+        const searchParams = new URLSearchParams();
+
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined && value !== null && value !== "") {
+            searchParams.append(key, String(value));
+          }
+        });
+
+        return {
+          url: `/flights${
+            searchParams.toString() ? `?${searchParams.toString()}` : ""
+          }`,
+          method: "GET",
+        };
+      },
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.data.map(({ id }) => ({ type: "Flight" as const, id })),
+              "Flights",
+            ]
+          : ["Flights"],
     }),
 
     getFlight: builder.query<IFlightResponse, number>({
