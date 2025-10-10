@@ -123,7 +123,7 @@ export default function DashboardSidebar() {
       className="border-r border-sidebar-border/20 shadow-sm"
     >
       <SidebarHeader className="flex items-center py-5 border-b border-sidebar-border/20">
-        <SidebarMenuButton className="flex h-10 items-center gap-3 text-sidebar-foreground">
+        <SidebarMenuButton className="flex h-10  cursor-pointer items-center gap-3 text-sidebar-foreground">
           <Image
             src="/logo.png"
             alt="Travel Trek Logo"

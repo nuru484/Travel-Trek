@@ -358,7 +358,7 @@ export function DashboardOverview() {
             <Link href="/dashboard/tours" className="group">
               <Button
                 variant="outline"
-                className="justify-start w-full h-auto py-4 gap-3 hover:bg-blue-50 hover:border-blue-200 dark:hover:bg-blue-950/20 transition-all"
+                className="justify-start hover:text-accent cursor-pointer w-full h-auto py-4 gap-3 hover:bg-blue-50 hover:border-blue-200 dark:hover:bg-blue-950/20 transition-all"
               >
                 <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30 group-hover:scale-110 transition-transform">
                   <TrendingUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -369,7 +369,7 @@ export function DashboardOverview() {
             <Link href="/dashboard/hotels" className="group">
               <Button
                 variant="outline"
-                className="justify-start w-full h-auto py-4 gap-3 hover:bg-green-50 hover:border-green-200 dark:hover:bg-green-950/20 transition-all"
+                className="justify-start hover:text-accent cursor-pointer w-full h-auto py-4 gap-3 hover:bg-green-50 hover:border-green-200 dark:hover:bg-green-950/20 transition-all"
               >
                 <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30 group-hover:scale-110 transition-transform">
                   <Hotel className="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -380,7 +380,7 @@ export function DashboardOverview() {
             <Link href="/dashboard/flights" className="group">
               <Button
                 variant="outline"
-                className="justify-start w-full h-auto py-4 gap-3 hover:bg-purple-50 hover:border-purple-200 dark:hover:bg-purple-950/20 transition-all"
+                className="justify-start hover:text-accent cursor-pointer w-full h-auto py-4 gap-3 hover:bg-purple-50 hover:border-purple-200 dark:hover:bg-purple-950/20 transition-all"
               >
                 <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30 group-hover:scale-110 transition-transform">
                   <Plane className="h-4 w-4 text-purple-600 dark:text-purple-400" />
@@ -391,7 +391,7 @@ export function DashboardOverview() {
             <Link href="/dashboard/destinations" className="group">
               <Button
                 variant="outline"
-                className="justify-start w-full h-auto py-4 gap-3 hover:bg-orange-50 hover:border-orange-200 dark:hover:bg-orange-950/20 transition-all"
+                className="justify-start hover:text-accent cursor-pointer w-full h-auto py-4 gap-3 hover:bg-orange-50 hover:border-orange-200 dark:hover:bg-orange-950/20 transition-all"
               >
                 <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30 group-hover:scale-110 transition-transform">
                   <MapPin className="h-4 w-4 text-orange-600 dark:text-orange-400" />
@@ -426,15 +426,22 @@ export function DashboardOverview() {
                 </p>
               </div>
               <div className="flex justify-center gap-3 flex-wrap">
-                <Button
-                  size="default"
-                  className="gap-2 shadow-md hover:shadow-lg transition-all"
-                >
-                  <Calendar className="h-4 w-4" />
-                  View My Bookings
-                </Button>
+                <Link href={`/dashboard/bookings?userId=${user.id}`}>
+                  <Button
+                    size="default"
+                    className="gap-2 shadow-md hover:shadow-lg transition-all cursor-pointer"
+                  >
+                    <Calendar className="h-4 w-4" />
+                    View My Bookings
+                  </Button>
+                </Link>
+
                 <Link href="/dashboard/tours">
-                  <Button variant="outline" size="default" className="gap-2">
+                  <Button
+                    variant="outline"
+                    size="default"
+                    className="gap-2 hover:text-foreground hover:bg-muted cursor-pointer"
+                  >
                     <Sparkles className="h-4 w-4" />
                     Browse Tours
                   </Button>
