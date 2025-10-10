@@ -1,24 +1,65 @@
 // src/components/destinations/DestinationList.tsx
 "use client";
-import { useGetAllDestinationsQuery } from "@/redux/destinationApi";
 import DestinationListItem from "./DestinationListItem";
-import { IDestination } from "@/types/destination.types";
+import {
+  IDestination,
+  IDestinationQueryParams,
+} from "@/types/destination.types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MapPin, Search } from "lucide-react";
 import ErrorMessage from "../ui/ErrorMessage";
 import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
+import Pagination from "../ui/Pagination";
+import { DestinationFilters } from "./DestinationFilters";
+import type { FetchBaseQueryError } from "@reduxjs/toolkit/query";
+import type { SerializedError } from "@reduxjs/toolkit";
 
-export default function DestinationList() {
-  const { data, isError, error, isLoading, isFetching, refetch } =
-    useGetAllDestinationsQuery({});
+interface DestinationListProps {
+  data: IDestination[];
+  isLoading: boolean;
+  isError: boolean;
+  error: FetchBaseQueryError | SerializedError | undefined;
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+  filters: Omit<IDestinationQueryParams, "page" | "limit">;
+  onPageChange: (page: number) => void;
+  onLimitChange: (limit: number) => void;
+  onFiltersChange: (
+    filters: Partial<Omit<IDestinationQueryParams, "page" | "limit">>
+  ) => void;
+  onRefetch: () => void;
+  countries: string[];
+  cities: string[];
+}
 
+export default function DestinationList({
+  data,
+  isLoading,
+  isError,
+  error,
+  meta,
+  filters,
+  onPageChange,
+  onLimitChange,
+  onFiltersChange,
+  onRefetch,
+  countries,
+  cities,
+}: DestinationListProps) {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        {/* Header Skeleton */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-6 w-24" />
+        {/* Filters Skeleton */}
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-full" />
+          <div className="flex gap-3">
+            <Skeleton className="h-10 w-[180px]" />
+            <Skeleton className="h-10 w-[180px]" />
+          </div>
         </div>
 
         {/* Destination List Skeletons */}
@@ -33,34 +74,23 @@ export default function DestinationList() {
 
   if (isError) {
     const errorMessage = extractApiErrorMessage(error).message;
-    return <ErrorMessage error={errorMessage} onRetry={refetch} />;
+    return <ErrorMessage error={errorMessage} onRetry={onRefetch} />;
   }
 
-  if (!data?.data || !data.data.length) {
-    return (
-      <div className="text-center py-16">
-        <div className="max-w-md mx-auto px-4">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
-            <Search className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <h3 className="text-lg font-semibold text-foreground mb-2">
-            No Destinations Found
-          </h3>
-          <p className="text-sm sm:text-base text-muted-foreground mb-4">
-            There are currently no destinations available. Please check back
-            later or adjust your search criteria.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const destinationCount = data.data.length;
+  const destinationCount = data?.length || 0;
 
   return (
     <div className="space-y-6">
-      {/* Header Section */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      {/* Filters */}
+      <DestinationFilters
+        filters={filters}
+        onFiltersChange={onFiltersChange}
+        countries={countries}
+        cities={cities}
+      />
+
+      {/* Results Info */}
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="w-8 h-8 rounded-lg bg-primary/10 items-center justify-center hidden sm:flex">
             <MapPin className="h-4 w-4 text-primary" />
@@ -70,38 +100,47 @@ export default function DestinationList() {
               Available Destinations
             </h2>
             <p className="text-xs sm:text-sm text-muted-foreground">
-              Explore our range of destinations
+              {meta.total} destination{meta.total !== 1 ? "s" : ""} found
             </p>
           </div>
         </div>
       </div>
 
       {/* Destination List */}
-      <div className="space-y-4">
-        {data.data.map((destination: IDestination) => (
-          <DestinationListItem key={destination.id} destination={destination} />
-        ))}
-
-        {/* Loading indicator for additional destinations */}
-        {isFetching && (
+      {destinationCount > 0 ? (
+        <>
           <div className="space-y-4">
-            {Array.from({ length: 2 }).map((_, i) => (
-              <Skeleton
-                key={`loading-${i}`}
-                className="h-20 w-full rounded-lg"
+            {data.map((destination: IDestination) => (
+              <DestinationListItem
+                key={destination.id}
+                destination={destination}
               />
             ))}
           </div>
-        )}
-      </div>
 
-      {/* Footer Info */}
-      {destinationCount > 0 && (
-        <div className="text-center pt-4 border-t border-border/40">
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            Showing all {destinationCount} available destination
-            {destinationCount !== 1 ? "s" : ""}
-          </p>
+          {/* Pagination */}
+          <Pagination
+            meta={meta}
+            onPageChange={onPageChange}
+            onLimitChange={onLimitChange}
+            showPageSizeSelector={true}
+            pageSizeOptions={[10, 25, 50]}
+          />
+        </>
+      ) : (
+        <div className="text-center py-16">
+          <div className="max-w-md mx-auto px-4">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
+              <Search className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              No Destinations Found
+            </h3>
+            <p className="text-sm sm:text-base text-muted-foreground mb-4">
+              No destinations match your search criteria. Try adjusting your
+              filters.
+            </p>
+          </div>
         </div>
       )}
     </div>

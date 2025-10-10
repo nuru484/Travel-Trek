@@ -1,24 +1,20 @@
 // types/destination.types.ts
-
-// Main destination interface - matches backend IDestinationResponse exactly
 export interface IDestination {
   id: number;
   name: string;
-  description: string | null; 
+  description: string | null;
   country: string;
-  city: string | null; 
-  photo: string | null; 
+  city: string | null;
+  photo: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
-// For API responses that return a single destination
 export interface IDestinationApiResponse {
   message: string;
   data: IDestination;
 }
 
-// For paginated API responses
 export interface IDestinationsPaginatedResponse {
   message: string;
   data: IDestination[];
@@ -27,23 +23,26 @@ export interface IDestinationsPaginatedResponse {
     page: number;
     limit: number;
     totalPages: number;
-    filters: {
-      search?: string;
-      country?: string;
-      city?: string;
-      sortBy?: string;
-      sortOrder?: string;
-    };
   };
 }
 
-// For form inputs when creating/updating destinations
+// Query parameters for filtering and pagination
+export interface IDestinationQueryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  country?: string;
+  city?: string;
+  sortBy?: string | "createdAt";
+  sortOrder?: string | "desc";
+}
+
 export interface IDestinationInput {
   name: string;
   description?: string;
   country: string;
   city?: string;
-  destinationPhoto?: File; // Frontend uses File object for uploads
+  destinationPhoto?: File;
 }
 
 export interface IDestinationUpdateInput {
@@ -51,5 +50,5 @@ export interface IDestinationUpdateInput {
   description?: string;
   country?: string;
   city?: string;
-  destinationPhoto?: File; 
+  destinationPhoto?: File;
 }
