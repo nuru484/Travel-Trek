@@ -32,7 +32,6 @@ import {
   MoreHorizontal,
   Plus,
   Phone,
-  Users,
   Eye,
   Bookmark,
   DoorOpen,
