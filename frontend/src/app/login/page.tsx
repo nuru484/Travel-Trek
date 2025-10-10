@@ -15,21 +15,24 @@ import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
 import { useRouter } from "next/navigation";
 import Header from "@/components/index/Header";
 import { Button } from "@/components/ui/button";
-import { User, UserCog, Shield } from "lucide-react";
+import { User, UserCog, Shield, Lock } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
-
   const [loginUser, { isLoading }] = useLoginMutation();
 
   const form = useForm<ILoginFormSchema>({
     resolver: zodResolver(loginFormSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
   });
 
   async function onSubmit(data: z.infer<typeof loginFormSchema>) {
     try {
       await loginUser(data).unwrap();
-      toast.success("Login Successful");
+      toast.success("Login successful! Redirecting...");
       router.push("/dashboard");
     } catch (err) {
       console.error("Login error:", err);
@@ -45,7 +48,7 @@ export default function LoginPage() {
         });
       }
 
-      toast.error(message);
+      toast.error(message || "Login failed. Please try again.");
     }
   }
 
@@ -72,86 +75,110 @@ export default function LoginPage() {
       return;
     }
 
+    // Populate form fields for visual feedback
     form.setValue("email", selectedCredentials.email);
     form.setValue("password", selectedCredentials.password);
 
+    // Submit the form
     await onSubmit(selectedCredentials);
   };
 
+  const demoAccounts = [
+    {
+      role: "customer" as const,
+      label: "Customer Demo",
+      icon: User,
+      description: "Browse and book travel",
+    },
+    {
+      role: "agent" as const,
+      label: "Agent Demo",
+      icon: UserCog,
+      description: "Manage bookings",
+    },
+    {
+      role: "admin" as const,
+      label: "Admin Demo",
+      icon: Shield,
+      description: "Full system access",
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header at the top */}
+      {/* Header */}
       <Header />
 
-      {/* Main content area */}
-      <div className="flex flex-col justify-center items-center p-4 min-h-[calc(100vh-theme(spacing.16))]">
-        {/* Main form container */}
-        <div className="relative w-full max-w-md">
-          {/* Card wrapper */}
-          <div className="bg-card border border-border rounded-xl shadow-lg p-3 md:p-6">
-            {/* Header section */}
-            <div className="text-center mb-8">
-              <p className="text-muted-foreground text-sm">
-                Sign in to continue
+      {/* Main Content */}
+      <main className="flex flex-col justify-center items-center px-4 py-8 min-h-[calc(100vh-4rem)]">
+        <div className="w-full max-w-md">
+          {/* Login Card */}
+          <div className="bg-card border border-border rounded-xl shadow-lg overflow-hidden">
+            {/* Card Header */}
+            <div className="bg-gradient-to-b from-muted/30 to-transparent border-b border-border px-6 py-8 text-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 mb-4">
+                <Lock className="w-6 h-6 text-primary" />
+              </div>
+              <h1 className="text-2xl font-semibold text-foreground mb-2">
+                Welcome Back
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Sign in to access your account
               </p>
             </div>
 
-            {/* Demo Login Section */}
-            <div className="mb-8 p-1 md:p-2 lg:p-4 bg-muted/30 rounded-lg border border-border/50">
-              <p className="text-xs font-medium text-muted-foreground mb-3 text-center">
-                Quick Demo Access
-              </p>
-              <div className="grid grid-cols-1 gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDemoLogin("customer")}
-                  disabled={isLoading}
-                  className="w-full cursor-pointer justify-between bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
-                >
-                  <span className="text-sm">Login as Customer</span>
-                  <User className="h-4 w-4" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDemoLogin("agent")}
-                  disabled={isLoading}
-                  className="w-full cursor-pointer justify-between bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
-                >
-                  <span className="text-sm">Login as Agent</span>
-                  <UserCog className="h-4 w-4" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDemoLogin("admin")}
-                  disabled={isLoading}
-                  className="w-full cursor-pointer justify-between bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
-                >
-                  <span className="text-sm">Login as Admin</span>
-                  <Shield className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
+            {/* Card Body */}
+            <div className="px-6 py-8">
+              {/* Demo Login Section */}
+              <div className="mb-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="h-px flex-1 bg-border" />
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Quick Demo Access
+                  </span>
+                  <div className="h-px flex-1 bg-border" />
+                </div>
 
-            {/* Divider */}
-            <div className="relative mb-8">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-border" />
+                <div className="grid grid-cols-1 gap-3">
+                  {demoAccounts.map(
+                    ({ role, label, icon: Icon, description }) => (
+                      <Button
+                        key={role}
+                        type="button"
+                        variant="outline"
+                        onClick={() => handleDemoLogin(role)}
+                        disabled={isLoading}
+                        className="w-full h-auto py-3 px-4 cursor-pointer bg-card hover:bg-muted hover:text-accent-foreground border-border transition-all group disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        <div className="flex items-center gap-3 w-full ">
+                          <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                            <Icon className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1 text-left">
+                            <p className="text-sm font-medium text-foreground">
+                              {label}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {description}
+                            </p>
+                          </div>
+                        </div>
+                      </Button>
+                    )
+                  )}
+                </div>
               </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">
-                  Or continue with
+
+              {/* Divider */}
+              <div className="flex items-center gap-3 mb-8">
+                <div className="h-px flex-1 bg-border" />
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Or with credentials
                 </span>
+                <div className="h-px flex-1 bg-border" />
               </div>
-            </div>
 
-            {/* Form section */}
-            <div className="space-y-6">
+              {/* Login Form */}
               <LoginForm
                 form={form}
                 onSubmit={onSubmit}
@@ -160,14 +187,15 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Footer decoration */}
-          <div className="mt-6 text-center">
-            <p className="text-xs text-muted-foreground">
-              Secure login protected by industry-standard encryption
+          {/* Footer */}
+          <div className="mt-8 text-center space-y-2">
+            <p className="text-xs text-muted-foreground flex items-center justify-center gap-1.5">
+              <Lock className="w-3 h-3" />
+              Secured with industry-standard encryption
             </p>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
