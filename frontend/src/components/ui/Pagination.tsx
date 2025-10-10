@@ -185,7 +185,7 @@ const Pagination: React.FC<PaginationProps> = ({
             disabled={page === "..."}
             className={`min-w-[40px] px-3 py-2.5 rounded-lg border text-sm font-semibold transition-all duration-200 ${
               page === currentPage
-                ? "bg-gradient-brand text-white border-primary shadow-md shadow-primary/20 scale-105"
+                ? "bg-gradient-brand text-foreground border-primary shadow-md shadow-primary/20 scale-105"
                 : page === "..."
                 ? "border-transparent text-muted-foreground cursor-default bg-transparent"
                 : "border-border bg-card text-foreground hover:bg-accent hover:text-accent-foreground hover:border-primary/20 hover:scale-105 cursor-pointer"
