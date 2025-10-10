@@ -191,7 +191,7 @@ export function TourListItem({ tour }: ITourListItemProps) {
           </div>
 
           {/* Date Range */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 bg-accent/50 rounded-lg mb-4 gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 bg-muted/30 rounded-lg mb-4 gap-3">
             <div className="flex items-center gap-2">
               <CalendarDays className="h-4 w-4 text-muted-foreground" />
               <div>
