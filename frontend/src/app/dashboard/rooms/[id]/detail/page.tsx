@@ -32,7 +32,7 @@ export default function RoomDetailPage() {
 
   if (isLoading)
     return (
-      <div className="container mx-auto py-6 px-4">
+      <div className="container mx-auto">
         <Card className="shadow-sm">
           <CardHeader>
             <Skeleton className="h-8 w-48" />
@@ -55,7 +55,7 @@ export default function RoomDetailPage() {
   }
 
   return (
-    <div className="container mx-auto py-4 sm:py-6 px-4">
+    <div className="container mx-auto">
       <div>
         <div className="border-b border-border pb-4 sm:pb-6">
           {/* Mobile Layout - Stacked */}
