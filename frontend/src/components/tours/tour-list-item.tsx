@@ -24,6 +24,7 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
 import { ConfirmationDialog } from "../ui/confirmation-dialog";
 import { BookingButton } from "../bookings/BookingButton";
@@ -46,9 +47,14 @@ export function TourListItem({ tour }: ITourListItemProps) {
     data: bookingsData,
     error: bookingsError,
     isError: isBookingsError,
+    isLoading: isLoadingBookings,
+    isFetching: isFetchingBookings,
   } = useGetAllUserBookingsQuery(
     { userId: user.id, params: { page: 1, limit: 1000 } },
-    { skip: !user }
+    {
+      skip: !user,
+      refetchOnMountOrArgChange: 30, // Refetch if data is older than 30 seconds
+    }
   );
 
   useEffect(() => {
@@ -71,6 +77,9 @@ export function TourListItem({ tour }: ITourListItemProps) {
   // Check if tour is fully booked
   const isFullyBooked = tour.guestsBooked >= tour.maxGuests;
   const availableSpots = tour.maxGuests - tour.guestsBooked;
+
+  // Check if we're still loading booking data
+  const isBookingDataLoading = isLoadingBookings || isFetchingBookings;
 
   const handleView = () => {
     router.push(`/dashboard/tours/${tour.id}/detail`);
@@ -129,6 +138,11 @@ export function TourListItem({ tour }: ITourListItemProps) {
   };
 
   const getBookingButtonText = () => {
+    // Show loading state while fetching booking data
+    if (isBookingDataLoading) {
+      return "Loading...";
+    }
+
     if (!bookingStatus) return "Book Now";
 
     switch (bookingStatus) {
@@ -146,6 +160,7 @@ export function TourListItem({ tour }: ITourListItemProps) {
   };
 
   const getBookingButtonVariant = () => {
+    if (isBookingDataLoading) return "secondary";
     if (!bookingStatus) return "default";
 
     switch (bookingStatus) {
@@ -164,6 +179,7 @@ export function TourListItem({ tour }: ITourListItemProps) {
 
   const isBookingButtonDisabled = () => {
     return (
+      isBookingDataLoading ||
       isFullyBooked ||
       bookingStatus === "CANCELLED" ||
       bookingStatus === "COMPLETED"
@@ -192,21 +208,26 @@ export function TourListItem({ tour }: ITourListItemProps) {
                     Fully Booked
                   </Badge>
                 )}
-                {isTourBooked && (
-                  <Badge
-                    variant={
-                      bookingStatus === "CONFIRMED"
-                        ? "default"
-                        : bookingStatus === "CANCELLED"
-                        ? "destructive"
-                        : bookingStatus === "COMPLETED"
-                        ? "outline"
-                        : "secondary"
-                    }
-                    className="text-xs font-medium"
-                  >
-                    {bookingStatus}
-                  </Badge>
+                {/* Show loading skeleton or actual booking status */}
+                {isBookingDataLoading ? (
+                  <div className="h-5 w-24 bg-gray-200 animate-pulse rounded-full"></div>
+                ) : (
+                  isTourBooked && (
+                    <Badge
+                      variant={
+                        bookingStatus === "CONFIRMED"
+                          ? "default"
+                          : bookingStatus === "CANCELLED"
+                          ? "destructive"
+                          : bookingStatus === "COMPLETED"
+                          ? "outline"
+                          : "secondary"
+                      }
+                      className="text-xs font-medium"
+                    >
+                      {bookingStatus}
+                    </Badge>
+                  )
                 )}
               </div>
               <p className="text-sm text-muted-foreground line-clamp-2 mt-2 sm:mt-1">
@@ -361,7 +382,18 @@ export function TourListItem({ tour }: ITourListItemProps) {
               </>
             ) : (
               <>
-                {isTourBooked ? (
+                {/* Show loading state or booking button */}
+                {isBookingDataLoading ? (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="flex-1 sm:flex-none sm:min-w-[100px] cursor-pointer"
+                    disabled
+                  >
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Loading...
+                  </Button>
+                ) : isTourBooked ? (
                   <Button
                     variant={getBookingButtonVariant()}
                     size="sm"
