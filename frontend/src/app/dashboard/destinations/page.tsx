@@ -15,6 +15,7 @@ import {
 import toast from "react-hot-toast";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { IDestinationQueryParams } from "@/types/destination.types";
+import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
 
 export default function DestinationsPage() {
   const router = useRouter();
@@ -52,7 +53,6 @@ export default function DestinationsPage() {
     refetch,
   } = useGetAllDestinationsQuery(queryParams);
 
-  // Extract unique countries and cities for filters
   const { countries, cities } = useMemo(() => {
     if (!destinationsData?.data) return { countries: [], cities: [] };
 
@@ -98,8 +98,9 @@ export default function DestinationsPage() {
       toast.success("All destinations deleted successfully");
       setShowDeleteDialog(false);
     } catch (error) {
+      const { message } = extractApiErrorMessage(error);
       console.error("Failed to delete all destinations:", error);
-      toast.error("Failed to delete all destinations");
+      toast.error(message || "Failed to delete all destinations");
     }
   };
 
@@ -113,7 +114,7 @@ export default function DestinationsPage() {
               variant="outline"
               size="sm"
               onClick={handleCreateDestination}
-              className="flex-1 sm:flex-none cursor-pointer"
+              className="flex-1 sm:flex-none hover:text-foreground cursor-pointer"
             >
               <Plus className="mr-2 h-4 w-4 hidden sm:inline-block" />
               <span className="text-xs sm:text-sm">Create Destination</span>

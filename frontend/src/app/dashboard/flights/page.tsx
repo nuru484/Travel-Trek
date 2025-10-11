@@ -16,6 +16,7 @@ import { useGetAllDestinationsQuery } from "@/redux/destinationApi";
 import toast from "react-hot-toast";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { IFlightsQueryParams } from "@/types/flight.types";
+import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
 
 export default function FlightsPage() {
   const router = useRouter();
@@ -87,8 +88,9 @@ export default function FlightsPage() {
       toast.success("All flights deleted successfully");
       setShowDeleteDialog(false);
     } catch (error) {
+      const { message } = extractApiErrorMessage(error);
       console.error("Failed to delete all flights:", error);
-      toast.error("Failed to delete all flights");
+      toast.error(message || "Failed to delete all flights");
     }
   };
 
@@ -102,7 +104,7 @@ export default function FlightsPage() {
               variant="outline"
               size="sm"
               onClick={handleCreateFlight}
-              className="flex-1 sm:flex-none cursor-pointer"
+              className="flex-1 sm:flex-none hover:text-foreground cursor-pointer"
             >
               <Plus className="mr-2 h-4 w-4 hidden sm:inline-block" />
               <span className="text-xs sm:text-sm">Create Flight</span>

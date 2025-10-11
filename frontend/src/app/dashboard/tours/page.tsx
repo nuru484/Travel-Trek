@@ -14,6 +14,7 @@ import {
 import toast from "react-hot-toast";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { IToursQueryParams } from "@/types/tour.types";
+import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
 
 export default function AdminToursPage() {
   const router = useRouter();
@@ -80,8 +81,9 @@ export default function AdminToursPage() {
       toast.success("All tours deleted successfully");
       setShowDeleteDialog(false);
     } catch (error) {
+      const { message } = extractApiErrorMessage(error);
       console.error("Failed to delete all tours:", error);
-      toast.error("Failed to delete all tours");
+      toast.error(message || "Failed to delete all tours");
     }
   };
 
@@ -95,7 +97,7 @@ export default function AdminToursPage() {
               variant="outline"
               size="sm"
               onClick={handleCreateTour}
-              className="flex-1 sm:flex-none cursor-pointer"
+              className="flex-1 sm:flex-none hover:text-foreground cursor-pointer"
             >
               <Plus className="mr-2 h-4 w-4 hidden sm:inline-block" />
               <span className="text-xs sm:text-sm">Create Tour</span>
