@@ -142,7 +142,7 @@ export function UserProfileHeader({
               {/* Name and Role */}
               <div className="text-center lg:text-left space-y-3">
                 <div className="space-y-2">
-                  <h1 className="text-3xl font-bold text-foreground tracking-tight">
+                  <h1 className="text-3xl font-bold text-foreground tracking-tight break-all">
                     {user.name ?? "Unknown User"}
                   </h1>
                   {(isAdmin || isViewingOwnProfile) && (
