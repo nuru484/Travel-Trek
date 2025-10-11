@@ -25,6 +25,7 @@ import {
   Route,
   Bookmark,
   X,
+  Loader2,
 } from "lucide-react";
 import { ConfirmationDialog } from "../ui/confirmation-dialog";
 import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
@@ -56,11 +57,16 @@ export function FlightListItem({ flight }: IFlightListItemProps) {
 
   const {
     data: bookingsData,
+    isLoading: isLoadingBookings,
+    isFetching: isFetchingBookings,
     isError: isBookingsError,
     error: BookingsError,
   } = useGetAllUserBookingsQuery(
-    { userId: user.id, params: { page: 1, limit: 1000 } },
-    { skip: !user }
+    { userId: user?.id, params: { page: 1, limit: 1000 } },
+    {
+      skip: !user,
+      refetchOnMountOrArgChange: 30, // Refetch if data is older than 30 seconds
+    }
   );
 
   // Find user's booking for this flight
@@ -76,6 +82,9 @@ export function FlightListItem({ flight }: IFlightListItemProps) {
     isFlightBooked &&
     bookingStatus !== "CANCELLED" &&
     bookingStatus !== "COMPLETED";
+
+  // Check if we're still loading booking data
+  const isBookingDataLoading = isLoadingBookings || isFetchingBookings;
 
   useEffect(() => {
     if (isDestinationsError) {
@@ -162,6 +171,11 @@ export function FlightListItem({ flight }: IFlightListItemProps) {
   };
 
   const getBookingButtonText = () => {
+    // Show loading state while fetching booking data
+    if (isBookingDataLoading) {
+      return "Loading...";
+    }
+
     if (!isFlightBooked) {
       return flight.seatsAvailable <= 0 ? "Fully Booked" : "Book";
     }
@@ -229,13 +243,18 @@ export function FlightListItem({ flight }: IFlightListItemProps) {
                     <Badge variant="secondary" className="text-xs">
                       {flight.flightClass}
                     </Badge>
-                    {isFlightBooked && (
-                      <Badge
-                        variant={getBookingBadgeVariant()}
-                        className="text-xs"
-                      >
-                        {bookingStatus}
-                      </Badge>
+                    {/* Show loading skeleton or actual booking status */}
+                    {isBookingDataLoading ? (
+                      <div className="h-5 w-20 bg-gray-200 animate-pulse rounded-full"></div>
+                    ) : (
+                      isFlightBooked && (
+                        <Badge
+                          variant={getBookingBadgeVariant()}
+                          className="text-xs"
+                        >
+                          {bookingStatus}
+                        </Badge>
+                      )
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -360,7 +379,18 @@ export function FlightListItem({ flight }: IFlightListItemProps) {
                   </>
                 ) : (
                   <>
-                    {isFlightBooked ? (
+                    {/* Show loading state while fetching booking data */}
+                    {isBookingDataLoading ? (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="flex-1 sm:flex-none sm:min-w-[80px]"
+                        disabled
+                      >
+                        <Loader2 className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                        Loading...
+                      </Button>
+                    ) : isFlightBooked ? (
                       <>
                         {isBookingActive ? (
                           // Active booking - show cancel button

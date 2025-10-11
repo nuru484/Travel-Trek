@@ -40,6 +40,9 @@ import {
   MoreHorizontal,
   Plane,
   CreditCard,
+  Loader2,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 import { ConfirmationDialog } from "../ui/confirmation-dialog";
 import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
@@ -71,11 +74,20 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
   } = useGetAllDestinationsQuery({ limit: 100 });
   const destinations = destinationsData?.data || [];
 
-  const { data: bookingsData } = useGetAllUserBookingsQuery(
-    { userId: user.id, params: { page: 1, limit: 1000 } },
-    { skip: !user }
+  // Fetch user's bookings with loading states
+  const {
+    data: bookingsData,
+    isLoading: isLoadingBookings,
+    isFetching: isFetchingBookings,
+  } = useGetAllUserBookingsQuery(
+    { userId: user?.id, params: { page: 1, limit: 1000 } },
+    {
+      skip: !user,
+      refetchOnMountOrArgChange: 30, // Refetch if data is older than 30 seconds
+    }
   );
 
+  // Find user's booking for this flight
   const userBooking = bookingsData?.data.find(
     (booking) =>
       booking.flight?.id === flight.id &&
@@ -88,6 +100,12 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
     isFlightBooked &&
     bookingStatus !== "CANCELLED" &&
     bookingStatus !== "COMPLETED";
+
+  // Check if we're still loading booking data
+  const isBookingDataLoading = isLoadingBookings || isFetchingBookings;
+
+  // Check if flight is available
+  const isAvailable = flight.seatsAvailable > 0;
 
   const formatDate = (date: string | Date) => {
     return format(new Date(date), "EEEE, MMMM dd, yyyy HH:mm");
@@ -176,6 +194,11 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
   };
 
   const getBookingButtonText = () => {
+    // Show loading state while fetching booking data
+    if (isBookingDataLoading) {
+      return "Loading...";
+    }
+
     if (!isFlightBooked) {
       return flight.seatsAvailable <= 0 ? "Fully Booked" : "Book Now";
     }
@@ -196,6 +219,7 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
 
   const isBookingButtonDisabled = () => {
     return (
+      isBookingDataLoading || // Disable while loading booking data
       isBooking ||
       isCancelling ||
       (flight.seatsAvailable <= 0 && !isFlightBooked) ||
@@ -205,6 +229,11 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
   };
 
   const handleBookingButtonClick = () => {
+    // Prevent action if still loading
+    if (isBookingDataLoading) {
+      return;
+    }
+
     if (!isFlightBooked) {
       setShowBookDialog(true);
     } else if (isBookingActive) {
@@ -248,7 +277,11 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
                         disabled={isBookingButtonDisabled()}
                         className="bg-white/90 hover:bg-white text-black shadow-sm cursor-pointer"
                       >
-                        <Bookmark className="h-4 w-4 mr-2" />
+                        {isBookingDataLoading ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Bookmark className="h-4 w-4 mr-2" />
+                        )}
                         <span className="hidden sm:inline">
                           {getBookingButtonText()}
                         </span>
@@ -256,7 +289,9 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
                     </TooltipTrigger>
                     <TooltipContent>
                       <p>
-                        {isBookingActive
+                        {isBookingDataLoading
+                          ? "Loading booking status..."
+                          : isBookingActive
                           ? "Cancel booking"
                           : isFlightBooked
                           ? `Booking ${bookingStatus}`
@@ -310,21 +345,26 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
                     >
                       {flight.flightClass}
                     </Badge>
-                    {isFlightBooked && (
-                      <Badge
-                        variant={
-                          bookingStatus === "CONFIRMED"
-                            ? "default"
-                            : bookingStatus === "CANCELLED"
-                            ? "destructive"
-                            : bookingStatus === "COMPLETED"
-                            ? "outline"
-                            : "secondary"
-                        }
-                        className="bg-white/90 text-black"
-                      >
-                        Booking: {bookingStatus}
-                      </Badge>
+                    {/* Show loading skeleton or actual booking status */}
+                    {isBookingDataLoading ? (
+                      <div className="h-5 w-32 bg-white/70 animate-pulse rounded-full"></div>
+                    ) : (
+                      isFlightBooked && (
+                        <Badge
+                          variant={
+                            bookingStatus === "CONFIRMED"
+                              ? "default"
+                              : bookingStatus === "CANCELLED"
+                              ? "destructive"
+                              : bookingStatus === "COMPLETED"
+                              ? "outline"
+                              : "secondary"
+                          }
+                          className="bg-white/90 text-black"
+                        >
+                          Booking: {bookingStatus}
+                        </Badge>
+                      )
                     )}
                   </div>
                   <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white line-clamp-2">
@@ -345,20 +385,25 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
                 <div className="space-y-2">
                   <div className="flex flex-wrap gap-2">
                     <Badge variant="secondary">{flight.flightClass}</Badge>
-                    {isFlightBooked && (
-                      <Badge
-                        variant={
-                          bookingStatus === "CONFIRMED"
-                            ? "default"
-                            : bookingStatus === "CANCELLED"
-                            ? "destructive"
-                            : bookingStatus === "COMPLETED"
-                            ? "outline"
-                            : "secondary"
-                        }
-                      >
-                        Booking: {bookingStatus}
-                      </Badge>
+                    {/* Show loading skeleton or actual booking status */}
+                    {isBookingDataLoading ? (
+                      <div className="h-5 w-32 bg-gray-200 animate-pulse rounded-full"></div>
+                    ) : (
+                      isFlightBooked && (
+                        <Badge
+                          variant={
+                            bookingStatus === "CONFIRMED"
+                              ? "default"
+                              : bookingStatus === "CANCELLED"
+                              ? "destructive"
+                              : bookingStatus === "COMPLETED"
+                              ? "outline"
+                              : "secondary"
+                          }
+                        >
+                          Booking: {bookingStatus}
+                        </Badge>
+                      )
                     )}
                   </div>
                   <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">
@@ -379,7 +424,11 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
                       disabled={isBookingButtonDisabled()}
                       className="cursor-pointer"
                     >
-                      <Bookmark className="h-4 w-4 mr-2" />
+                      {isBookingDataLoading ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Bookmark className="h-4 w-4 mr-2" />
+                      )}
                       <span className="hidden sm:inline">
                         {getBookingButtonText()}
                       </span>
@@ -563,11 +612,11 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
             <CardContent className="p-4 sm:p-6">
               <h3 className="text-lg font-semibold text-foreground flex items-center gap-2 mb-4">
                 <Users className="h-5 w-5" />
-                Availability
+                Availability & Booking
               </h3>
               <div className="space-y-4">
                 <div className="bg-muted/30 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-3">
                     <div>
                       <p className="font-medium text-foreground">
                         Seats Available
@@ -598,6 +647,31 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
                         : "Few Left"}
                     </Badge>
                   </div>
+
+                  {/* Booking Status */}
+                  {isBookingDataLoading ? (
+                    <div className="h-5 w-40 bg-gray-200 animate-pulse rounded mt-2"></div>
+                  ) : (
+                    <p
+                      className={`text-sm flex items-center gap-2 ${
+                        isAvailable ? "text-green-600" : "text-destructive"
+                      }`}
+                    >
+                      {isAvailable ? (
+                        <>
+                          <CheckCircle className="h-4 w-4" />
+                          {isFlightBooked && isBookingActive
+                            ? `Booking ${bookingStatus}`
+                            : "Ready to book"}
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="h-4 w-4" />
+                          Fully booked
+                        </>
+                      )}
+                    </p>
+                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
@@ -617,6 +691,64 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
                     <p className="font-medium">{flight.capacity} seats</p>
                   </div>
                 </div>
+
+                {/* Action Button for Users */}
+                {!isAdmin && (
+                  <div className="pt-2">
+                    {isBookingDataLoading ? (
+                      <Button
+                        variant="secondary"
+                        className="w-full"
+                        size="lg"
+                        disabled
+                      >
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Loading...
+                      </Button>
+                    ) : !isAvailable && !isFlightBooked ? (
+                      <Button disabled className="w-full" size="lg">
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Fully Booked
+                      </Button>
+                    ) : bookingStatus === "CANCELLED" ||
+                      bookingStatus === "COMPLETED" ? (
+                      <Button
+                        variant="secondary"
+                        className="w-full"
+                        size="lg"
+                        disabled
+                      >
+                        <Bookmark className="h-4 w-4 mr-2" />
+                        {bookingStatus === "CANCELLED"
+                          ? "Cancelled"
+                          : "Completed"}
+                      </Button>
+                    ) : isBookingActive ? (
+                      <Button
+                        onClick={handleBookingButtonClick}
+                        variant="secondary"
+                        className="w-full"
+                        size="lg"
+                        disabled={isCancelling}
+                      >
+                        <Bookmark className="h-4 w-4 mr-2" />
+                        {isCancelling
+                          ? "Cancelling..."
+                          : `Cancel Booking (${bookingStatus})`}
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={handleBookingButtonClick}
+                        className="w-full"
+                        size="lg"
+                        disabled={isBooking || !isAvailable}
+                      >
+                        <Calendar className="h-4 w-4 mr-2" />
+                        {isBooking ? "Booking..." : "Book This Flight"}
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
