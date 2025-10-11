@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { User, Bookmark } from "lucide-react";
+import { User, Bookmark, Search, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
 
@@ -109,6 +109,7 @@ export function BookingButton({
       toast.success("Booking created successfully");
       setIsDialogOpen(false);
       setSelectedUserId(null);
+      setSearchTerm("");
     } catch (error) {
       const { message } = extractApiErrorMessage(error);
       console.error("Failed to book:", error);
@@ -142,8 +143,17 @@ export function BookingButton({
           className={className}
           onClick={() => handleBook(userId)}
         >
-          <Bookmark className="mr-2 h-4 w-4" />
-          {isLoading ? "Processing..." : label || "Book"}
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            <>
+              <Bookmark className="mr-2 h-4 w-4" />
+              {label || "Book"}
+            </>
+          )}
         </Button>
       ) : (
         // Admin/agent: select user via dialog
@@ -160,67 +170,124 @@ export function BookingButton({
             </Button>
           </DialogTrigger>
 
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Book</DialogTitle>
-              <DialogDescription>
-                Select a user to book this item on their behalf.
+          <DialogContent className="max-w-[95vw] sm:max-w-[480px] gap-0 p-0 overflow-hidden">
+            <DialogHeader className="px-6 pt-6 pb-4 space-y-2">
+              <DialogTitle className="text-xl font-semibold break-all">
+                Create Booking
+              </DialogTitle>
+              <DialogDescription className="text-left text-sm text-muted-foreground break-all">
+                Select a user to create a booking on their behalf.
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4">
-              {/* Search */}
-              <div>
-                <Label htmlFor="user-search">Search Users</Label>
-                <Input
-                  id="user-search"
-                  placeholder="Search by name or email..."
-                  value={searchTerm}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                />
+            <div className="px-6 pb-6 space-y-5 overflow-hidden">
+              {/* Search Input */}
+              <div className="space-y-2">
+                <Label
+                  htmlFor="user-search"
+                  className="text-sm font-medium text-foreground"
+                >
+                  Search Users
+                </Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="user-search"
+                    placeholder="Search by name or email..."
+                    value={searchTerm}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    className="pl-9 h-10 bg-background"
+                  />
+                </div>
+                {searchTerm.trim().length > 1 && (
+                  <p className="text-xs text-muted-foreground break-all">
+                    {availableUsers.length} user
+                    {availableUsers.length !== 1 ? "s" : ""} found
+                  </p>
+                )}
               </div>
 
-              {/* User Dropdown */}
-              <div className="space-y-2">
-                <Label htmlFor="user-select">Select User</Label>
+              {/* User Selection */}
+              <div className="space-y-2 min-w-0">
+                <Label
+                  htmlFor="user-select"
+                  className="text-sm font-medium text-foreground"
+                >
+                  Select User
+                </Label>
                 <Select
                   value={selectedUserId ? String(selectedUserId) : ""}
                   onValueChange={(val) => setSelectedUserId(Number(val))}
                 >
-                  <SelectTrigger id="user-select">
-                    <SelectValue placeholder="Choose a user" />
+                  <SelectTrigger
+                    id="user-select"
+                    className="h-10 bg-background w-full"
+                  >
+                    <SelectValue placeholder="Choose a user to book for" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-[300px] max-w-[calc(95vw-3rem)] sm:max-w-[432px]">
                     {isUsersLoading ? (
-                      <SelectItem value="loading" disabled>
-                        Loading users...
-                      </SelectItem>
+                      <div className="flex items-center justify-center py-6">
+                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                        <span className="ml-2 text-sm text-muted-foreground">
+                          Loading users...
+                        </span>
+                      </div>
                     ) : availableUsers.length > 0 ? (
                       availableUsers.map((u) => (
-                        <SelectItem key={u.id} value={String(u.id)}>
-                          <div className="flex items-center gap-2">
-                            <User className="h-4 w-4" />
-                            <span>
-                              {u.name} ({u.email})
+                        <SelectItem
+                          key={u.id}
+                          value={String(u.id)}
+                          className="cursor-pointer"
+                        >
+                          <div className="flex flex-col min-w-0 w-full">
+                            <span className="text-sm font-medium break-all leading-tight w-full">
+                              {u.name}
+                            </span>
+                            <span className="text-xs text-muted-foreground break-all leading-tight mt-0.5 w-full">
+                              {u.email}
                             </span>
                           </div>
                         </SelectItem>
                       ))
                     ) : (
-                      <SelectItem value="none" disabled>
-                        No users found
-                      </SelectItem>
+                      <div className="flex flex-col items-center justify-center py-8 text-center">
+                        <User className="h-8 w-8 text-muted-foreground/50 mb-2" />
+                        <p className="text-sm font-medium text-foreground">
+                          No users found
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Try adjusting your search
+                        </p>
+                      </div>
                     )}
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Price Display */}
+              <div className="rounded-lg bg-muted/50 p-4 border border-border">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Total Price
+                  </span>
+                  <span className="text-lg font-semibold text-foreground">
+                    ${price.toFixed(2)}
+                  </span>
+                </div>
+              </div>
             </div>
 
-            <DialogFooter className="flex gap-2">
+            <DialogFooter className="px-6 py-4 bg-muted/30 border-t border-border flex-row gap-2 sm:gap-2">
               <Button
                 variant="outline"
-                onClick={() => setIsDialogOpen(false)}
+                onClick={() => {
+                  setIsDialogOpen(false);
+                  setSelectedUserId(null);
+                  setSearchTerm("");
+                }}
                 disabled={isLoading}
+                className="flex-1 sm:flex-1"
               >
                 Cancel
               </Button>
@@ -229,8 +296,19 @@ export function BookingButton({
                   selectedUserId ? handleBook(selectedUserId) : null
                 }
                 disabled={!selectedUserId || isLoading}
+                className="flex-1 sm:flex-1"
               >
-                {isLoading ? "Processing..." : "Confirm Booking"}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Bookmark className="mr-2 h-4 w-4" />
+                    Confirm Booking
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>

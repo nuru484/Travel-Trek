@@ -56,19 +56,26 @@ export function ConfirmationDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription className="text-left">
+      <AlertDialogContent className="max-w-[95vw] sm:max-w-lg gap-6">
+        <AlertDialogHeader className="space-y-3">
+          <AlertDialogTitle className="text-xl font-semibold tracking-tight break-all">
+            {title}
+          </AlertDialogTitle>
+          <AlertDialogDescription className="text-left text-sm text-muted-foreground leading-relaxed break-all">
             {description}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         {requireExactMatch && (
-          <div className="space-y-2">
-            <Label htmlFor="confirm-input">
+          <div className="space-y-3">
+            <Label
+              htmlFor="confirm-input"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
               Type{" "}
-              <span className="font-mono font-bold">{requireExactMatch}</span>{" "}
+              <span className="font-mono font-semibold text-foreground break-all inline-block">
+                {requireExactMatch}
+              </span>{" "}
               to confirm:
             </Label>
             <Input
@@ -76,21 +83,29 @@ export function ConfirmationDialog({
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               placeholder={requireExactMatch}
-              className="font-mono"
+              className="font-mono text-sm break-all"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck="false"
             />
           </div>
         )}
 
-        <AlertDialogFooter>
-          <AlertDialogCancel className="hover:cursor-pointer">
+        <AlertDialogFooter className="gap-2 sm:gap-2">
+          <AlertDialogCancel className="cursor-pointer transition-colors">
             {cancelText}
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
             disabled={isConfirmDisabled}
             className={clsx(
-              "hover:cursor-pointer",
-              isDestructive && "bg-red-600 hover:bg-red-700"
+              "cursor-pointer transition-colors",
+              isDestructive && [
+                "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+                "focus-visible:ring-destructive",
+                "disabled:opacity-50 disabled:cursor-not-allowed",
+              ]
             )}
           >
             {confirmText}
