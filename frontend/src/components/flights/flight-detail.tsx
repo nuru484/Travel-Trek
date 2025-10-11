@@ -9,7 +9,7 @@ import { useDeleteFlightMutation } from "@/redux/flightApi";
 import {
   useGetAllUserBookingsQuery,
   useCreateBookingMutation,
-  useDeleteBookingMutation,
+  useUpdateBookingMutation,
 } from "@/redux/bookingApi";
 import { useGetAllDestinationsQuery } from "@/redux/destinationApi";
 import { IFlight } from "@/types/flight.types";
@@ -54,13 +54,15 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
   const router = useRouter();
   const user = useSelector((state: RootState) => state.auth.user);
   const isAdmin = user?.role === "ADMIN";
+
   const [deleteFlight, { isLoading: isDeleting }] = useDeleteFlightMutation();
   const [createBooking, { isLoading: isBooking }] = useCreateBookingMutation();
-  const [deleteBooking, { isLoading: isUnbooking }] =
-    useDeleteBookingMutation();
+  const [updateBooking, { isLoading: isCancelling }] =
+    useUpdateBookingMutation();
+
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBookDialog, setShowBookDialog] = useState(false);
-  const [showUnbookDialog, setShowUnbookDialog] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   const {
     data: destinationsData,
@@ -80,7 +82,12 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
       booking.userId === parseInt(user?.id || "0")
   );
 
+  const bookingStatus = userBooking?.status;
   const isFlightBooked = !!userBooking;
+  const isBookingActive =
+    isFlightBooked &&
+    bookingStatus !== "CANCELLED" &&
+    bookingStatus !== "COMPLETED";
 
   const formatDate = (date: string | Date) => {
     return format(new Date(date), "EEEE, MMMM dd, yyyy HH:mm");
@@ -146,18 +153,64 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
     }
   };
 
-  const handleUnbook = async () => {
+  const handleCancelBooking = async () => {
     if (!userBooking) return;
 
+    const toastId = toast.loading("Cancelling booking...");
+
     try {
-      await deleteBooking(userBooking.id).unwrap();
+      await updateBooking({
+        bookingId: userBooking.id,
+        data: { status: "CANCELLED" },
+      }).unwrap();
+
+      toast.dismiss(toastId);
       toast.success("Booking cancelled successfully");
-      setShowUnbookDialog(false);
+      setShowCancelDialog(false);
     } catch (error) {
       const { message } = extractApiErrorMessage(error);
-      console.error("Failed to cancel booking:", error);
+      toast.dismiss(toastId);
       toast.error(message || "Failed to cancel booking");
+      setShowCancelDialog(false);
     }
+  };
+
+  const getBookingButtonText = () => {
+    if (!isFlightBooked) {
+      return flight.seatsAvailable <= 0 ? "Fully Booked" : "Book Now";
+    }
+
+    switch (bookingStatus) {
+      case "PENDING":
+        return "Booked";
+      case "CONFIRMED":
+        return "Confirmed";
+      case "CANCELLED":
+        return "Cancelled";
+      case "COMPLETED":
+        return "Completed";
+      default:
+        return "Booked";
+    }
+  };
+
+  const isBookingButtonDisabled = () => {
+    return (
+      isBooking ||
+      isCancelling ||
+      (flight.seatsAvailable <= 0 && !isFlightBooked) ||
+      bookingStatus === "CANCELLED" ||
+      bookingStatus === "COMPLETED"
+    );
+  };
+
+  const handleBookingButtonClick = () => {
+    if (!isFlightBooked) {
+      setShowBookDialog(true);
+    } else if (isBookingActive) {
+      setShowCancelDialog(true);
+    }
+    // Do nothing if booking is cancelled or completed
   };
 
   const truncatedFlightNumber =
@@ -165,7 +218,7 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
       ? `${flight.flightNumber.slice(0, 47)}...`
       : flight.flightNumber;
 
-  const isLoading = isDeleting || isBooking || isUnbooking;
+  const isLoading = isDeleting || isBooking || isCancelling;
 
   return (
     <TooltipProvider>
@@ -189,28 +242,25 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
-                        variant={isFlightBooked ? "secondary" : "default"}
+                        variant={isBookingActive ? "secondary" : "default"}
                         size="sm"
-                        onClick={() =>
-                          isFlightBooked
-                            ? setShowUnbookDialog(true)
-                            : setShowBookDialog(true)
-                        }
-                        disabled={
-                          isLoading ||
-                          (!isFlightBooked && flight.seatsAvailable <= 0)
-                        }
+                        onClick={handleBookingButtonClick}
+                        disabled={isBookingButtonDisabled()}
                         className="bg-white/90 hover:bg-white text-black shadow-sm cursor-pointer"
                       >
                         <Bookmark className="h-4 w-4 mr-2" />
                         <span className="hidden sm:inline">
-                          {isFlightBooked ? "Unbook" : "Book"}
+                          {getBookingButtonText()}
                         </span>
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
                       <p>
-                        {isFlightBooked ? "Cancel booking" : "Book this flight"}
+                        {isBookingActive
+                          ? "Cancel booking"
+                          : isFlightBooked
+                          ? `Booking ${bookingStatus}`
+                          : "Book this flight"}
                       </p>
                     </TooltipContent>
                   </Tooltip>
@@ -262,10 +312,18 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
                     </Badge>
                     {isFlightBooked && (
                       <Badge
-                        variant="outline"
-                        className="text-white border-white/90 bg-white/10"
+                        variant={
+                          bookingStatus === "CONFIRMED"
+                            ? "default"
+                            : bookingStatus === "CANCELLED"
+                            ? "destructive"
+                            : bookingStatus === "COMPLETED"
+                            ? "outline"
+                            : "secondary"
+                        }
+                        className="bg-white/90 text-black"
                       >
-                        {userBooking?.status}
+                        Booking: {bookingStatus}
                       </Badge>
                     )}
                   </div>
@@ -288,7 +346,19 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
                   <div className="flex flex-wrap gap-2">
                     <Badge variant="secondary">{flight.flightClass}</Badge>
                     {isFlightBooked && (
-                      <Badge variant="outline">{userBooking?.status}</Badge>
+                      <Badge
+                        variant={
+                          bookingStatus === "CONFIRMED"
+                            ? "default"
+                            : bookingStatus === "CANCELLED"
+                            ? "destructive"
+                            : bookingStatus === "COMPLETED"
+                            ? "outline"
+                            : "secondary"
+                        }
+                      >
+                        Booking: {bookingStatus}
+                      </Badge>
                     )}
                   </div>
                   <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">
@@ -303,22 +373,15 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
                 <div className="flex gap-2">
                   {!isAdmin && (
                     <Button
-                      variant={isFlightBooked ? "secondary" : "default"}
+                      variant={isBookingActive ? "secondary" : "default"}
                       size="sm"
-                      onClick={() =>
-                        isFlightBooked
-                          ? setShowUnbookDialog(true)
-                          : setShowBookDialog(true)
-                      }
-                      disabled={
-                        isLoading ||
-                        (!isFlightBooked && flight.seatsAvailable <= 0)
-                      }
+                      onClick={handleBookingButtonClick}
+                      disabled={isBookingButtonDisabled()}
                       className="cursor-pointer"
                     >
                       <Bookmark className="h-4 w-4 mr-2" />
                       <span className="hidden sm:inline">
-                        {isFlightBooked ? "Unbook" : "Book"}
+                        {getBookingButtonText()}
                       </span>
                     </Button>
                   )}
@@ -584,11 +647,11 @@ export function FlightDetail({ flight }: IFlightDetailProps) {
         />
 
         <ConfirmationDialog
-          open={showUnbookDialog}
-          onOpenChange={setShowUnbookDialog}
+          open={showCancelDialog}
+          onOpenChange={setShowCancelDialog}
           title="Cancel Booking"
-          description={`Are you sure you want to cancel your booking for flight "${truncatedFlightNumber}"?`}
-          onConfirm={handleUnbook}
+          description={`Are you sure you want to cancel your booking for flight "${truncatedFlightNumber}"? This will update your booking status to CANCELLED.`}
+          onConfirm={handleCancelBooking}
           confirmText="Cancel Booking"
           isDestructive
         />

@@ -21,6 +21,9 @@ import {
   DollarSign,
   CalendarDays,
   Bookmark,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
 } from "lucide-react";
 import { ConfirmationDialog } from "../ui/confirmation-dialog";
 import { BookingButton } from "../bookings/BookingButton";
@@ -56,11 +59,14 @@ export function TourListItem({ tour }: ITourListItemProps) {
     }
   }, [bookingsError, isBookingsError]);
 
-  const isTourBooked = bookingsData?.data.some(
+  const userBooking = bookingsData?.data.find(
     (booking) =>
       booking.tour?.id === tour.id &&
       booking.userId === parseInt(user?.id || "0")
   );
+
+  const bookingStatus = userBooking?.status;
+  const isTourBooked = !!userBooking;
 
   // Check if tour is fully booked
   const isFullyBooked = tour.guestsBooked >= tour.maxGuests;
@@ -107,6 +113,63 @@ export function TourListItem({ tour }: ITourListItemProps) {
     }
   };
 
+  const getBookingStatusIcon = (status: string) => {
+    switch (status) {
+      case "PENDING":
+        return <AlertCircle className="mr-2 h-4 w-4" />;
+      case "CONFIRMED":
+        return <CheckCircle className="mr-2 h-4 w-4" />;
+      case "CANCELLED":
+        return <XCircle className="mr-2 h-4 w-4" />;
+      case "COMPLETED":
+        return <CheckCircle className="mr-2 h-4 w-4" />;
+      default:
+        return <Bookmark className="mr-2 h-4 w-4" />;
+    }
+  };
+
+  const getBookingButtonText = () => {
+    if (!bookingStatus) return "Book Now";
+
+    switch (bookingStatus) {
+      case "PENDING":
+        return "Booked";
+      case "CONFIRMED":
+        return "Confirmed";
+      case "CANCELLED":
+        return "Cancelled";
+      case "COMPLETED":
+        return "Completed";
+      default:
+        return "Booked";
+    }
+  };
+
+  const getBookingButtonVariant = () => {
+    if (!bookingStatus) return "default";
+
+    switch (bookingStatus) {
+      case "PENDING":
+        return "secondary";
+      case "CONFIRMED":
+        return "default";
+      case "CANCELLED":
+        return "outline";
+      case "COMPLETED":
+        return "outline";
+      default:
+        return "secondary";
+    }
+  };
+
+  const isBookingButtonDisabled = () => {
+    return (
+      isFullyBooked ||
+      bookingStatus === "CANCELLED" ||
+      bookingStatus === "COMPLETED"
+    );
+  };
+
   return (
     <>
       <Card className="w-full hover:shadow-lg transition-all duration-300 hover:scale-[1.02] group border border-border/50 hover:border-border overflow-hidden">
@@ -127,6 +190,22 @@ export function TourListItem({ tour }: ITourListItemProps) {
                 {isFullyBooked && (
                   <Badge variant="destructive" className="text-xs font-medium">
                     Fully Booked
+                  </Badge>
+                )}
+                {isTourBooked && (
+                  <Badge
+                    variant={
+                      bookingStatus === "CONFIRMED"
+                        ? "default"
+                        : bookingStatus === "CANCELLED"
+                        ? "destructive"
+                        : bookingStatus === "COMPLETED"
+                        ? "outline"
+                        : "secondary"
+                    }
+                    className="text-xs font-medium"
+                  >
+                    {bookingStatus}
                   </Badge>
                 )}
               </div>
@@ -284,13 +363,14 @@ export function TourListItem({ tour }: ITourListItemProps) {
               <>
                 {isTourBooked ? (
                   <Button
-                    variant="secondary"
+                    variant={getBookingButtonVariant()}
                     size="sm"
                     className="flex-1 sm:flex-none sm:min-w-[100px] cursor-pointer"
-                    disabled
+                    disabled={isBookingButtonDisabled()}
+                    onClick={handleView}
                   >
-                    <Bookmark className="mr-2 h-4 w-4" />
-                    Booked
+                    {getBookingStatusIcon(bookingStatus || "")}
+                    {getBookingButtonText()}
                   </Button>
                 ) : (
                   <BookingButton

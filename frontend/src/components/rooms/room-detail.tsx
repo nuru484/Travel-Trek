@@ -8,6 +8,7 @@ import { useDeleteRoomMutation } from "@/redux/roomApi";
 import {
   useGetAllUserBookingsQuery,
   useCreateBookingMutation,
+  useUpdateBookingMutation,
 } from "@/redux/bookingApi";
 import { IRoom } from "@/types/room.types";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ import {
   Bookmark,
 } from "lucide-react";
 import { ConfirmationDialog } from "../ui/confirmation-dialog";
+import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
 import toast from "react-hot-toast";
 import Image from "next/image";
 import { BookingButton } from "../bookings/BookingButton";
@@ -51,10 +53,15 @@ export function RoomDetail({ room }: IRoomDetailProps) {
   const router = useRouter();
   const user = useSelector((state: RootState) => state.auth.user);
   const isAdmin = user?.role === "ADMIN";
+
   const [deleteRoom, { isLoading: isDeleting }] = useDeleteRoomMutation();
   const [createBooking, { isLoading: isBooking }] = useCreateBookingMutation();
+  const [updateBooking, { isLoading: isCancelling }] =
+    useUpdateBookingMutation();
+
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBookDialog, setShowBookDialog] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   // Check if room is available based on roomsAvailable
   const isAvailable = room.roomsAvailable > 0;
@@ -65,26 +72,25 @@ export function RoomDetail({ room }: IRoomDetailProps) {
     { skip: !user }
   );
 
-  // Check if current room is already booked by the user
-  const isRoomBooked = bookingsData?.data.some(
+  // Find user's booking for this room
+  const userBooking = bookingsData?.data.find(
     (booking) =>
       booking?.room?.id === room.id &&
       booking.userId === parseInt(user?.id || "0")
   );
 
+  const bookingStatus = userBooking?.status;
+  const isRoomBooked = !!userBooking;
+  const isBookingActive =
+    isRoomBooked &&
+    bookingStatus !== "CANCELLED" &&
+    bookingStatus !== "COMPLETED";
+
   const handleEdit = () => {
     router.push(`/dashboard/rooms/${room.id}/edit`);
   };
 
-  const handleBooking = () => {
-    if (isRoomBooked) {
-      toast.error("You have already booked this room");
-      return;
-    }
-    setShowBookDialog(true);
-  };
-
-  const handleBookConfirm = async () => {
+  const handleBook = async () => {
     if (!user?.id) {
       toast.error("Please log in to book a room");
       return;
@@ -99,8 +105,31 @@ export function RoomDetail({ room }: IRoomDetailProps) {
       toast.success("Room booked successfully");
       setShowBookDialog(false);
     } catch (error) {
+      const { message } = extractApiErrorMessage(error);
       console.error("Failed to book room:", error);
-      toast.error("Failed to book room");
+      toast.error(message || "Failed to book room");
+    }
+  };
+
+  const handleCancelBooking = async () => {
+    if (!userBooking) return;
+
+    const toastId = toast.loading("Cancelling booking...");
+
+    try {
+      await updateBooking({
+        bookingId: userBooking.id,
+        data: { status: "CANCELLED" },
+      }).unwrap();
+
+      toast.dismiss(toastId);
+      toast.success("Booking cancelled successfully");
+      setShowCancelDialog(false);
+    } catch (error) {
+      const { message } = extractApiErrorMessage(error);
+      toast.dismiss(toastId);
+      toast.error(message || "Failed to cancel booking");
+      setShowCancelDialog(false);
     }
   };
 
@@ -111,8 +140,9 @@ export function RoomDetail({ room }: IRoomDetailProps) {
       setShowDeleteDialog(false);
       router.push("/dashboard/rooms");
     } catch (error) {
+      const { message } = extractApiErrorMessage(error);
       console.error("Failed to delete room:", error);
-      toast.error("Failed to delete room");
+      toast.error(message || "Failed to delete room");
     }
   };
 
@@ -120,6 +150,44 @@ export function RoomDetail({ room }: IRoomDetailProps) {
     if (room.hotel) {
       router.push(`/dashboard/hotels/${room.hotel.id}/detail`);
     }
+  };
+
+  const getBookingButtonText = () => {
+    if (!isRoomBooked) {
+      return !isAvailable ? "Fully Booked" : "Book Now";
+    }
+
+    switch (bookingStatus) {
+      case "PENDING":
+        return "Booked";
+      case "CONFIRMED":
+        return "Confirmed";
+      case "CANCELLED":
+        return "Cancelled";
+      case "COMPLETED":
+        return "Completed";
+      default:
+        return "Booked";
+    }
+  };
+
+  const isBookingButtonDisabled = () => {
+    return (
+      isBooking ||
+      isCancelling ||
+      (!isAvailable && !isRoomBooked) ||
+      bookingStatus === "CANCELLED" ||
+      bookingStatus === "COMPLETED"
+    );
+  };
+
+  const handleBookingButtonClick = () => {
+    if (!isRoomBooked) {
+      setShowBookDialog(true);
+    } else if (isBookingActive) {
+      setShowCancelDialog(true);
+    }
+    // Do nothing if booking is cancelled or completed
   };
 
   const truncatedRoomType =
@@ -170,24 +238,19 @@ export function RoomDetail({ room }: IRoomDetailProps) {
               {/* Action buttons - Admin and User */}
               <div className="absolute top-4 right-4 flex gap-2">
                 {/* Book Now Button for Users */}
-                {!isAdmin && isAvailable && (
+                {!isAdmin && (
                   <Button
-                    onClick={handleBooking}
+                    variant={isBookingActive ? "secondary" : "default"}
                     size="sm"
-                    className={`${
-                      isRoomBooked
-                        ? "bg-secondary hover:bg-secondary text-secondary-foreground"
-                        : "bg-primary hover:bg-primary/90 text-primary-foreground"
-                    } shadow-sm`}
-                    disabled={isDeleting || isBooking || isRoomBooked}
+                    onClick={handleBookingButtonClick}
+                    disabled={isBookingButtonDisabled()}
+                    className="shadow-sm cursor-pointer"
                   >
-                    <Calendar className="h-4 w-4 mr-2" />
+                    <Bookmark className="h-4 w-4 mr-2" />
                     <span className="hidden sm:inline">
-                      {isRoomBooked ? "Booked" : "Book Now"}
+                      {getBookingButtonText()}
                     </span>
-                    <span className="sm:hidden">
-                      {isRoomBooked ? "Booked" : "Book"}
-                    </span>
+                    <span className="sm:hidden">{getBookingButtonText()}</span>
                   </Button>
                 )}
 
@@ -198,7 +261,7 @@ export function RoomDetail({ room }: IRoomDetailProps) {
                       <Button
                         variant="secondary"
                         size="sm"
-                        className="bg-white/90 hover:bg-white text-black shadow-sm hover:cursor-pointer"
+                        className="bg-white/90 hover:bg-white text-black shadow-sm cursor-pointer"
                         disabled={isDeleting}
                       >
                         <MoreHorizontal className="h-4 w-4" />
@@ -208,7 +271,7 @@ export function RoomDetail({ room }: IRoomDetailProps) {
                       <DropdownMenuItem
                         onClick={handleEdit}
                         disabled={isDeleting}
-                        className="hover:cursor-pointer"
+                        className="cursor-pointer"
                       >
                         <Edit className="mr-2 h-4 w-4" />
                         Edit Room
@@ -216,7 +279,7 @@ export function RoomDetail({ room }: IRoomDetailProps) {
                       <DropdownMenuItem
                         onClick={() => setShowDeleteDialog(true)}
                         disabled={isDeleting}
-                        className="text-destructive focus:text-destructive hover:cursor-pointer"
+                        className="text-destructive focus:text-destructive cursor-pointer"
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete Room
@@ -259,6 +322,22 @@ export function RoomDetail({ room }: IRoomDetailProps) {
                       <DollarSign className="h-3 w-3 mr-1" />
                       {formatPrice(room.price)}/night
                     </Badge>
+                    {isRoomBooked && (
+                      <Badge
+                        variant={
+                          bookingStatus === "CONFIRMED"
+                            ? "default"
+                            : bookingStatus === "CANCELLED"
+                            ? "destructive"
+                            : bookingStatus === "COMPLETED"
+                            ? "outline"
+                            : "secondary"
+                        }
+                        className="bg-white/90 text-black"
+                      >
+                        Booking: {bookingStatus}
+                      </Badge>
+                    )}
                   </div>
                   <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white">
                     {room.roomType}
@@ -431,8 +510,8 @@ export function RoomDetail({ room }: IRoomDetailProps) {
                       {isAvailable ? (
                         <>
                           <CheckCircle className="h-4 w-4" />
-                          {isRoomBooked
-                            ? "Already booked by you"
+                          {isRoomBooked && isBookingActive
+                            ? `Booking ${bookingStatus}`
                             : "Ready to book"}
                         </>
                       ) : (
@@ -492,12 +571,13 @@ export function RoomDetail({ room }: IRoomDetailProps) {
                       </>
                     ) : (
                       <>
-                        {!isAvailable ? (
+                        {!isAvailable && !isRoomBooked ? (
                           <Button disabled className="w-full" size="lg">
                             <XCircle className="h-4 w-4 mr-2" />
                             Fully Booked
                           </Button>
-                        ) : isRoomBooked ? (
+                        ) : bookingStatus === "CANCELLED" ||
+                          bookingStatus === "COMPLETED" ? (
                           <Button
                             variant="secondary"
                             className="w-full"
@@ -505,14 +585,29 @@ export function RoomDetail({ room }: IRoomDetailProps) {
                             disabled
                           >
                             <Bookmark className="h-4 w-4 mr-2" />
-                            Already Booked
+                            {bookingStatus === "CANCELLED"
+                              ? "Cancelled"
+                              : "Completed"}
+                          </Button>
+                        ) : isBookingActive ? (
+                          <Button
+                            onClick={handleBookingButtonClick}
+                            variant="secondary"
+                            className="w-full"
+                            size="lg"
+                            disabled={isCancelling}
+                          >
+                            <Bookmark className="h-4 w-4 mr-2" />
+                            {isCancelling
+                              ? "Cancelling..."
+                              : `Cancel Booking (${bookingStatus})`}
                           </Button>
                         ) : (
                           <Button
-                            onClick={handleBooking}
+                            onClick={handleBookingButtonClick}
                             className="w-full"
                             size="lg"
-                            disabled={isBooking}
+                            disabled={isBooking || !isAvailable}
                           >
                             <Calendar className="h-4 w-4 mr-2" />
                             {isBooking ? "Booking..." : "Book This Room"}
@@ -546,8 +641,19 @@ export function RoomDetail({ room }: IRoomDetailProps) {
           description={`Are you sure you want to book "${room.roomType}"${
             room.hotel ? ` at "${room.hotel.name}"` : ""
           } for ${formatPrice(room.price)} per night?`}
-          onConfirm={handleBookConfirm}
-          confirmText={isBooking ? "Booking..." : "Book Room"}
+          onConfirm={handleBook}
+          confirmText="Book Room"
+        />
+
+        {/* Cancel Booking Confirmation Dialog */}
+        <ConfirmationDialog
+          open={showCancelDialog}
+          onOpenChange={setShowCancelDialog}
+          title="Cancel Booking"
+          description={`Are you sure you want to cancel your booking for room "${truncatedRoomType}"? This will update your booking status to CANCELLED.`}
+          onConfirm={handleCancelBooking}
+          confirmText="Cancel Booking"
+          isDestructive
         />
       </div>
     </TooltipProvider>

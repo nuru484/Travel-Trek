@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 import { useDeleteHotelMutation } from "@/redux/hotelApi";
-import { useGetAllUserBookingsQuery } from "@/redux/bookingApi";
+import {
+  useGetAllUserBookingsQuery,
+  useUpdateBookingMutation,
+} from "@/redux/bookingApi";
 import { IHotel, IHotelRoom } from "@/types/hotel.types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,6 +31,7 @@ import {
   Bed,
   Search,
   Calendar,
+  X,
 } from "lucide-react";
 import { ConfirmationDialog } from "../ui/confirmation-dialog";
 import { BookingButton } from "../bookings/BookingButton";
@@ -45,7 +49,14 @@ export function HotelListItem({ hotel }: IHotelListItemProps) {
   const user = useSelector((state: RootState) => state.auth.user);
   const isAdmin = user?.role === "ADMIN" || user?.role === "AGENT";
   const [deleteHotel, { isLoading: isDeleting }] = useDeleteHotelMutation();
+  const [updateBooking, { isLoading: isCancelling }] =
+    useUpdateBookingMutation();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [selectedBookingId, setSelectedBookingId] = useState<number | null>(
+    null
+  );
+  const [selectedRoomName, setSelectedRoomName] = useState("");
   const [showRooms, setShowRooms] = useState(false);
   const [roomSearch, setRoomSearch] = useState("");
   const [selectedRoomId, setSelectedRoomId] = useState("");
@@ -107,10 +118,96 @@ export function HotelListItem({ hotel }: IHotelListItemProps) {
       ? `${hotel.destination.name}, ${hotel.destination.country}`
       : "Unknown destination";
 
-  const isRoomBooked = (roomId: number) =>
-    bookingsData?.data.some(
+  // Get booking for a specific room
+  const getRoomBooking = (roomId: number) =>
+    bookingsData?.data.find(
       (b) => b?.room?.id === roomId && b.userId === parseInt(user?.id || "0")
     );
+
+  // Check if room is booked
+  const isRoomBooked = (roomId: number) => !!getRoomBooking(roomId);
+
+  // Get booking status for a room
+  const getRoomBookingStatus = (roomId: number) => {
+    const booking = getRoomBooking(roomId);
+    return booking?.status;
+  };
+
+  // Check if booking is active (can be cancelled)
+  const isBookingActive = (roomId: number) => {
+    const status = getRoomBookingStatus(roomId);
+    return status && status !== "CANCELLED" && status !== "COMPLETED";
+  };
+
+  // Handle cancel booking
+  const handleCancelBooking = async () => {
+    if (!selectedBookingId) return;
+
+    const toastId = toast.loading("Cancelling booking...");
+
+    try {
+      await updateBooking({
+        bookingId: selectedBookingId,
+        data: { status: "CANCELLED" },
+      }).unwrap();
+
+      toast.dismiss(toastId);
+      toast.success("Booking cancelled successfully");
+      setShowCancelDialog(false);
+      setSelectedBookingId(null);
+      setSelectedRoomName("");
+    } catch (error) {
+      const { message } = extractApiErrorMessage(error);
+      toast.dismiss(toastId);
+      toast.error(message || "Failed to cancel booking");
+      setShowCancelDialog(false);
+    }
+  };
+
+  // Open cancel dialog
+  const handleOpenCancelDialog = (roomId: number, roomType: string) => {
+    const booking = getRoomBooking(roomId);
+    if (booking) {
+      setSelectedBookingId(booking.id);
+      setSelectedRoomName(roomType);
+      setShowCancelDialog(true);
+    }
+  };
+
+  // Get button text based on booking status
+  const getBookingButtonText = (roomId: number) => {
+    const status = getRoomBookingStatus(roomId);
+    if (!status) return "Book";
+
+    switch (status) {
+      case "PENDING":
+        return "Pending";
+      case "CONFIRMED":
+        return "Confirmed";
+      case "CANCELLED":
+        return "Cancelled";
+      case "COMPLETED":
+        return "Completed";
+      default:
+        return "Booked";
+    }
+  };
+
+  // Get badge variant based on booking status
+  const getBookingBadgeVariant = (roomId: number) => {
+    const status = getRoomBookingStatus(roomId);
+    switch (status) {
+      case "CONFIRMED":
+        return "default";
+      case "CANCELLED":
+        return "destructive";
+      case "COMPLETED":
+        return "outline";
+      case "PENDING":
+      default:
+        return "secondary";
+    }
+  };
 
   return (
     <>
@@ -292,78 +389,116 @@ export function HotelListItem({ hotel }: IHotelListItemProps) {
                 {/* Rooms List */}
                 <div className="grid gap-2 max-h-48 overflow-y-auto">
                   {displayedRooms.length > 0 ? (
-                    displayedRooms.map((room) => (
-                      <div
-                        key={room.id}
-                        className="flex items-center justify-between p-3 rounded-lg border bg-background hover:bg-muted/50 transition-all"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Bed className="h-4 w-4 text-muted-foreground" />
-                            <h4 className="font-medium text-sm truncate">
-                              {room.roomType}
-                            </h4>
-                            {room.price && (
-                              <Badge variant="outline" className="text-xs">
-                                ${room.price}
-                              </Badge>
+                    displayedRooms.map((room) => {
+                      const roomBooked = isRoomBooked(room.id);
+                      const bookingActive = isBookingActive(room.id);
+                      const bookingStatus = getRoomBookingStatus(room.id);
+
+                      return (
+                        <div
+                          key={room.id}
+                          className="flex items-center justify-between p-3 rounded-lg border bg-background hover:bg-muted/50 transition-all"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <Bed className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                              <h4 className="font-medium text-sm truncate">
+                                {room.roomType}
+                              </h4>
+                              {room.price && (
+                                <Badge variant="outline" className="text-xs">
+                                  ${room.price}
+                                </Badge>
+                              )}
+                              {roomBooked && (
+                                <Badge
+                                  variant={getBookingBadgeVariant(room.id)}
+                                  className="text-xs"
+                                >
+                                  {bookingStatus}
+                                </Badge>
+                              )}
+                            </div>
+                            {room.description && (
+                              <p className="text-xs text-muted-foreground line-clamp-2">
+                                {room.description}
+                              </p>
                             )}
                           </div>
-                          {room.description && (
-                            <p className="text-xs text-muted-foreground line-clamp-2">
-                              {room.description}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex gap-2 ml-3 flex-shrink-0">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleRoomView(room.id)}
-                            className="cursor-pointer"
-                          >
-                            <Eye className="h-3 w-3 mr-1" />
-                            View
-                          </Button>
-
-                          {/* Use BookingButton for both admins and normal users */}
-                          {isAdmin ? (
-                            // Admin booking - no userId passed, opens dialog for user selection
-                            <BookingButton
-                              roomId={room.id}
-                              price={room.price || 100}
-                              variant="outline"
+                          <div className="flex gap-2 ml-3 flex-shrink-0">
+                            <Button
                               size="sm"
+                              variant="outline"
+                              onClick={() => handleRoomView(room.id)}
                               className="cursor-pointer"
-                            />
-                          ) : (
-                            // Normal user booking
-                            <>
-                              {isRoomBooked(room.id) ? (
-                                <Button
-                                  size="sm"
-                                  variant="secondary"
-                                  disabled
-                                  className="cursor-pointer"
-                                >
-                                  <Calendar className="h-3 w-3 mr-1" />
-                                  Booked
-                                </Button>
-                              ) : (
-                                <BookingButton
-                                  roomId={room.id}
-                                  price={room.price || 100}
-                                  userId={parseInt(user?.id || "0")}
-                                  variant="default"
-                                  size="sm"
-                                  className="cursor-pointer"
-                                />
-                              )}
-                            </>
-                          )}
+                            >
+                              <Eye className="h-3 w-3 mr-1" />
+                              View
+                            </Button>
+
+                            {/* Booking buttons based on user role and booking status */}
+                            {isAdmin ? (
+                              // Admin booking - no userId passed, opens dialog for user selection
+                              <BookingButton
+                                roomId={room.id}
+                                price={room.price || 100}
+                                variant="outline"
+                                size="sm"
+                                className="cursor-pointer"
+                              />
+                            ) : (
+                              <>
+                                {roomBooked ? (
+                                  <>
+                                    {bookingActive ? (
+                                      // Active booking - show cancel button
+                                      <Button
+                                        size="sm"
+                                        variant="secondary"
+                                        onClick={() =>
+                                          handleOpenCancelDialog(
+                                            room.id,
+                                            room.roomType
+                                          )
+                                        }
+                                        disabled={isCancelling}
+                                        className="cursor-pointer"
+                                      >
+                                        <X className="h-3 w-3 mr-1" />
+                                        {isCancelling
+                                          ? "Cancelling..."
+                                          : "Cancel"}
+                                      </Button>
+                                    ) : (
+                                      // Cancelled or Completed booking - show status
+                                      <Button
+                                        size="sm"
+                                        variant="secondary"
+                                        disabled
+                                        className="cursor-not-allowed"
+                                      >
+                                        <Calendar className="h-3 w-3 mr-1" />
+                                        {getBookingButtonText(room.id)}
+                                      </Button>
+                                    )}
+                                  </>
+                                ) : (
+                                  // Not booked - show book button
+                                  <BookingButton
+                                    roomId={room.id}
+                                    price={room.price || 100}
+                                    userId={parseInt(user?.id || "0")}
+                                    variant="default"
+                                    size="sm"
+                                    className="cursor-pointer"
+                                  />
+                                )}
+                              </>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <div className="text-center py-4 text-muted-foreground">
                       <Bed className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -391,6 +526,19 @@ export function HotelListItem({ hotel }: IHotelListItemProps) {
         )}"? This action cannot be undone.`}
         onConfirm={handleDelete}
         confirmText="Delete"
+        isDestructive
+      />
+
+      {/* Cancel Booking Confirmation Dialog */}
+      <ConfirmationDialog
+        open={showCancelDialog}
+        onOpenChange={setShowCancelDialog}
+        title="Cancel Booking"
+        description={`Are you sure you want to cancel your booking for room "${truncateText(
+          selectedRoomName
+        )}"? This will update your booking status to CANCELLED.`}
+        onConfirm={handleCancelBooking}
+        confirmText="Cancel Booking"
         isDestructive
       />
     </>

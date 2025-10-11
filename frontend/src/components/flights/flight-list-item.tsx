@@ -6,7 +6,10 @@ import { format } from "date-fns";
 import { RootState } from "@/redux/store";
 import { useDeleteFlightMutation } from "@/redux/flightApi";
 import { useGetAllDestinationsQuery } from "@/redux/destinationApi";
-import { useGetAllUserBookingsQuery } from "@/redux/bookingApi";
+import {
+  useGetAllUserBookingsQuery,
+  useUpdateBookingMutation,
+} from "@/redux/bookingApi";
 import { IFlight } from "@/types/flight.types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,6 +24,7 @@ import {
   ArrowRight,
   Route,
   Bookmark,
+  X,
 } from "lucide-react";
 import { ConfirmationDialog } from "../ui/confirmation-dialog";
 import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
@@ -38,7 +42,10 @@ export function FlightListItem({ flight }: IFlightListItemProps) {
   const user = useSelector((state: RootState) => state.auth.user);
   const isAdmin = user?.role === "ADMIN" || user?.role === "AGENT";
   const [deleteFlight, { isLoading: isDeleting }] = useDeleteFlightMutation();
+  const [updateBooking, { isLoading: isCancelling }] =
+    useUpdateBookingMutation();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   const {
     data: destinationsData,
@@ -56,11 +63,19 @@ export function FlightListItem({ flight }: IFlightListItemProps) {
     { skip: !user }
   );
 
-  const isFlightBooked = bookingsData?.data.some(
+  // Find user's booking for this flight
+  const userBooking = bookingsData?.data.find(
     (booking) =>
       booking.flight?.id === flight.id &&
       booking.userId === parseInt(user?.id || "0")
   );
+
+  const bookingStatus = userBooking?.status;
+  const isFlightBooked = !!userBooking;
+  const isBookingActive =
+    isFlightBooked &&
+    bookingStatus !== "CANCELLED" &&
+    bookingStatus !== "COMPLETED";
 
   useEffect(() => {
     if (isDestinationsError) {
@@ -98,6 +113,28 @@ export function FlightListItem({ flight }: IFlightListItemProps) {
     }
   };
 
+  const handleCancelBooking = async () => {
+    if (!userBooking) return;
+
+    const toastId = toast.loading("Cancelling booking...");
+
+    try {
+      await updateBooking({
+        bookingId: userBooking.id,
+        data: { status: "CANCELLED" },
+      }).unwrap();
+
+      toast.dismiss(toastId);
+      toast.success("Booking cancelled successfully");
+      setShowCancelDialog(false);
+    } catch (error) {
+      const { message } = extractApiErrorMessage(error);
+      toast.dismiss(toastId);
+      toast.error(message || "Failed to cancel booking");
+      setShowCancelDialog(false);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), "MMM dd, HH:mm");
   };
@@ -122,6 +159,39 @@ export function FlightListItem({ flight }: IFlightListItemProps) {
       }
     }
     return destination?.city?.substring(0, 3).toUpperCase() || "N/A";
+  };
+
+  const getBookingButtonText = () => {
+    if (!isFlightBooked) {
+      return flight.seatsAvailable <= 0 ? "Fully Booked" : "Book";
+    }
+
+    switch (bookingStatus) {
+      case "PENDING":
+        return "Pending";
+      case "CONFIRMED":
+        return "Confirmed";
+      case "CANCELLED":
+        return "Cancelled";
+      case "COMPLETED":
+        return "Completed";
+      default:
+        return "Booked";
+    }
+  };
+
+  const getBookingBadgeVariant = () => {
+    switch (bookingStatus) {
+      case "CONFIRMED":
+        return "default";
+      case "CANCELLED":
+        return "destructive";
+      case "COMPLETED":
+        return "outline";
+      case "PENDING":
+      default:
+        return "secondary";
+    }
   };
 
   return (
@@ -152,13 +222,21 @@ export function FlightListItem({ flight }: IFlightListItemProps) {
               {/* Header */}
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <h3 className="font-semibold text-foreground text-sm sm:text-base truncate">
                       {flight.airline}
                     </h3>
                     <Badge variant="secondary" className="text-xs">
                       {flight.flightClass}
                     </Badge>
+                    {isFlightBooked && (
+                      <Badge
+                        variant={getBookingBadgeVariant()}
+                        className="text-xs"
+                      >
+                        {bookingStatus}
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Flight {flight.flightNumber}
@@ -283,16 +361,34 @@ export function FlightListItem({ flight }: IFlightListItemProps) {
                 ) : (
                   <>
                     {isFlightBooked ? (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        className="flex-1 sm:flex-none sm:min-w-[80px] cursor-pointer"
-                        disabled
-                      >
-                        <Bookmark className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                        Booked
-                      </Button>
+                      <>
+                        {isBookingActive ? (
+                          // Active booking - show cancel button
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => setShowCancelDialog(true)}
+                            disabled={isCancelling}
+                            className="flex-1 sm:flex-none sm:min-w-[80px] cursor-pointer"
+                          >
+                            <X className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                            {isCancelling ? "Cancelling..." : "Cancel"}
+                          </Button>
+                        ) : (
+                          // Cancelled or Completed booking - show status
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="flex-1 sm:flex-none sm:min-w-[80px] cursor-not-allowed"
+                            disabled
+                          >
+                            <Bookmark className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                            {getBookingButtonText()}
+                          </Button>
+                        )}
+                      </>
                     ) : (
+                      // Not booked - show book button
                       <BookingButton
                         flightId={flight.id}
                         price={flight.price}
@@ -342,15 +438,27 @@ export function FlightListItem({ flight }: IFlightListItemProps) {
         </CardContent>
       </Card>
 
+      {/* Delete Confirmation Dialog */}
       <ConfirmationDialog
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
         title="Delete Flight"
-        description={`Are you sure you want to delete \"${truncateText(
+        description={`Are you sure you want to delete "${truncateText(
           flight.flightNumber
-        )}\"? This action cannot be undone.`}
+        )}"? This action cannot be undone.`}
         onConfirm={handleDelete}
         confirmText="Delete"
+        isDestructive
+      />
+
+      {/* Cancel Booking Confirmation Dialog */}
+      <ConfirmationDialog
+        open={showCancelDialog}
+        onOpenChange={setShowCancelDialog}
+        title="Cancel Booking"
+        description={`Are you sure you want to cancel your booking for flight "${flight.flightNumber}" (${flight.airline})? This will update your booking status to CANCELLED.`}
+        onConfirm={handleCancelBooking}
+        confirmText="Cancel Booking"
         isDestructive
       />
     </>

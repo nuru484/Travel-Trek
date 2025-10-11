@@ -9,7 +9,7 @@ import { useDeleteTourMutation } from "@/redux/tourApi";
 import {
   useGetAllUserBookingsQuery,
   useCreateBookingMutation,
-  useDeleteBookingMutation,
+  useUpdateBookingMutation,
 } from "@/redux/bookingApi";
 import { ITour } from "@/types/tour.types";
 import { Button } from "@/components/ui/button";
@@ -46,12 +46,12 @@ export function TourDetail({ tour }: ITourDetailProps) {
 
   const [deleteTour, { isLoading: isDeleting }] = useDeleteTourMutation();
   const [createBooking, { isLoading: isBooking }] = useCreateBookingMutation();
-  const [deleteBooking, { isLoading: isUnbooking }] =
-    useDeleteBookingMutation();
+  const [updateBooking, { isLoading: isCancelling }] =
+    useUpdateBookingMutation();
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBookDialog, setShowBookDialog] = useState(false);
-  const [showUnbookDialog, setShowUnbookDialog] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   const { data: bookingsData } = useGetAllUserBookingsQuery(
     { userId: user.id, params: { page: 1, limit: 1000 } },
@@ -63,7 +63,13 @@ export function TourDetail({ tour }: ITourDetailProps) {
       booking.tour?.id === tour.id &&
       booking.userId === parseInt(user?.id || "0")
   );
+
+  const bookingStatus = userBooking?.status;
   const isTourBooked = !!userBooking;
+  const isBookingActive =
+    isTourBooked &&
+    bookingStatus !== "CANCELLED" &&
+    bookingStatus !== "COMPLETED";
   const isFullyBooked = tour.guestsBooked >= tour.maxGuests;
 
   const formatDate = (date: string | Date) =>
@@ -104,17 +110,64 @@ export function TourDetail({ tour }: ITourDetailProps) {
     }
   };
 
-  const handleUnbook = async () => {
+  const handleCancelBooking = async () => {
     if (!userBooking) return;
+
+    const toastId = toast.loading("Cancelling booking...");
+
     try {
-      await deleteBooking(userBooking.id).unwrap();
+      await updateBooking({
+        bookingId: userBooking.id,
+        data: { status: "CANCELLED" },
+      }).unwrap();
+
+      toast.dismiss(toastId);
       toast.success("Booking cancelled successfully");
-      setShowUnbookDialog(false);
+      setShowCancelDialog(false);
     } catch (error) {
       const { message } = extractApiErrorMessage(error);
-      console.error("Failed to cancel booking:", error);
+      toast.dismiss(toastId);
       toast.error(message || "Failed to cancel booking");
+      setShowCancelDialog(false);
     }
+  };
+
+  const getBookingButtonText = () => {
+    if (!isTourBooked) {
+      return isFullyBooked ? "Fully Booked" : "Book Now";
+    }
+
+    switch (bookingStatus) {
+      case "PENDING":
+        return "Booked";
+      case "CONFIRMED":
+        return "Confirmed";
+      case "CANCELLED":
+        return "Cancelled";
+      case "COMPLETED":
+        return "Completed";
+      default:
+        return "Booked";
+    }
+  };
+
+  const isBookingButtonDisabled = () => {
+    return (
+      isBooking ||
+      isCancelling ||
+      (isFullyBooked && !isTourBooked) ||
+      bookingStatus === "CANCELLED" ||
+      bookingStatus === "COMPLETED"
+    );
+  };
+
+  const handleBookingButtonClick = () => {
+    if (!isTourBooked) {
+      setShowBookDialog(true);
+    } else if (isBookingActive) {
+      setShowCancelDialog(true);
+    }
+    // Do nothing if booking is cancelled or completed
   };
 
   const truncatedTourName =
@@ -160,24 +213,14 @@ export function TourDetail({ tour }: ITourDetailProps) {
               </DropdownMenu>
             ) : (
               <Button
-                variant={isTourBooked ? "secondary" : "default"}
+                variant={isBookingActive ? "secondary" : "default"}
                 size="sm"
-                onClick={() =>
-                  isTourBooked
-                    ? setShowUnbookDialog(true)
-                    : setShowBookDialog(true)
-                }
-                disabled={
-                  isBooking || isUnbooking || (isFullyBooked && !isTourBooked)
-                }
+                onClick={handleBookingButtonClick}
+                disabled={isBookingButtonDisabled()}
                 className="cursor-pointer"
               >
                 <Bookmark className="mr-2 h-4 w-4" />
-                {isTourBooked
-                  ? "Unbook"
-                  : isFullyBooked
-                  ? "Fully Booked"
-                  : "Book Now"}
+                {getBookingButtonText()}
               </Button>
             )}
           </div>
@@ -203,7 +246,17 @@ export function TourDetail({ tour }: ITourDetailProps) {
                 <Badge variant="destructive">Fully Booked</Badge>
               )}
               {isTourBooked && (
-                <Badge variant="outline">
+                <Badge
+                  variant={
+                    bookingStatus === "CONFIRMED"
+                      ? "default"
+                      : bookingStatus === "CANCELLED"
+                      ? "destructive"
+                      : bookingStatus === "COMPLETED"
+                      ? "outline"
+                      : "secondary"
+                  }
+                >
                   Booking Status: {userBooking?.status}
                 </Badge>
               )}
@@ -323,11 +376,11 @@ export function TourDetail({ tour }: ITourDetailProps) {
       />
 
       <ConfirmationDialog
-        open={showUnbookDialog}
-        onOpenChange={setShowUnbookDialog}
+        open={showCancelDialog}
+        onOpenChange={setShowCancelDialog}
         title="Cancel Booking"
-        description={`Are you sure you want to cancel your booking for tour "${truncatedTourName}"?`}
-        onConfirm={handleUnbook}
+        description={`Are you sure you want to cancel your booking for tour "${truncatedTourName}"? This will update your booking status to CANCELLED.`}
+        onConfirm={handleCancelBooking}
         confirmText="Cancel Booking"
         isDestructive
       />
