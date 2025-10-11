@@ -47,18 +47,6 @@ const handleCreateHotel = asyncHandler(
       destinationId,
     } = req.body;
 
-    console.log(
-      name,
-      description,
-      address,
-      city,
-      country,
-      phone,
-      starRating,
-      amenities,
-      destinationId,
-    );
-
     const destination = await prisma.destination.findUnique({
       where: { id: Number(destinationId) },
     });
@@ -330,13 +318,11 @@ const handleUpdateHotel = asyncHandler(
         updateData.destinationId = parsedDestinationId;
       }
 
-      // Handle photo - it should be a string URL after middleware processing
       if (req.body.hotelPhoto && typeof req.body.hotelPhoto === 'string') {
         updateData.photo = req.body.hotelPhoto;
         uploadedImageUrl = req.body.hotelPhoto;
       }
 
-      // Update hotel in database
       const updatedHotel = await prisma.hotel.update({
         where: { id: Number(id) },
         data: updateData,
@@ -362,7 +348,6 @@ const handleUpdateHotel = asyncHandler(
         },
       });
 
-      // If we successfully updated with a new photo, clean up the old one
       if (uploadedImageUrl && oldPhoto && oldPhoto !== uploadedImageUrl) {
         try {
           await cloudinaryService.deleteImage(oldPhoto);
@@ -458,12 +443,10 @@ const handleDeleteHotel = asyncHandler(
       );
     }
 
-    // Delete hotel from database
     await prisma.hotel.delete({
       where: { id: parseInt(id) },
     });
 
-    // Clean up photo from Cloudinary if it exists
     if (hotel.photo) {
       try {
         await cloudinaryService.deleteImage(hotel.photo);
@@ -547,7 +530,6 @@ const handleGetAllHotels = asyncHandler(
       };
     }
 
-    // Build orderBy clause
     const orderBy: any = {};
     orderBy[sortBy] = sortOrder;
 
@@ -623,7 +605,6 @@ const handleGetHotelsByDestination = asyncHandler(
     const limit = parseInt(req.query.limit as string) || 10;
     const skip = (page - 1) * limit;
 
-    // Check if destination exists
     const destination = await prisma.destination.findUnique({
       where: { id: parseInt(destinationId) },
     });
@@ -701,7 +682,6 @@ const handleGetHotelsByDestination = asyncHandler(
  */
 const handleDeleteAllHotels = asyncHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    // Get all hotels with related rooms + destination + photo
     const hotels = await prisma.hotel.findMany({
       include: {
         rooms: true,
@@ -709,7 +689,6 @@ const handleDeleteAllHotels = asyncHandler(
       },
     });
 
-    // Filter deletable hotels (no rooms, no destination)
     const deletableHotels = hotels.filter(
       (hotel) => hotel.rooms.length === 0 && !hotel.destination,
     );
@@ -720,14 +699,12 @@ const handleDeleteAllHotels = asyncHandler(
       );
     }
 
-    // Delete safe hotels from DB
     await prisma.hotel.deleteMany({
       where: {
         id: { in: deletableHotels.map((h) => h.id) },
       },
     });
 
-    // Clean up Cloudinary photos
     const cleanupPromises = deletableHotels
       .filter((hotel) => hotel.photo)
       .map(async (hotel) => {

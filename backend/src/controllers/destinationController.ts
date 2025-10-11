@@ -412,7 +412,6 @@ const handleDeleteAllDestinations = asyncHandler(
       throw new UnauthorizedError('Only admins can delete all destinations');
     }
 
-    // Fetch all destinations with relations
     const destinations = await prisma.destination.findMany({
       include: {
         hotels: true,
@@ -429,7 +428,6 @@ const handleDeleteAllDestinations = asyncHandler(
       return;
     }
 
-    // Check dependencies
     const blocked: { name: string; id: number; deps: string[] }[] = [];
 
     for (const dest of destinations) {
@@ -445,29 +443,17 @@ const handleDeleteAllDestinations = asyncHandler(
     }
 
     if (blocked.length > 0) {
-      const details = blocked
-        .map(
-          (b) =>
-            `Destination "${b.name}" (ID: ${b.id}) has associated: ${b.deps.join(
-              ', ',
-            )}`,
-        )
-        .join('; ');
-
       throw new BadRequestError(
-        `Some destinations cannot be deleted because they have dependencies. ${details}`,
+        `Cannot delete destinations. ${blocked.length} destination${blocked.length > 1 ? 's have' : ' has'} associated dependencies (Hotels, Tours, or Flights). Please remove these dependencies first.`,
       );
     }
 
-    // Get all photos before deleting
     const photos = destinations
       .map((dest) => dest.photo)
       .filter((photo): photo is string => Boolean(photo));
 
-    // Delete all destinations
     await prisma.destination.deleteMany({});
 
-    // Clean up photos from Cloudinary
     const cleanupPromises = photos.map(async (photo) => {
       try {
         await cloudinaryService.deleteImage(photo);

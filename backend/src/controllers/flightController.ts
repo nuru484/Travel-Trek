@@ -737,15 +737,10 @@ const handleDeleteAllFlights = asyncHandler(
     }
 
     if (blocked.length > 0) {
-      const details = blocked
-        .map(
-          (b) =>
-            `Flight "${b.flightNumber}" (ID: ${b.id}) has ${b.bookingCount} booking(s)`,
-        )
-        .join('; ');
+      const totalBookings = blocked.reduce((sum, b) => sum + b.bookingCount, 0);
 
       throw new BadRequestError(
-        `Some flights cannot be deleted because they have active bookings. ${details}`,
+        `Cannot delete flights. ${blocked.length} flight${blocked.length > 1 ? 's have' : ' has'} ${totalBookings} active booking${totalBookings > 1 ? 's' : ''}. Please cancel or complete these bookings first.`,
       );
     }
 

@@ -660,23 +660,19 @@ export const deleteAllTours = asyncHandler(
       },
     };
 
-    // Evaluate each tour for deletion eligibility
     tours.forEach((tour) => {
       let canDelete = true;
 
-      // Check if tour has already started (primary check)
       if (tour.startDate <= now) {
         deletionResults.skippedReasons.alreadyStarted.push(tour.id);
         canDelete = false;
       }
 
-      // Check if tour has already ended (primary check)
       if (tour.endDate <= now) {
         deletionResults.skippedReasons.alreadyEnded.push(tour.id);
         canDelete = false;
       }
 
-      // Check status (secondary check)
       if (tour.status === 'ONGOING') {
         deletionResults.skippedReasons.statusOngoing.push(tour.id);
         canDelete = false;
@@ -687,19 +683,16 @@ export const deleteAllTours = asyncHandler(
         canDelete = false;
       }
 
-      // Check for existing bookings
       if (tour.bookings.length > 0) {
         deletionResults.skippedReasons.hasBookings.push(tour.id);
         canDelete = false;
       }
 
-      // Check if there are booked guests (additional safety check)
       if (tour.guestsBooked > 0) {
         deletionResults.skippedReasons.hasGuestsBooked.push(tour.id);
         canDelete = false;
       }
 
-      // Add to deletable list if all checks pass
       if (canDelete) {
         deletionResults.deletable.push(tour.id);
       }
@@ -714,88 +707,21 @@ export const deleteAllTours = asyncHandler(
       deletionResults.skippedReasons.hasGuestsBooked.length;
 
     if (deletionResults.deletable.length === 0) {
-      const reasons = [];
-      if (deletionResults.skippedReasons.alreadyStarted.length > 0) {
-        reasons.push(
-          `${deletionResults.skippedReasons.alreadyStarted.length} tour(s) have already started`,
-        );
-      }
-      if (deletionResults.skippedReasons.alreadyEnded.length > 0) {
-        reasons.push(
-          `${deletionResults.skippedReasons.alreadyEnded.length} tour(s) have already ended`,
-        );
-      }
-      if (deletionResults.skippedReasons.hasBookings.length > 0) {
-        reasons.push(
-          `${deletionResults.skippedReasons.hasBookings.length} tour(s) have existing bookings`,
-        );
-      }
-      if (deletionResults.skippedReasons.statusOngoing.length > 0) {
-        reasons.push(
-          `${deletionResults.skippedReasons.statusOngoing.length} tour(s) are ongoing`,
-        );
-      }
-      if (deletionResults.skippedReasons.statusCompleted.length > 0) {
-        reasons.push(
-          `${deletionResults.skippedReasons.statusCompleted.length} tour(s) are completed`,
-        );
-      }
-      if (deletionResults.skippedReasons.hasGuestsBooked.length > 0) {
-        reasons.push(
-          `${deletionResults.skippedReasons.hasGuestsBooked.length} tour(s) have booked guests`,
-        );
-      }
-
       throw new BadRequestError(
-        `No tours can be deleted. ${reasons.join(', ')}.`,
+        `Cannot delete tours. All ${tours.length} tour${tours.length > 1 ? 's have' : ' has'} active dependencies (bookings, ongoing status, or already started/completed). Please resolve these issues first.`,
       );
     }
 
-    // Delete safe tours
     await prisma.tour.deleteMany({
       where: {
         id: { in: deletionResults.deletable },
       },
     });
 
-    // Build detailed skip summary
-    const skipSummary = [];
-    if (deletionResults.skippedReasons.alreadyStarted.length > 0) {
-      skipSummary.push(
-        `${deletionResults.skippedReasons.alreadyStarted.length} already started`,
-      );
-    }
-    if (deletionResults.skippedReasons.alreadyEnded.length > 0) {
-      skipSummary.push(
-        `${deletionResults.skippedReasons.alreadyEnded.length} already ended`,
-      );
-    }
-    if (deletionResults.skippedReasons.hasBookings.length > 0) {
-      skipSummary.push(
-        `${deletionResults.skippedReasons.hasBookings.length} with bookings`,
-      );
-    }
-    if (deletionResults.skippedReasons.statusOngoing.length > 0) {
-      skipSummary.push(
-        `${deletionResults.skippedReasons.statusOngoing.length} ongoing`,
-      );
-    }
-    if (deletionResults.skippedReasons.statusCompleted.length > 0) {
-      skipSummary.push(
-        `${deletionResults.skippedReasons.statusCompleted.length} completed`,
-      );
-    }
-    if (deletionResults.skippedReasons.hasGuestsBooked.length > 0) {
-      skipSummary.push(
-        `${deletionResults.skippedReasons.hasGuestsBooked.length} with guests booked`,
-      );
-    }
-
     res.status(HTTP_STATUS_CODES.OK).json({
-      message: `Deleted ${deletionResults.deletable.length} tour(s) successfully`,
+      message: `Deleted ${deletionResults.deletable.length} tour${deletionResults.deletable.length > 1 ? 's' : ''} successfully${totalSkipped > 0 ? `. ${totalSkipped} tour${totalSkipped > 1 ? 's' : ''} skipped due to dependencies` : ''}`,
       deleted: deletionResults.deletable.length,
       skipped: totalSkipped,
-      skipDetails: skipSummary.length > 0 ? skipSummary.join(', ') : 'None',
       totalProcessed: tours.length,
     });
   },
