@@ -8,23 +8,37 @@ export interface IBookingTour {
   id: number;
   name: string;
   description: string | null;
+  location: string;
 }
 
 export interface IBookingRoom {
   id: number;
   roomType: string;
   description: string | null;
-  hotel?: {
+  hotel: {
     id: number;
     name: string;
     description: string | null;
+    city: string;
+    country: string;
   };
 }
-
 export interface IBookingFlight {
   id: number;
   flightNumber: string;
   airline: string;
+  origin: {
+    id: number;
+    name: string;
+    city: string | null;
+    country: string;
+  };
+  destination: {
+    id: number;
+    name: string;
+    city: string | null;
+    country: string;
+  };
 }
 
 export type BookingStatus = "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED";
