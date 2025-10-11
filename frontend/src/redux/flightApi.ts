@@ -52,7 +52,7 @@ export const flightApi = apiSlice.injectEndpoints({
         method: "POST",
         body: formData,
       }),
-      invalidatesTags: ["Flight"],
+      invalidatesTags: ["Flight", "Flights"],
     }),
     updateFlight: builder.mutation<
       IApiResponse<IFlightResponse>,
