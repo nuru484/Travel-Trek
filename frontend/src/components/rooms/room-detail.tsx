@@ -524,50 +524,6 @@ export function RoomDetail({ room }: IRoomDetailProps) {
                 </div>
               </div>
             </div>
-
-            {/* Mobile-only action buttons */}
-            <div className="block sm:hidden">
-              {isAdmin ? (
-                <BookingButton
-                  roomId={room.id}
-                  price={room.price}
-                  variant="default"
-                  size="lg"
-                  className="w-full cursor-pointer"
-                  disabled={isDeleting || !isAvailable}
-                  label={!isAvailable ? "Fully Booked" : undefined}
-                />
-              ) : (
-                <>
-                  {!isAvailable ? (
-                    <Button disabled className="w-full" size="lg">
-                      <XCircle className="h-4 w-4 mr-2" />
-                      Fully Booked
-                    </Button>
-                  ) : isRoomBooked ? (
-                    <Button
-                      variant="secondary"
-                      className="w-full"
-                      size="lg"
-                      disabled
-                    >
-                      <Bookmark className="h-4 w-4 mr-2" />
-                      Already Booked
-                    </Button>
-                  ) : (
-                    <Button
-                      onClick={handleBooking}
-                      className="w-full"
-                      size="lg"
-                      disabled={isBooking}
-                    >
-                      <Calendar className="h-4 w-4 mr-2" />
-                      {isBooking ? "Booking..." : "Book This Room"}
-                    </Button>
-                  )}
-                </>
-              )}
-            </div>
           </CardContent>
         </Card>
 
