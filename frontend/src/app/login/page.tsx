@@ -56,15 +56,15 @@ export default function LoginPage() {
     const credentials = {
       customer: {
         email: process.env.NEXT_PUBLIC_DEMO_CUSTOMER_EMAIL || "",
-        password: process.env.NEXT_PUBLIC_DEMO_CUSTOMER_PASSWORD || "",
+        password: process.env.NEXT_PUBLIC_DEMO_PASSWORD || "",
       },
       agent: {
         email: process.env.NEXT_PUBLIC_DEMO_AGENT_EMAIL || "",
-        password: process.env.NEXT_PUBLIC_DEMO_AGENT_PASSWORD || "",
+        password: process.env.NEXT_PUBLIC_DEMO_PASSWORD || "",
       },
       admin: {
         email: process.env.NEXT_PUBLIC_DEMO_ADMIN_EMAIL || "",
-        password: process.env.NEXT_PUBLIC_DEMO_ADMIN_PASSWORD || "",
+        password: process.env.NEXT_PUBLIC_DEMO_PASSWORD || "",
       },
     };
 
