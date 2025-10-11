@@ -24,6 +24,7 @@ import {
   Users,
   Bookmark,
   MoreHorizontal,
+  Loader2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -53,9 +54,16 @@ export function TourDetail({ tour }: ITourDetailProps) {
   const [showBookDialog, setShowBookDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
 
-  const { data: bookingsData } = useGetAllUserBookingsQuery(
+  const {
+    data: bookingsData,
+    isLoading: isLoadingBookings,
+    isFetching: isFetchingBookings,
+  } = useGetAllUserBookingsQuery(
     { userId: user.id, params: { page: 1, limit: 1000 } },
-    { skip: !user }
+    {
+      skip: !user,
+      refetchOnMountOrArgChange: 30, // Refetch if data is older than 30 seconds
+    }
   );
 
   const userBooking = bookingsData?.data.find(
@@ -133,6 +141,11 @@ export function TourDetail({ tour }: ITourDetailProps) {
   };
 
   const getBookingButtonText = () => {
+    // Show loading state while fetching booking data
+    if (isLoadingBookings || isFetchingBookings) {
+      return "Loading...";
+    }
+
     if (!isTourBooked) {
       return isFullyBooked ? "Fully Booked" : "Book Now";
     }
@@ -153,6 +166,8 @@ export function TourDetail({ tour }: ITourDetailProps) {
 
   const isBookingButtonDisabled = () => {
     return (
+      isLoadingBookings || // Disable while loading booking data
+      isFetchingBookings || // Disable while refetching
       isBooking ||
       isCancelling ||
       (isFullyBooked && !isTourBooked) ||
@@ -162,6 +177,11 @@ export function TourDetail({ tour }: ITourDetailProps) {
   };
 
   const handleBookingButtonClick = () => {
+    // Prevent action if still loading
+    if (isLoadingBookings || isFetchingBookings) {
+      return;
+    }
+
     if (!isTourBooked) {
       setShowBookDialog(true);
     } else if (isBookingActive) {
@@ -219,7 +239,11 @@ export function TourDetail({ tour }: ITourDetailProps) {
                 disabled={isBookingButtonDisabled()}
                 className="cursor-pointer"
               >
-                <Bookmark className="mr-2 h-4 w-4" />
+                {isLoadingBookings || isFetchingBookings ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Bookmark className="mr-2 h-4 w-4" />
+                )}
                 {getBookingButtonText()}
               </Button>
             )}
@@ -245,20 +269,25 @@ export function TourDetail({ tour }: ITourDetailProps) {
               {isFullyBooked && (
                 <Badge variant="destructive">Fully Booked</Badge>
               )}
-              {isTourBooked && (
-                <Badge
-                  variant={
-                    bookingStatus === "CONFIRMED"
-                      ? "default"
-                      : bookingStatus === "CANCELLED"
-                      ? "destructive"
-                      : bookingStatus === "COMPLETED"
-                      ? "outline"
-                      : "secondary"
-                  }
-                >
-                  Booking Status: {userBooking?.status}
-                </Badge>
+              {/* Show loading skeleton for booking status badge while fetching */}
+              {isLoadingBookings || isFetchingBookings ? (
+                <div className="h-5 w-32 bg-gray-200 animate-pulse rounded-full"></div>
+              ) : (
+                isTourBooked && (
+                  <Badge
+                    variant={
+                      bookingStatus === "CONFIRMED"
+                        ? "default"
+                        : bookingStatus === "CANCELLED"
+                        ? "destructive"
+                        : bookingStatus === "COMPLETED"
+                        ? "outline"
+                        : "secondary"
+                    }
+                  >
+                    Booking Status: {userBooking?.status}
+                  </Badge>
+                )
               )}
             </div>
             <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-foreground">
