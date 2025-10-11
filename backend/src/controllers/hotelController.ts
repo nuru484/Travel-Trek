@@ -405,66 +405,6 @@ export const updateHotel: RequestHandler[] = [
 ];
 
 /**
- * Delete a hotel with photo cleanup
- */
-const handleDeleteHotel = asyncHandler(
-  async (
-    req: Request<{ id?: string }>,
-    res: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    const { id } = req.params;
-
-    if (!id) {
-      throw new NotFoundError('Hotel ID is required');
-    }
-
-    const hotel = await prisma.hotel.findUnique({
-      where: { id: parseInt(id) },
-      include: {
-        rooms: true,
-        destination: true,
-      },
-    });
-
-    if (!hotel) {
-      throw new NotFoundError('Hotel not found');
-    }
-
-    if (hotel.rooms.length > 0) {
-      throw new BadRequestError(
-        'Cannot delete hotel with existing rooms. Please remove rooms first.',
-      );
-    }
-
-    if (hotel.destination) {
-      throw new BadRequestError(
-        `Cannot delete hotel while it is linked to destination "${hotel.destination.name}". Remove association first.`,
-      );
-    }
-
-    await prisma.hotel.delete({
-      where: { id: parseInt(id) },
-    });
-
-    if (hotel.photo) {
-      try {
-        await cloudinaryService.deleteImage(hotel.photo);
-      } catch (cleanupError) {
-        console.warn(
-          'Failed to clean up hotel photo from Cloudinary:',
-          cleanupError,
-        );
-      }
-    }
-
-    res.status(HTTP_STATUS_CODES.OK).json({
-      message: 'Hotel deleted successfully',
-    });
-  },
-);
-
-/**
  * Get all hotels with pagination and filtering
  */
 const handleGetAllHotels = asyncHandler(
@@ -678,41 +618,157 @@ const handleGetHotelsByDestination = asyncHandler(
 );
 
 /**
- * Delete all hotels with photo cleanup
+ * Delete a hotel with photo cleanup
  */
-const handleDeleteAllHotels = asyncHandler(
-  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const hotels = await prisma.hotel.findMany({
+const handleDeleteHotel = asyncHandler(
+  async (
+    req: Request<{ id?: string }>,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    const { id } = req.params;
+
+    if (!id) {
+      throw new NotFoundError('Hotel ID is required');
+    }
+
+    const hotel = await prisma.hotel.findUnique({
+      where: { id: parseInt(id) },
       include: {
         rooms: true,
         destination: true,
       },
     });
 
-    const deletableHotels = hotels.filter(
-      (hotel) => hotel.rooms.length === 0 && !hotel.destination,
-    );
+    if (!hotel) {
+      throw new NotFoundError('Hotel not found');
+    }
 
-    if (deletableHotels.length === 0) {
+    if (hotel.rooms.length > 0) {
       throw new BadRequestError(
-        'No hotels can be deleted. Hotels with rooms or linked to destinations must be cleaned up first.',
+        'Cannot delete hotel with existing rooms. Please remove rooms first.',
       );
     }
 
-    await prisma.hotel.deleteMany({
-      where: {
-        id: { in: deletableHotels.map((h) => h.id) },
+    await prisma.hotel.delete({
+      where: { id: parseInt(id) },
+    });
+
+    if (hotel.photo) {
+      try {
+        await cloudinaryService.deleteImage(hotel.photo);
+      } catch (cleanupError) {
+        console.warn(
+          'Failed to clean up hotel photo from Cloudinary:',
+          cleanupError,
+        );
+      }
+    }
+
+    res.status(HTTP_STATUS_CODES.OK).json({
+      message: 'Hotel deleted successfully',
+    });
+  },
+);
+
+/**
+ * Delete all hotels with photo cleanup
+ */
+const handleDeleteAllHotels = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    // First check if there are any hotels at all
+    const hotelCount = await prisma.hotel.count();
+
+    if (hotelCount === 0) {
+      throw new BadRequestError('No hotels found to delete.');
+    }
+
+    // Fetch all hotels with their relationships
+    const hotels = await prisma.hotel.findMany({
+      include: {
+        rooms: {
+          include: {
+            bookings: {
+              where: {
+                status: {
+                  in: ['PENDING', 'CONFIRMED'], // Active bookings
+                },
+              },
+            },
+          },
+        },
+        destination: true,
       },
     });
 
+    // Categorize hotels by why they can't be deleted
+    const hotelsWithActiveBookings: number[] = [];
+    const hotelsWithRooms: number[] = [];
+    const deletableHotels: typeof hotels = [];
+
+    hotels.forEach((hotel) => {
+      // Check if any room has active bookings
+      const hasActiveBookings = hotel.rooms.some(
+        (room) => room.bookings && room.bookings.length > 0,
+      );
+
+      if (hasActiveBookings) {
+        hotelsWithActiveBookings.push(hotel.id);
+      } else if (hotel.rooms.length > 0) {
+        hotelsWithRooms.push(hotel.id);
+      } else {
+        deletableHotels.push(hotel);
+      }
+    });
+
+    // Build specific error message
+    if (deletableHotels.length === 0) {
+      const errorMessages: string[] = [];
+
+      if (hotelsWithActiveBookings.length > 0) {
+        errorMessages.push(
+          `${hotelsWithActiveBookings.length} hotel(s) have rooms with active bookings (PENDING or CONFIRMED) and cannot be deleted.`,
+        );
+      }
+
+      if (hotelsWithRooms.length > 0) {
+        errorMessages.push(
+          `${hotelsWithRooms.length} hotel(s) have rooms that must be deleted first.`,
+        );
+      }
+
+      throw new BadRequestError(
+        `No hotels can be deleted. ${errorMessages.join(' ')}`,
+      );
+    }
+
+    // Warn if some hotels will be skipped
+    if (hotelsWithActiveBookings.length > 0 || hotelsWithRooms.length > 0) {
+      console.warn(
+        `Skipping ${hotelsWithActiveBookings.length + hotelsWithRooms.length} hotel(s): ` +
+          `${hotelsWithActiveBookings.length} with active bookings, ` +
+          `${hotelsWithRooms.length} with rooms.`,
+      );
+    }
+
+    // Delete hotels in a transaction for data consistency
+    await prisma.$transaction(async (tx) => {
+      await tx.hotel.deleteMany({
+        where: {
+          id: { in: deletableHotels.map((h) => h.id) },
+        },
+      });
+    });
+
+    // Clean up photos from cloud storage
     const cleanupPromises = deletableHotels
       .filter((hotel) => hotel.photo)
       .map(async (hotel) => {
         try {
           await cloudinaryService.deleteImage(hotel.photo!);
         } catch (cleanupError) {
-          console.warn(
-            `Failed to clean up photo ${hotel.photo}:`,
+          console.error(
+            `Failed to clean up photo for hotel ${hotel.id} (${hotel.name}):`,
             cleanupError,
           );
         }
@@ -720,9 +776,32 @@ const handleDeleteAllHotels = asyncHandler(
 
     await Promise.allSettled(cleanupPromises);
 
+    // Build response message
+    const responseMessage = [
+      `Successfully deleted ${deletableHotels.length} hotel(s).`,
+    ];
+
+    if (hotelsWithActiveBookings.length > 0) {
+      responseMessage.push(
+        `Skipped ${hotelsWithActiveBookings.length} hotel(s) with active bookings.`,
+      );
+    }
+
+    if (hotelsWithRooms.length > 0) {
+      responseMessage.push(
+        `Skipped ${hotelsWithRooms.length} hotel(s) with rooms.`,
+      );
+    }
+
     res.status(HTTP_STATUS_CODES.OK).json({
-      message: `Deleted ${deletableHotels.length} hotel(s) successfully`,
-      skipped: hotels.length - deletableHotels.length,
+      message: responseMessage.join(' '),
+      deleted: deletableHotels.length,
+      skipped: {
+        total: hotels.length - deletableHotels.length,
+        withActiveBookings: hotelsWithActiveBookings.length,
+        withRooms: hotelsWithRooms.length,
+      },
+      deletedHotelIds: deletableHotels.map((h) => h.id),
     });
   },
 );

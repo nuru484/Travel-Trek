@@ -13,9 +13,9 @@ import {
   createTourValidation,
   updateTourValidation,
   getAllToursValidation,
-  tourIdParamValidation,
 } from '../validations/tour-validation';
 import validationMiddleware from '../middlewares/validation';
+import logger from '../utils/logger';
 
 /**
  * Create a new tour
@@ -639,23 +639,31 @@ export const getAllTours: RequestHandler[] = [
  */
 export const deleteAllTours = asyncHandler(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const tours = await prisma.tour.findMany({
-      include: { bookings: true },
-    });
+    // First check if there are any tours at all
+    const tourCount = await prisma.tour.count();
 
-    if (tours.length === 0) {
-      throw new NotFoundError('No tours found to delete');
+    if (tourCount === 0) {
+      throw new BadRequestError('No tours found to delete.');
     }
+
+    const tours = await prisma.tour.findMany({
+      include: {
+        bookings: {
+          include: {
+            payment: true,
+          },
+        },
+      },
+    });
 
     const now = new Date();
     const deletionResults = {
       deletable: [] as number[],
       skippedReasons: {
-        hasBookings: [] as number[],
+        hasActiveBookings: [] as number[],
+        hasPaidBookings: [] as number[],
         alreadyStarted: [] as number[],
-        alreadyEnded: [] as number[],
-        statusOngoing: [] as number[],
-        statusCompleted: [] as number[],
+        statusOngoingOrCompleted: [] as number[],
         hasGuestsBooked: [] as number[],
       },
     };
@@ -663,32 +671,38 @@ export const deleteAllTours = asyncHandler(
     tours.forEach((tour) => {
       let canDelete = true;
 
+      // Check for active bookings
+      const activeBookings = tour.bookings.filter((booking) =>
+        ['PENDING', 'CONFIRMED'].includes(booking.status),
+      );
+
+      // Check for paid bookings
+      const paidBookings = tour.bookings.filter(
+        (booking) =>
+          booking.payment &&
+          ['COMPLETED', 'PENDING'].includes(booking.payment.status),
+      );
+
+      if (activeBookings.length > 0) {
+        deletionResults.skippedReasons.hasActiveBookings.push(tour.id);
+        canDelete = false;
+      } else if (paidBookings.length > 0) {
+        deletionResults.skippedReasons.hasPaidBookings.push(tour.id);
+        canDelete = false;
+      }
+
       if (tour.startDate <= now) {
         deletionResults.skippedReasons.alreadyStarted.push(tour.id);
         canDelete = false;
       }
 
-      if (tour.endDate <= now) {
-        deletionResults.skippedReasons.alreadyEnded.push(tour.id);
+      if (['ONGOING', 'COMPLETED'].includes(tour.status)) {
+        deletionResults.skippedReasons.statusOngoingOrCompleted.push(tour.id);
         canDelete = false;
       }
 
-      if (tour.status === 'ONGOING') {
-        deletionResults.skippedReasons.statusOngoing.push(tour.id);
-        canDelete = false;
-      }
-
-      if (tour.status === 'COMPLETED') {
-        deletionResults.skippedReasons.statusCompleted.push(tour.id);
-        canDelete = false;
-      }
-
-      if (tour.bookings.length > 0) {
-        deletionResults.skippedReasons.hasBookings.push(tour.id);
-        canDelete = false;
-      }
-
-      if (tour.guestsBooked > 0) {
+      if (tour.guestsBooked > 0 && activeBookings.length === 0) {
+        // Only flag if guests booked but no active bookings (data inconsistency)
         deletionResults.skippedReasons.hasGuestsBooked.push(tour.id);
         canDelete = false;
       }
@@ -699,30 +713,116 @@ export const deleteAllTours = asyncHandler(
     });
 
     const totalSkipped =
-      deletionResults.skippedReasons.hasBookings.length +
+      deletionResults.skippedReasons.hasActiveBookings.length +
+      deletionResults.skippedReasons.hasPaidBookings.length +
       deletionResults.skippedReasons.alreadyStarted.length +
-      deletionResults.skippedReasons.alreadyEnded.length +
-      deletionResults.skippedReasons.statusOngoing.length +
-      deletionResults.skippedReasons.statusCompleted.length +
+      deletionResults.skippedReasons.statusOngoingOrCompleted.length +
       deletionResults.skippedReasons.hasGuestsBooked.length;
 
     if (deletionResults.deletable.length === 0) {
+      const issues: string[] = [];
+
+      if (deletionResults.skippedReasons.hasActiveBookings.length > 0) {
+        issues.push('active bookings');
+      }
+
+      if (deletionResults.skippedReasons.hasPaidBookings.length > 0) {
+        issues.push('payment records');
+      }
+
+      if (deletionResults.skippedReasons.alreadyStarted.length > 0) {
+        issues.push('already started');
+      }
+
+      if (deletionResults.skippedReasons.statusOngoingOrCompleted.length > 0) {
+        issues.push('ongoing/completed status');
+      }
+
+      if (deletionResults.skippedReasons.hasGuestsBooked.length > 0) {
+        issues.push('guest records');
+      }
+
       throw new BadRequestError(
-        `Cannot delete tours. All ${tours.length} tour${tours.length > 1 ? 's have' : ' has'} active dependencies (bookings, ongoing status, or already started/completed). Please resolve these issues first.`,
+        `Cannot delete tours with ${issues.join(', ')}. Please resolve these first.`,
       );
     }
 
-    await prisma.tour.deleteMany({
-      where: {
-        id: { in: deletionResults.deletable },
-      },
+    if (totalSkipped > 0) {
+      logger.warn(
+        `Skipping ${totalSkipped} tour(s): ` +
+          `${deletionResults.skippedReasons.hasActiveBookings.length} with active bookings, ` +
+          `${deletionResults.skippedReasons.hasPaidBookings.length} with payments, ` +
+          `${deletionResults.skippedReasons.alreadyStarted.length} already started, ` +
+          `${deletionResults.skippedReasons.statusOngoingOrCompleted.length} ongoing/completed, ` +
+          `${deletionResults.skippedReasons.hasGuestsBooked.length} with guest records.`,
+      );
+    }
+
+    // Delete tours in a transaction for data consistency
+    await prisma.$transaction(async (tx) => {
+      await tx.tour.deleteMany({
+        where: {
+          id: { in: deletionResults.deletable },
+        },
+      });
     });
 
+    // Build concise response message
+    let message = `Deleted ${deletionResults.deletable.length} tour(s) successfully`;
+
+    if (totalSkipped > 0) {
+      const skippedReasons: string[] = [];
+
+      if (deletionResults.skippedReasons.hasActiveBookings.length > 0) {
+        skippedReasons.push(
+          `${deletionResults.skippedReasons.hasActiveBookings.length} with bookings`,
+        );
+      }
+
+      if (deletionResults.skippedReasons.hasPaidBookings.length > 0) {
+        skippedReasons.push(
+          `${deletionResults.skippedReasons.hasPaidBookings.length} with payments`,
+        );
+      }
+
+      if (deletionResults.skippedReasons.alreadyStarted.length > 0) {
+        skippedReasons.push(
+          `${deletionResults.skippedReasons.alreadyStarted.length} started`,
+        );
+      }
+
+      if (deletionResults.skippedReasons.statusOngoingOrCompleted.length > 0) {
+        skippedReasons.push(
+          `${deletionResults.skippedReasons.statusOngoingOrCompleted.length} ongoing/completed`,
+        );
+      }
+
+      if (deletionResults.skippedReasons.hasGuestsBooked.length > 0) {
+        skippedReasons.push(
+          `${deletionResults.skippedReasons.hasGuestsBooked.length} with guests`,
+        );
+      }
+
+      message += `. Skipped: ${skippedReasons.join(', ')}`;
+    }
+
     res.status(HTTP_STATUS_CODES.OK).json({
-      message: `Deleted ${deletionResults.deletable.length} tour${deletionResults.deletable.length > 1 ? 's' : ''} successfully${totalSkipped > 0 ? `. ${totalSkipped} tour${totalSkipped > 1 ? 's' : ''} skipped due to dependencies` : ''}`,
+      message,
       deleted: deletionResults.deletable.length,
       skipped: totalSkipped,
-      totalProcessed: tours.length,
+      details: {
+        deletedIds: deletionResults.deletable,
+        skippedWithActiveBookings:
+          deletionResults.skippedReasons.hasActiveBookings.length,
+        skippedWithPayments:
+          deletionResults.skippedReasons.hasPaidBookings.length,
+        skippedAlreadyStarted:
+          deletionResults.skippedReasons.alreadyStarted.length,
+        skippedOngoingOrCompleted:
+          deletionResults.skippedReasons.statusOngoingOrCompleted.length,
+        skippedWithGuests:
+          deletionResults.skippedReasons.hasGuestsBooked.length,
+      },
     });
   },
 );

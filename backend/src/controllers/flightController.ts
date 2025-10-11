@@ -709,60 +709,220 @@ const handleDeleteAllFlights = asyncHandler(
       throw new UnauthorizedError('Only admins can delete all flights');
     }
 
-    const flights = await prisma.flight.findMany({
-      include: { bookings: true },
-    });
+    // First check if there are any flights at all
+    const flightCount = await prisma.flight.count();
 
-    if (flights.length === 0) {
-      res.status(HTTP_STATUS_CODES.OK).json({
-        message: 'No flights found to delete',
-      });
-      return;
+    if (flightCount === 0) {
+      throw new BadRequestError('No flights found to delete.');
     }
 
-    const blocked: {
+    // Fetch all flights with their bookings
+    const flights = await prisma.flight.findMany({
+      include: {
+        bookings: {
+          include: {
+            payment: true,
+          },
+        },
+      },
+    });
+
+    // Categorize flights by deletion eligibility
+    const flightsWithActiveBookings: Array<{
       id: number;
       flightNumber: string;
       bookingCount: number;
-    }[] = [];
+      pendingCount: number;
+      confirmedCount: number;
+    }> = [];
 
-    for (const flight of flights) {
-      if (flight.bookings.length > 0) {
-        blocked.push({
+    const flightsWithCompletedBookings: Array<{
+      id: number;
+      flightNumber: string;
+      bookingCount: number;
+    }> = [];
+
+    const flightsWithPaidBookings: Array<{
+      id: number;
+      flightNumber: string;
+      paidBookingCount: number;
+    }> = [];
+
+    const deletableFlights: typeof flights = [];
+
+    const now = new Date();
+
+    flights.forEach((flight) => {
+      if (flight.bookings.length === 0) {
+        deletableFlights.push(flight);
+        return;
+      }
+
+      const activeBookings = flight.bookings.filter((booking) =>
+        ['PENDING', 'CONFIRMED'].includes(booking.status),
+      );
+
+      const completedBookings = flight.bookings.filter(
+        (booking) => booking.status === 'COMPLETED',
+      );
+
+      const paidBookings = flight.bookings.filter(
+        (booking) =>
+          booking.payment &&
+          ['COMPLETED', 'PENDING'].includes(booking.payment.status),
+      );
+
+      const isUpcomingFlight = flight.departure > now;
+
+      if (activeBookings.length > 0) {
+        const pendingCount = activeBookings.filter(
+          (b) => b.status === 'PENDING',
+        ).length;
+        const confirmedCount = activeBookings.filter(
+          (b) => b.status === 'CONFIRMED',
+        ).length;
+
+        flightsWithActiveBookings.push({
           id: flight.id,
           flightNumber: flight.flightNumber,
-          bookingCount: flight.bookings.length,
+          bookingCount: activeBookings.length,
+          pendingCount,
+          confirmedCount,
         });
+      } else if (paidBookings.length > 0) {
+        flightsWithPaidBookings.push({
+          id: flight.id,
+          flightNumber: flight.flightNumber,
+          paidBookingCount: paidBookings.length,
+        });
+      } else if (completedBookings.length > 0 && isUpcomingFlight) {
+        flightsWithCompletedBookings.push({
+          id: flight.id,
+          flightNumber: flight.flightNumber,
+          bookingCount: completedBookings.length,
+        });
+      } else {
+        deletableFlights.push(flight);
       }
-    }
+    });
 
-    if (blocked.length > 0) {
-      const totalBookings = blocked.reduce((sum, b) => sum + b.bookingCount, 0);
+    if (deletableFlights.length === 0) {
+      const errorMessages: string[] = [];
+
+      if (flightsWithActiveBookings.length > 0) {
+        const totalActive = flightsWithActiveBookings.reduce(
+          (sum, f) => sum + f.bookingCount,
+          0,
+        );
+        const totalPending = flightsWithActiveBookings.reduce(
+          (sum, f) => sum + f.pendingCount,
+          0,
+        );
+        const totalConfirmed = flightsWithActiveBookings.reduce(
+          (sum, f) => sum + f.confirmedCount,
+          0,
+        );
+
+        errorMessages.push(
+          `${flightsWithActiveBookings.length} flight(s) have ${totalActive} active booking(s) ` +
+            `(${totalPending} pending, ${totalConfirmed} confirmed).`,
+        );
+      }
+
+      if (flightsWithPaidBookings.length > 0) {
+        const totalPaid = flightsWithPaidBookings.reduce(
+          (sum, f) => sum + f.paidBookingCount,
+          0,
+        );
+        errorMessages.push(
+          `${flightsWithPaidBookings.length} flight(s) have ${totalPaid} booking(s) with payment records.`,
+        );
+      }
+
+      if (flightsWithCompletedBookings.length > 0) {
+        errorMessages.push(
+          `${flightsWithCompletedBookings.length} upcoming flight(s) have completed bookings (data integrity concern).`,
+        );
+      }
 
       throw new BadRequestError(
-        `Cannot delete flights. ${blocked.length} flight${blocked.length > 1 ? 's have' : ' has'} ${totalBookings} active booking${totalBookings > 1 ? 's' : ''}. Please cancel or complete these bookings first.`,
+        `Cannot delete any flights. ${errorMessages.join(' ')} ` +
+          `Please cancel active bookings, process refunds, and resolve payment records first.`,
       );
     }
 
-    const photos = flights
+    const totalSkipped =
+      flightsWithActiveBookings.length +
+      flightsWithPaidBookings.length +
+      flightsWithCompletedBookings.length;
+
+    if (totalSkipped > 0) {
+      console.warn(
+        `Skipping ${totalSkipped} flight(s): ` +
+          `${flightsWithActiveBookings.length} with active bookings, ` +
+          `${flightsWithPaidBookings.length} with payment records, ` +
+          `${flightsWithCompletedBookings.length} with completed bookings.`,
+      );
+    }
+
+    // Collect photos for cleanup
+    const photos = deletableFlights
       .map((flight) => flight.photo)
       .filter((photo): photo is string => Boolean(photo));
 
-    // Delete all flights
-    await prisma.flight.deleteMany({});
+    // Delete flights in a transaction for data consistency
+    await prisma.$transaction(async (tx) => {
+      await tx.flight.deleteMany({
+        where: {
+          id: { in: deletableFlights.map((f) => f.id) },
+        },
+      });
+    });
 
+    // Clean up photos from cloud storage
     const cleanupPromises = photos.map(async (photo) => {
       try {
         await cloudinaryService.deleteImage(photo);
       } catch (cleanupError) {
-        console.warn(`Failed to clean up photo ${photo}:`, cleanupError);
+        logger.error(`Failed to clean up photo ${photo}:`, cleanupError);
       }
     });
 
     await Promise.allSettled(cleanupPromises);
 
+    const responseMessage = [
+      `Successfully deleted ${deletableFlights.length} flight(s).`,
+    ];
+
+    if (flightsWithActiveBookings.length > 0) {
+      responseMessage.push(
+        `Skipped ${flightsWithActiveBookings.length} flight(s) with active bookings.`,
+      );
+    }
+
+    if (flightsWithPaidBookings.length > 0) {
+      responseMessage.push(
+        `Skipped ${flightsWithPaidBookings.length} flight(s) with payment records.`,
+      );
+    }
+
+    if (flightsWithCompletedBookings.length > 0) {
+      responseMessage.push(
+        `Skipped ${flightsWithCompletedBookings.length} flight(s) with historical booking data.`,
+      );
+    }
+
     res.status(HTTP_STATUS_CODES.OK).json({
-      message: 'All flights deleted successfully',
+      message: responseMessage.join(' '),
+      deleted: deletableFlights.length,
+      skipped: {
+        total: totalSkipped,
+        withActiveBookings: flightsWithActiveBookings.length,
+        withPaidBookings: flightsWithPaidBookings.length,
+        withCompletedBookings: flightsWithCompletedBookings.length,
+      },
+      deletedFlightIds: deletableFlights.map((f) => f.id),
+      deletedFlightNumbers: deletableFlights.map((f) => f.flightNumber),
     });
   },
 );
