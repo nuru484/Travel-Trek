@@ -119,7 +119,7 @@ const handleCreateBooking = asyncHandler(
             select: { id: true, name: true, email: true },
           },
           tour: {
-            select: { id: true, name: true, description: true },
+            select: { id: true, name: true, description: true, location: true },
           },
           room: {
             select: {
@@ -131,12 +131,34 @@ const handleCreateBooking = asyncHandler(
                   id: true,
                   name: true,
                   description: true,
+                  city: true,
+                  country: true,
                 },
               },
             },
           },
           flight: {
-            select: { id: true, flightNumber: true, airline: true },
+            select: {
+              id: true,
+              flightNumber: true,
+              airline: true,
+              origin: {
+                select: {
+                  id: true,
+                  name: true,
+                  city: true,
+                  country: true,
+                },
+              },
+              destination: {
+                select: {
+                  id: true,
+                  name: true,
+                  city: true,
+                  country: true,
+                },
+              },
+            },
           },
           payment: {
             select: {
@@ -167,7 +189,6 @@ const handleCreateBooking = asyncHandler(
         tour: booking.tour,
         room: null,
         flight: null,
-        hotel: null,
       };
     } else if (booking.room) {
       response = {
@@ -182,7 +203,6 @@ const handleCreateBooking = asyncHandler(
         updatedAt: booking.updatedAt,
         type: 'ROOM',
         room: booking.room ?? null,
-        hotel: booking.room?.hotel ?? null,
         tour: null,
         flight: null,
       };
@@ -201,7 +221,6 @@ const handleCreateBooking = asyncHandler(
         flight: booking.flight,
         tour: null,
         room: null,
-        hotel: null,
       };
     } else {
       throw new Error('Booking has no associated item (tour, room, or flight)');
@@ -239,7 +258,7 @@ const handleGetBooking = asyncHandler(
           select: { id: true, name: true, email: true },
         },
         tour: {
-          select: { id: true, name: true, description: true },
+          select: { id: true, name: true, description: true, location: true },
         },
         room: {
           select: {
@@ -251,12 +270,34 @@ const handleGetBooking = asyncHandler(
                 id: true,
                 name: true,
                 description: true,
+                city: true,
+                country: true,
               },
             },
           },
         },
         flight: {
-          select: { id: true, flightNumber: true, airline: true },
+          select: {
+            id: true,
+            flightNumber: true,
+            airline: true,
+            origin: {
+              select: {
+                id: true,
+                name: true,
+                city: true,
+                country: true,
+              },
+            },
+            destination: {
+              select: {
+                id: true,
+                name: true,
+                city: true,
+                country: true,
+              },
+            },
+          },
         },
         payment: {
           select: { id: true, amount: true, status: true, paymentMethod: true },
@@ -289,7 +330,6 @@ const handleGetBooking = asyncHandler(
         tour: booking.tour,
         room: null,
         flight: null,
-        hotel: null,
       };
     } else if (booking.room) {
       response = {
@@ -304,7 +344,6 @@ const handleGetBooking = asyncHandler(
         updatedAt: booking.updatedAt,
         type: 'ROOM',
         room: booking.room ?? null,
-        hotel: booking.room?.hotel ?? null,
         tour: null,
         flight: null,
       };
@@ -323,7 +362,6 @@ const handleGetBooking = asyncHandler(
         flight: booking.flight,
         tour: null,
         room: null,
-        hotel: null,
       };
     } else {
       throw new Error('Booking has no associated item (tour, room, or flight)');
@@ -526,7 +564,7 @@ const handleUpdateBooking = asyncHandler(
             select: { id: true, name: true, email: true },
           },
           tour: {
-            select: { id: true, name: true, description: true },
+            select: { id: true, name: true, description: true, location: true },
           },
           room: {
             select: {
@@ -538,12 +576,34 @@ const handleUpdateBooking = asyncHandler(
                   id: true,
                   name: true,
                   description: true,
+                  city: true,
+                  country: true,
                 },
               },
             },
           },
           flight: {
-            select: { id: true, flightNumber: true, airline: true },
+            select: {
+              id: true,
+              flightNumber: true,
+              airline: true,
+              origin: {
+                select: {
+                  id: true,
+                  name: true,
+                  city: true,
+                  country: true,
+                },
+              },
+              destination: {
+                select: {
+                  id: true,
+                  name: true,
+                  city: true,
+                  country: true,
+                },
+              },
+            },
           },
           payment: {
             select: {
@@ -557,7 +617,6 @@ const handleUpdateBooking = asyncHandler(
       });
     });
 
-    // Response building logic remains the same...
     const baseResponse = {
       id: updatedBooking.id,
       userId: updatedBooking.userId,
@@ -579,14 +638,12 @@ const handleUpdateBooking = asyncHandler(
         tour: updatedBooking.tour,
         room: null,
         flight: null,
-        hotel: null,
       };
     } else if (updatedBooking.room) {
       response = {
         ...baseResponse,
         type: 'ROOM',
         room: updatedBooking.room,
-        hotel: updatedBooking.room?.hotel ?? null,
         tour: null,
         flight: null,
       };
@@ -597,7 +654,6 @@ const handleUpdateBooking = asyncHandler(
         flight: updatedBooking.flight,
         tour: null,
         room: null,
-        hotel: null,
       };
     } else {
       throw new Error('Booking has no associated item (tour, room, or flight)');
@@ -963,7 +1019,6 @@ const handleGetUserBookings = asyncHandler(
             tour: booking.tour,
             room: null,
             flight: null,
-            hotel: null,
           };
         } else if (booking.room) {
           return {
@@ -978,7 +1033,6 @@ const handleGetUserBookings = asyncHandler(
             updatedAt: booking.updatedAt,
             type: 'ROOM',
             room: booking.room ? booking.room : null,
-            hotel: booking.room?.hotel ? booking.room.hotel : null,
             tour: null,
             flight: null,
           };
@@ -997,7 +1051,6 @@ const handleGetUserBookings = asyncHandler(
             flight: booking.flight,
             tour: null,
             room: null,
-            hotel: null,
           };
         }
 
@@ -1224,7 +1277,6 @@ const handleGetAllBookings = asyncHandler(
             tour: booking.tour,
             room: null,
             flight: null,
-            hotel: null,
           };
         } else if (booking.room) {
           return {
@@ -1239,7 +1291,6 @@ const handleGetAllBookings = asyncHandler(
             updatedAt: booking.updatedAt,
             type: 'ROOM',
             room: booking.room ? booking.room : null,
-            hotel: booking.room?.hotel ? booking.room.hotel : null,
             tour: null,
             flight: null,
           };
@@ -1258,7 +1309,6 @@ const handleGetAllBookings = asyncHandler(
             flight: booking.flight,
             tour: null,
             room: null,
-            hotel: null,
           };
         }
 

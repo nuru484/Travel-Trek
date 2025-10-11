@@ -95,7 +95,7 @@ const handleCreateBooking = (0, error_handler_1.asyncHandler)(async (req, res, n
                     select: { id: true, name: true, email: true },
                 },
                 tour: {
-                    select: { id: true, name: true, description: true },
+                    select: { id: true, name: true, description: true, location: true },
                 },
                 room: {
                     select: {
@@ -107,12 +107,34 @@ const handleCreateBooking = (0, error_handler_1.asyncHandler)(async (req, res, n
                                 id: true,
                                 name: true,
                                 description: true,
+                                city: true,
+                                country: true,
                             },
                         },
                     },
                 },
                 flight: {
-                    select: { id: true, flightNumber: true, airline: true },
+                    select: {
+                        id: true,
+                        flightNumber: true,
+                        airline: true,
+                        origin: {
+                            select: {
+                                id: true,
+                                name: true,
+                                city: true,
+                                country: true,
+                            },
+                        },
+                        destination: {
+                            select: {
+                                id: true,
+                                name: true,
+                                city: true,
+                                country: true,
+                            },
+                        },
+                    },
                 },
                 payment: {
                     select: {
@@ -141,7 +163,6 @@ const handleCreateBooking = (0, error_handler_1.asyncHandler)(async (req, res, n
             tour: booking.tour,
             room: null,
             flight: null,
-            hotel: null,
         };
     }
     else if (booking.room) {
@@ -157,7 +178,6 @@ const handleCreateBooking = (0, error_handler_1.asyncHandler)(async (req, res, n
             updatedAt: booking.updatedAt,
             type: 'ROOM',
             room: booking.room ?? null,
-            hotel: booking.room?.hotel ?? null,
             tour: null,
             flight: null,
         };
@@ -177,7 +197,6 @@ const handleCreateBooking = (0, error_handler_1.asyncHandler)(async (req, res, n
             flight: booking.flight,
             tour: null,
             room: null,
-            hotel: null,
         };
     }
     else {
@@ -209,7 +228,7 @@ const handleGetBooking = (0, error_handler_1.asyncHandler)(async (req, res, next
                 select: { id: true, name: true, email: true },
             },
             tour: {
-                select: { id: true, name: true, description: true },
+                select: { id: true, name: true, description: true, location: true },
             },
             room: {
                 select: {
@@ -221,12 +240,34 @@ const handleGetBooking = (0, error_handler_1.asyncHandler)(async (req, res, next
                             id: true,
                             name: true,
                             description: true,
+                            city: true,
+                            country: true,
                         },
                     },
                 },
             },
             flight: {
-                select: { id: true, flightNumber: true, airline: true },
+                select: {
+                    id: true,
+                    flightNumber: true,
+                    airline: true,
+                    origin: {
+                        select: {
+                            id: true,
+                            name: true,
+                            city: true,
+                            country: true,
+                        },
+                    },
+                    destination: {
+                        select: {
+                            id: true,
+                            name: true,
+                            city: true,
+                            country: true,
+                        },
+                    },
+                },
             },
             payment: {
                 select: { id: true, amount: true, status: true, paymentMethod: true },
@@ -255,7 +296,6 @@ const handleGetBooking = (0, error_handler_1.asyncHandler)(async (req, res, next
             tour: booking.tour,
             room: null,
             flight: null,
-            hotel: null,
         };
     }
     else if (booking.room) {
@@ -271,7 +311,6 @@ const handleGetBooking = (0, error_handler_1.asyncHandler)(async (req, res, next
             updatedAt: booking.updatedAt,
             type: 'ROOM',
             room: booking.room ?? null,
-            hotel: booking.room?.hotel ?? null,
             tour: null,
             flight: null,
         };
@@ -291,7 +330,6 @@ const handleGetBooking = (0, error_handler_1.asyncHandler)(async (req, res, next
             flight: booking.flight,
             tour: null,
             room: null,
-            hotel: null,
         };
     }
     else {
@@ -453,7 +491,7 @@ const handleUpdateBooking = (0, error_handler_1.asyncHandler)(async (req, res, n
                     select: { id: true, name: true, email: true },
                 },
                 tour: {
-                    select: { id: true, name: true, description: true },
+                    select: { id: true, name: true, description: true, location: true },
                 },
                 room: {
                     select: {
@@ -465,12 +503,34 @@ const handleUpdateBooking = (0, error_handler_1.asyncHandler)(async (req, res, n
                                 id: true,
                                 name: true,
                                 description: true,
+                                city: true,
+                                country: true,
                             },
                         },
                     },
                 },
                 flight: {
-                    select: { id: true, flightNumber: true, airline: true },
+                    select: {
+                        id: true,
+                        flightNumber: true,
+                        airline: true,
+                        origin: {
+                            select: {
+                                id: true,
+                                name: true,
+                                city: true,
+                                country: true,
+                            },
+                        },
+                        destination: {
+                            select: {
+                                id: true,
+                                name: true,
+                                city: true,
+                                country: true,
+                            },
+                        },
+                    },
                 },
                 payment: {
                     select: {
@@ -483,7 +543,6 @@ const handleUpdateBooking = (0, error_handler_1.asyncHandler)(async (req, res, n
             },
         });
     });
-    // Response building logic remains the same...
     const baseResponse = {
         id: updatedBooking.id,
         userId: updatedBooking.userId,
@@ -503,7 +562,6 @@ const handleUpdateBooking = (0, error_handler_1.asyncHandler)(async (req, res, n
             tour: updatedBooking.tour,
             room: null,
             flight: null,
-            hotel: null,
         };
     }
     else if (updatedBooking.room) {
@@ -511,7 +569,6 @@ const handleUpdateBooking = (0, error_handler_1.asyncHandler)(async (req, res, n
             ...baseResponse,
             type: 'ROOM',
             room: updatedBooking.room,
-            hotel: updatedBooking.room?.hotel ?? null,
             tour: null,
             flight: null,
         };
@@ -523,7 +580,6 @@ const handleUpdateBooking = (0, error_handler_1.asyncHandler)(async (req, res, n
             flight: updatedBooking.flight,
             tour: null,
             room: null,
-            hotel: null,
         };
     }
     else {
@@ -838,7 +894,6 @@ const handleGetUserBookings = (0, error_handler_1.asyncHandler)(async (req, res)
                 tour: booking.tour,
                 room: null,
                 flight: null,
-                hotel: null,
             };
         }
         else if (booking.room) {
@@ -854,7 +909,6 @@ const handleGetUserBookings = (0, error_handler_1.asyncHandler)(async (req, res)
                 updatedAt: booking.updatedAt,
                 type: 'ROOM',
                 room: booking.room ? booking.room : null,
-                hotel: booking.room?.hotel ? booking.room.hotel : null,
                 tour: null,
                 flight: null,
             };
@@ -874,7 +928,6 @@ const handleGetUserBookings = (0, error_handler_1.asyncHandler)(async (req, res)
                 flight: booking.flight,
                 tour: null,
                 room: null,
-                hotel: null,
             };
         }
         return null;
@@ -1085,7 +1138,6 @@ const handleGetAllBookings = (0, error_handler_1.asyncHandler)(async (req, res, 
                 tour: booking.tour,
                 room: null,
                 flight: null,
-                hotel: null,
             };
         }
         else if (booking.room) {
@@ -1101,7 +1153,6 @@ const handleGetAllBookings = (0, error_handler_1.asyncHandler)(async (req, res, 
                 updatedAt: booking.updatedAt,
                 type: 'ROOM',
                 room: booking.room ? booking.room : null,
-                hotel: booking.room?.hotel ? booking.room.hotel : null,
                 tour: null,
                 flight: null,
             };
@@ -1121,7 +1172,6 @@ const handleGetAllBookings = (0, error_handler_1.asyncHandler)(async (req, res, 
                 flight: booking.flight,
                 tour: null,
                 room: null,
-                hotel: null,
             };
         }
         return null;

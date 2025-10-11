@@ -21,31 +21,34 @@ export interface IBookingRoom {
     id: number;
     name: string;
     description: string | null;
+    city: string;
+    country: string;
   };
-}
-
-export interface IBookingUser {
-  id: number;
-  name: string;
-  email: string;
 }
 
 export interface IBookingTour {
   id: number;
   name: string;
   description: string | null;
-}
-
-export interface IBookingHotel {
-  id: number;
-  name: string;
-  description: string | null;
+  location: string;
 }
 
 export interface IBookingFlight {
   id: number;
   flightNumber: string;
   airline: string;
+  origin: {
+    id: number;
+    name: string;
+    city: string | null;
+    country: string;
+  };
+  destination: {
+    id: number;
+    name: string;
+    city: string | null;
+    country: string;
+  };
 }
 
 export interface IBookingPayment {
@@ -75,13 +78,11 @@ export interface ITourBooking extends IBookingBase {
   tour: IBookingTour;
   room: null;
   flight: null;
-  hotel: null;
 }
 
 export interface IRoomBooking extends IBookingBase {
   type: 'ROOM';
   room: IBookingRoom | null;
-  hotel: IBookingHotel | null;
   tour: null;
   flight: null;
 }
@@ -91,7 +92,6 @@ export interface IFlightBooking extends IBookingBase {
   flight: IBookingFlight;
   tour: null;
   room: null;
-  hotel: null;
 }
 
 export type IBooking = ITourBooking | IRoomBooking | IFlightBooking;
