@@ -393,15 +393,6 @@ const handleUpdateBooking = asyncHandler(
   ): Promise<void> => {
     const { id } = req.params;
     const { userId, tourId, roomId, flightId, totalPrice, status } = req.body;
-    const user = req.user;
-
-    if (!user) {
-      throw new UnauthorizedError('Unauthorized, no user provided');
-    }
-
-    if (user.role !== 'ADMIN' && user.role !== 'AGENT') {
-      throw new UnauthorizedError('Only admins and agents can update bookings');
-    }
 
     if (!id) {
       throw new BadRequestError('Booking ID is required');

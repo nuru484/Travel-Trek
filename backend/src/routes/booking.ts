@@ -30,7 +30,7 @@ bookingRoutes.get(
 // Update a booking by ID
 bookingRoutes.put(
   '/bookings/:id',
-  authorizeRole([UserRole.ADMIN, UserRole.AGENT]),
+  authorizeRole([UserRole.ADMIN, UserRole.AGENT, UserRole.CUSTOMER]),
   updateBooking,
 );
 
