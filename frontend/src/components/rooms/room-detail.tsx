@@ -38,6 +38,7 @@ import {
   CheckCircle,
   XCircle,
   Bookmark,
+  Loader2,
 } from "lucide-react";
 import { ConfirmationDialog } from "../ui/confirmation-dialog";
 import { extractApiErrorMessage } from "@/utils/extractApiErrorMessage";
@@ -67,9 +68,16 @@ export function RoomDetail({ room }: IRoomDetailProps) {
   const isAvailable = room.roomsAvailable > 0;
 
   // Fetch user's bookings to check if this room is already booked
-  const { data: bookingsData } = useGetAllUserBookingsQuery(
+  const {
+    data: bookingsData,
+    isLoading: isLoadingBookings,
+    isFetching: isFetchingBookings,
+  } = useGetAllUserBookingsQuery(
     { userId: user?.id, params: { page: 1, limit: 1000 } },
-    { skip: !user }
+    {
+      skip: !user,
+      refetchOnMountOrArgChange: 30, // Refetch if data is older than 30 seconds
+    }
   );
 
   // Find user's booking for this room
@@ -85,6 +93,9 @@ export function RoomDetail({ room }: IRoomDetailProps) {
     isRoomBooked &&
     bookingStatus !== "CANCELLED" &&
     bookingStatus !== "COMPLETED";
+
+  // Check if we're still loading booking data
+  const isBookingDataLoading = isLoadingBookings || isFetchingBookings;
 
   const handleEdit = () => {
     router.push(`/dashboard/rooms/${room.id}/edit`);
@@ -153,6 +164,11 @@ export function RoomDetail({ room }: IRoomDetailProps) {
   };
 
   const getBookingButtonText = () => {
+    // Show loading state while fetching booking data
+    if (isBookingDataLoading) {
+      return "Loading...";
+    }
+
     if (!isRoomBooked) {
       return !isAvailable ? "Fully Booked" : "Book Now";
     }
@@ -173,6 +189,7 @@ export function RoomDetail({ room }: IRoomDetailProps) {
 
   const isBookingButtonDisabled = () => {
     return (
+      isBookingDataLoading || // Disable while loading booking data
       isBooking ||
       isCancelling ||
       (!isAvailable && !isRoomBooked) ||
@@ -182,6 +199,11 @@ export function RoomDetail({ room }: IRoomDetailProps) {
   };
 
   const handleBookingButtonClick = () => {
+    // Prevent action if still loading
+    if (isBookingDataLoading) {
+      return;
+    }
+
     if (!isRoomBooked) {
       setShowBookDialog(true);
     } else if (isBookingActive) {
@@ -246,7 +268,11 @@ export function RoomDetail({ room }: IRoomDetailProps) {
                     disabled={isBookingButtonDisabled()}
                     className="shadow-sm cursor-pointer"
                   >
-                    <Bookmark className="h-4 w-4 mr-2" />
+                    {isBookingDataLoading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Bookmark className="h-4 w-4 mr-2" />
+                    )}
                     <span className="hidden sm:inline">
                       {getBookingButtonText()}
                     </span>
@@ -322,21 +348,26 @@ export function RoomDetail({ room }: IRoomDetailProps) {
                       <DollarSign className="h-3 w-3 mr-1" />
                       {formatPrice(room.price)}/night
                     </Badge>
-                    {isRoomBooked && (
-                      <Badge
-                        variant={
-                          bookingStatus === "CONFIRMED"
-                            ? "default"
-                            : bookingStatus === "CANCELLED"
-                            ? "destructive"
-                            : bookingStatus === "COMPLETED"
-                            ? "outline"
-                            : "secondary"
-                        }
-                        className="bg-white/90 text-black"
-                      >
-                        Booking: {bookingStatus}
-                      </Badge>
+                    {/* Show loading skeleton or actual booking status */}
+                    {isBookingDataLoading ? (
+                      <div className="h-5 w-32 bg-white/70 animate-pulse rounded-full"></div>
+                    ) : (
+                      isRoomBooked && (
+                        <Badge
+                          variant={
+                            bookingStatus === "CONFIRMED"
+                              ? "default"
+                              : bookingStatus === "CANCELLED"
+                              ? "destructive"
+                              : bookingStatus === "COMPLETED"
+                              ? "outline"
+                              : "secondary"
+                          }
+                          className="bg-white/90 text-black"
+                        >
+                          Booking: {bookingStatus}
+                        </Badge>
+                      )
                     )}
                   </div>
                   <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white">
@@ -502,25 +533,29 @@ export function RoomDetail({ room }: IRoomDetailProps) {
 
                   <div>
                     <p className="font-medium text-foreground">Status</p>
-                    <p
-                      className={`text-sm flex items-center gap-2 ${
-                        isAvailable ? "text-green-600" : "text-destructive"
-                      }`}
-                    >
-                      {isAvailable ? (
-                        <>
-                          <CheckCircle className="h-4 w-4" />
-                          {isRoomBooked && isBookingActive
-                            ? `Booking ${bookingStatus}`
-                            : "Ready to book"}
-                        </>
-                      ) : (
-                        <>
-                          <XCircle className="h-4 w-4" />
-                          Fully booked
-                        </>
-                      )}
-                    </p>
+                    {isBookingDataLoading ? (
+                      <div className="h-5 w-40 bg-gray-200 animate-pulse rounded"></div>
+                    ) : (
+                      <p
+                        className={`text-sm flex items-center gap-2 ${
+                          isAvailable ? "text-green-600" : "text-destructive"
+                        }`}
+                      >
+                        {isAvailable ? (
+                          <>
+                            <CheckCircle className="h-4 w-4" />
+                            {isRoomBooked && isBookingActive
+                              ? `Booking ${bookingStatus}`
+                              : "Ready to book"}
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="h-4 w-4" />
+                            Fully booked
+                          </>
+                        )}
+                      </p>
+                    )}
                   </div>
 
                   {/* Availability Indicator */}
@@ -571,7 +606,18 @@ export function RoomDetail({ room }: IRoomDetailProps) {
                       </>
                     ) : (
                       <>
-                        {!isAvailable && !isRoomBooked ? (
+                        {/* Show loading state while fetching booking data */}
+                        {isBookingDataLoading ? (
+                          <Button
+                            variant="secondary"
+                            className="w-full"
+                            size="lg"
+                            disabled
+                          >
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Loading...
+                          </Button>
+                        ) : !isAvailable && !isRoomBooked ? (
                           <Button disabled className="w-full" size="lg">
                             <XCircle className="h-4 w-4 mr-2" />
                             Fully Booked
